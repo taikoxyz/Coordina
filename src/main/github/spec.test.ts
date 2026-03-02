@@ -1,0 +1,78 @@
+import { describe, it, expect } from 'vitest'
+import { generateIdentityMd, generateSoulMd, generateOpenClawJson, generateSkillsMd, generateAgentsMd } from './spec'
+
+describe('generateIdentityMd', () => {
+  it('generates IDENTITY.md from agent config', () => {
+    const md = generateIdentityMd({
+      name: 'Alice Chen', slug: 'alice', role: 'Engineer',
+      email: 'alice@co.com', slackHandle: '@alice', githubId: 'alice-dev',
+    })
+    expect(md).toContain('# Alice Chen')
+    expect(md).toContain('alice@co.com')
+    expect(md).toContain('@alice-dev')
+    expect(md).toContain('`alice`')
+  })
+
+  it('works without optional fields', () => {
+    const md = generateIdentityMd({ name: 'Bob', slug: 'bob', role: 'PM' })
+    expect(md).toContain('# Bob')
+    expect(md).not.toContain('Email')
+  })
+})
+
+describe('generateSoulMd', () => {
+  it('uses enhanced text when provided', () => {
+    const md = generateSoulMd({ userInput: 'Alice is pragmatic.', enhanced: 'Alice approaches engineering pragmatically.' })
+    expect(md).toContain('Alice approaches engineering pragmatically.')
+    expect(md).not.toContain('Alice is pragmatic.')
+  })
+
+  it('falls back to userInput when no enhanced text', () => {
+    const md = generateSoulMd({ userInput: 'Bob is methodical.' })
+    expect(md).toContain('Bob is methodical.')
+  })
+
+  it('includes default template sections', () => {
+    const md = generateSoulMd({ userInput: 'x' })
+    expect(md).toContain('## Core Values')
+    expect(md).toContain('## Working Style')
+  })
+})
+
+describe('generateOpenClawJson', () => {
+  it('generates openclaw.json for anthropic provider', () => {
+    const json = generateOpenClawJson({ provider: 'anthropic', model: 'claude-sonnet-4-6', apiKey: 'sk-ant-xxx' })
+    expect(JSON.parse(json)).toMatchObject({ provider: 'anthropic', model: 'claude-sonnet-4-6' })
+  })
+
+  it('excludes API key from JSON when not set', () => {
+    const json = generateOpenClawJson({ provider: 'ollama', model: 'llama3', baseUrl: 'http://localhost:11434' })
+    const parsed = JSON.parse(json)
+    expect(parsed.baseUrl).toBe('http://localhost:11434')
+  })
+})
+
+describe('generateSkillsMd', () => {
+  it('generates skills list', () => {
+    const md = generateSkillsMd(['TypeScript', 'React', 'Docker'])
+    expect(md).toContain('- TypeScript')
+    expect(md).toContain('- React')
+  })
+
+  it('shows placeholder for empty skills', () => {
+    const md = generateSkillsMd([])
+    expect(md).toContain('No skills defined')
+  })
+})
+
+describe('generateAgentsMd', () => {
+  it('marks lead agent', () => {
+    const md = generateAgentsMd([
+      { slug: 'alice', name: 'Alice', role: 'Engineer', isLead: true },
+      { slug: 'bob', name: 'Bob', role: 'PM' },
+    ])
+    expect(md).toContain('Alice')
+    expect(md).toContain('_(lead)_')
+    expect(md).toContain('Bob')
+  })
+})
