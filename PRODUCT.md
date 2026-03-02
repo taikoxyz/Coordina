@@ -160,31 +160,73 @@ Files visible (all OpenClaw workspace files): `SOUL.md`, `IDENTITY.md`, `MEMORY.
 
 ## Team Spec (GitHub Repo)
 
-### Structure
+### What lives in the repo
+
+The repo has two top-level directories with completely separate ownership:
 
 ```
 team-spec-repo/
-├── agents/
-│   ├── <slug>/               # One directory per agent
-│   │   ├── SOUL.md
-│   │   ├── IDENTITY.md
-│   │   ├── AGENTS.md
-│   │   └── openclaw.json     # Model provider config
-├── deploy/
-│   └── helm/
-│       ├── Chart.yaml
-│       └── values.yaml       # Generated from team config
-├── infra/
-│   └── terraform/            # Optional: GKE cluster definition
-└── team.json                 # Machine-readable team manifest
+│
+├── spec/                        ← Coordina ONLY writes here
+│   ├── team.json                   Machine-readable team manifest
+│   ├── agents/
+│   │   ├── alice/
+│   │   │   ├── SOUL.md             Generated from form (AI-enhanced + template)
+│   │   │   ├── IDENTITY.md         Generated from form fields
+│   │   │   ├── AGENTS.md           Generated operational rules
+│   │   │   └── openclaw.json       Model provider config
+│   │   └── bob/
+│   │       └── ...
+│   └── deploy/
+│       └── helm/
+│           ├── Chart.yaml
+│           └── values.yaml      Generated from team config
+│
+└── memory/                      ← Agents ONLY write here (each to their own subdirectory)
+    ├── alice/
+    │   ├── MEMORY.md               Curated long-term memory (agent maintains)
+    │   ├── HEARTBEAT.md            Runtime state
+    │   ├── TOOLS.md                Discovered tools
+    │   └── daily/
+    │       ├── 2026-03-01.md
+    │       └── 2026-03-02.md
+    └── bob/
+        ├── MEMORY.md
+        └── daily/
 ```
+
+### Why this separation matters
+
+**No conflicts between Coordina and agents.** Git conflicts only occur when two writers touch the same path. With strict directory ownership:
+- Coordina commits to `spec/` — agents never touch this
+- Each agent commits only to `memory/<its-slug>/` — no two writers share a path
+- Concurrent commits from multiple agents are safe: pull-rebase-push retry resolves any race
+
+**The deploy gate only checks `spec/`.** Agent memory commits (which happen continuously and autonomously) never block deployment.
+
+### Memory durability across undeploy/redeploy
+
+Because memory lives in git, it survives the undeploy/redeploy lifecycle:
+
+1. **Before undeploy**: Coordina triggers a final checkpoint commit on each agent pod, flushing current memory to `memory/<slug>/` in the repo
+2. **On deploy**: Coordina pulls `memory/<slug>/` from git and seeds it into each agent's fresh PVC before the pod starts
+3. **Result**: Memory is preserved when moving a team from one environment to another
+
+### How agents commit their memory
+
+Each deployed agent pod has:
+- A **GitHub deploy key** (scoped to the team spec repo) injected as a K8s Secret at deploy time
+- A **periodic commit cron** (configurable, default: every hour and on session end) that git-commits `memory/<slug>/` changes
+- Commit message format: `memory(alice): checkpoint 2026-03-02T14:00Z`
+
+Coordina generates the deploy key and injects it into the Helm values at deploy time. The key has write access only to the `memory/` path (enforced via GitHub's path-scoped deploy keys or a GitHub App with restricted permissions).
 
 ### Commit policy
 
-- App commits all changes to `main` automatically on save
-- Commit messages are descriptive: `"feat: add agent bob-smith"`, `"config: update alice-chen skills"`
-- **Materialization is blocked** until the local spec matches the latest `main` commit
-- Admins can view the GitHub repo at any time (link in team settings) but should not edit files manually
+- Coordina commits `spec/` changes automatically on save — descriptive messages: `feat: add agent bob-smith`, `config: update alice-chen soul`
+- **Materialization is blocked** until `spec/` files on `main` match the current form state
+- Agent memory commits to `memory/` never block deployment
+- Admins can browse the repo at any time (link in team settings) but must not edit files manually
 
 ---
 
