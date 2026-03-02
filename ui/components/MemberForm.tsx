@@ -16,9 +16,8 @@ export default function MemberForm({ team, member, onSave, onClose }: Props) {
   const [saving, setSaving] = useState(false)
 
   const [form, setForm] = useState({
-    name: member?.name ?? '',
+    nameInput: member?.display_name ?? '',
     prefix: member?.prefix ?? (team.prefix_allowlist[0] ?? 'Agent'),
-    display_name: member?.display_name ?? '',
     role: member?.role ?? '',
     is_team_lead: member?.is_team_lead ?? false,
     model_provider: member?.model_provider ?? 'anthropic',
@@ -29,8 +28,11 @@ export default function MemberForm({ team, member, onSave, onClose }: Props) {
     disk: member?.disk ?? '',
   })
 
-  const previewId = `agent_${team.name}_${form.name || '…'}`
-  const previewEmail = `agent_${team.name}_${form.name || '…'}@${team.domain}`
+  const toSlug = (s: string) =>
+    s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+  const slug = isEdit ? (member!.name) : toSlug(form.nameInput)
+  const previewId = `agent_${team.name}_${slug || '…'}`
+  const previewEmail = `agent_${team.name}_${slug || '…'}@${team.domain}`
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -42,9 +44,9 @@ export default function MemberForm({ team, member, onSave, onClose }: Props) {
         .map((t) => t.trim())
         .filter(Boolean)
       const payload = {
-        name: form.name,
+        name: slug,
         prefix: form.prefix,
-        display_name: form.display_name || form.name,
+        display_name: form.nameInput,
         role: form.role,
         is_team_lead: form.is_team_lead,
         model_provider: form.model_provider,
@@ -82,7 +84,7 @@ export default function MemberForm({ team, member, onSave, onClose }: Props) {
           style={{ borderBottom: '1px solid var(--c-border-muted)' }}
         >
           <h3 className="font-semibold" style={{ color: 'var(--c-text-primary)' }}>
-            {isEdit ? `Edit ${member!.display_name}` : 'Add Member'}
+            {isEdit ? `Edit ${member!.display_name || member!.name}` : 'Add Member'}
           </h3>
           <button onClick={onClose} className="p-1 rounded hover:bg-white/10 transition-colors">
             <X size={16} style={{ color: 'var(--c-text-muted)' }} />
@@ -117,40 +119,26 @@ export default function MemberForm({ team, member, onSave, onClose }: Props) {
               <>
                 <div>
                   <label className="block text-xs mb-1" style={{ color: 'var(--c-text-secondary)' }}>
-                    Name (slug) *
-                  </label>
-                  {isEdit ? (
-                    <div
-                      className="flex items-center gap-1.5 px-3 py-2 rounded text-sm"
-                      style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border)', color: 'var(--c-text-muted)' }}
-                    >
-                      <span>{form.name}</span>
-                      <span className="text-xs" title="Immutable after creation">🔒</span>
-                    </div>
-                  ) : (
-                    <input
-                      className="w-full px-3 py-2 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500"
-                      style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border-strong)', color: 'var(--c-text-primary)' }}
-                      placeholder="alice"
-                      value={form.name}
-                      onChange={(e) => setForm((p) => ({ ...p, name: e.target.value.toLowerCase() }))}
-                      pattern="^[a-z][a-z0-9_]*$"
-                      required
-                    />
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs mb-1" style={{ color: 'var(--c-text-secondary)' }}>
-                    Display name
+                    Name *
                   </label>
                   <input
                     className="w-full px-3 py-2 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500"
                     style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border-strong)', color: 'var(--c-text-primary)' }}
                     placeholder="Alice Chen"
-                    value={form.display_name}
-                    onChange={(e) => setForm((p) => ({ ...p, display_name: e.target.value }))}
+                    value={form.nameInput}
+                    onChange={(e) => setForm((p) => ({ ...p, nameInput: e.target.value }))}
+                    required
                   />
+                  {!isEdit && slug && (
+                    <p className="mt-1 text-xs font-mono" style={{ color: 'var(--c-text-muted)' }}>
+                      slug: {slug}
+                    </p>
+                  )}
+                  {isEdit && (
+                    <p className="mt-1 text-xs font-mono" style={{ color: 'var(--c-text-muted)' }}>
+                      slug: {slug} <span title="Immutable after creation">🔒</span>
+                    </p>
+                  )}
                 </div>
 
                 <div>
