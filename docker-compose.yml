@@ -26,6 +26,7 @@ services:
       dockerfile: Dockerfile
       args:
         INTERNAL_API_URL: "http://platform-api:8080"
+        OPTIMIZE: "${OPTIMIZE:-0}"
     ports:
       - "${UI_PORT:-3000}:3000"
     environment:

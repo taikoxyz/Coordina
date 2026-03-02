@@ -6,8 +6,13 @@ RUN --mount=type=cache,target=/root/.npm \
 COPY . .
 ARG INTERNAL_API_URL=http://localhost:8080
 ENV INTERNAL_API_URL=$INTERNAL_API_URL
+ARG OPTIMIZE=0
 RUN --mount=type=cache,target=/root/.npm \
-    npm run build
+    if [ "$OPTIMIZE" = "1" ]; then \
+      npm run build; \
+    else \
+      NODE_ENV=development npm run build; \
+    fi
 
 FROM node:20-alpine
 WORKDIR /app
