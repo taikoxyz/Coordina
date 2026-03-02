@@ -13,7 +13,15 @@ import (
 var (
 	gcloudMu      sync.Mutex
 	activeSession *gcloudSession
+
+	adcMu      sync.Mutex
+	adcSession *gcloudSession
 )
+
+const adcScopes = "openid,https://www.googleapis.com/auth/userinfo.email," +
+	"https://www.googleapis.com/auth/drive," +
+	"https://www.googleapis.com/auth/gmail.modify," +
+	"https://www.googleapis.com/auth/calendar"
 
 type gcloudSession struct {
 	url   string
@@ -134,4 +142,112 @@ func GCloudGetAccessToken() (string, error) {
 // GCloudRevoke revokes all gcloud accounts.
 func GCloudRevoke() {
 	exec.Command("gcloud", "auth", "revoke", "--all", "--quiet").Run()
+}
+
+// GCloudADCBegin spawns gcloud auth application-default login --no-browser with
+// Workspace scopes, extracts the remote-bootstrap command to run locally.
+func GCloudADCBegin() (string, error) {
+	adcMu.Lock()
+	defer adcMu.Unlock()
+
+	if adcSession != nil {
+		return adcSession.url, nil
+	}
+
+	cmd := exec.Command("gcloud", "auth", "application-default", "login",
+		"--no-browser", "--scopes="+adcScopes)
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return "", fmt.Errorf("gcloud stdin pipe: %w", err)
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return "", fmt.Errorf("gcloud stdout pipe: %w", err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return "", fmt.Errorf("gcloud stderr pipe: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return "", fmt.Errorf("gcloud not found or failed to start: %w", err)
+	}
+
+	urlCh := make(chan string, 1)
+	scanForCmd := func(r io.Reader) {
+		s := bufio.NewScanner(r)
+		for s.Scan() {
+			line := strings.TrimSpace(s.Text())
+			if strings.Contains(line, "--remote-bootstrap=") {
+				select {
+				case urlCh <- line:
+				default:
+				}
+			}
+		}
+	}
+	go scanForCmd(stdout)
+	go scanForCmd(stderr)
+
+	select {
+	case authCmd := <-urlCh:
+		adcSession = &gcloudSession{url: authCmd, stdin: stdin, cmd: cmd}
+		return authCmd, nil
+	case <-time.After(20 * time.Second):
+		cmd.Process.Kill()
+		return "", fmt.Errorf("timeout waiting for gcloud ADC auth command")
+	}
+}
+
+// GCloudADCSubmit sends the verification code to the waiting ADC subprocess.
+func GCloudADCSubmit(code string) error {
+	adcMu.Lock()
+	sess := adcSession
+	adcMu.Unlock()
+
+	if sess == nil {
+		return fmt.Errorf("no active ADC session — click Sign in first")
+	}
+
+	if _, err := fmt.Fprintln(sess.stdin, code); err != nil {
+		return fmt.Errorf("writing code to gcloud: %w", err)
+	}
+	sess.stdin.Close()
+	sess.cmd.Wait()
+
+	adcMu.Lock()
+	adcSession = nil
+	adcMu.Unlock()
+
+	if !GCloudADCIsAuthenticated() {
+		return fmt.Errorf("authentication failed — check your code and try again")
+	}
+	return nil
+}
+
+// GCloudADCIsAuthenticated checks whether application-default credentials are active.
+func GCloudADCIsAuthenticated() bool {
+	out, err := exec.Command("gcloud", "auth", "application-default", "print-access-token").Output()
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(string(out)) != ""
+}
+
+// GCloudADCGetAccessToken returns the current application-default access token.
+func GCloudADCGetAccessToken() (string, error) {
+	out, err := exec.Command("gcloud", "auth", "application-default", "print-access-token").Output()
+	if err != nil {
+		return "", fmt.Errorf("gcloud application-default print-access-token: %w", err)
+	}
+	token := strings.TrimSpace(string(out))
+	if token == "" {
+		return "", fmt.Errorf("empty ADC access token")
+	}
+	return token, nil
+}
+
+// GCloudADCRevoke revokes application-default credentials.
+func GCloudADCRevoke() {
+	exec.Command("gcloud", "auth", "application-default", "revoke", "--quiet").Run()
 }

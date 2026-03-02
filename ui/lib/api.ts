@@ -94,6 +94,13 @@ export const api = {
       body: JSON.stringify({ code }),
     }),
 
+  gcloudADCBegin: () => req<{ url: string }>('/api/auth/workspace/gcloud/begin'),
+  gcloudADCSubmit: (code: string) =>
+    req<{ email: string }>('/api/auth/workspace/gcloud/submit', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    }),
+
   getWorkspaceAuthURL: () => req<{ url: string }>('/api/auth/workspace/begin'),
   getWorkspaceAuthStatus: () =>
     req<{ connected: boolean; email: string }>('/api/auth/workspace/status'),

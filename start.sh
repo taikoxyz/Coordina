@@ -11,7 +11,20 @@ for arg in "$@"; do
     --build)       BUILD=1 ;;
     --verbose=*)   VERBOSE="${arg#--verbose=}" ;;
     --port=*)      PORT="${arg#--port=}" ;;
-    *) echo "Usage: start.sh [--build] [--verbose=info|debug|trace] [--port=N]" >&2; exit 1 ;;
+    --help|-h)
+      echo "Usage: start.sh [OPTIONS]"
+      echo ""
+      echo "Options:"
+      echo "  --build              Force rebuild of Docker images before starting"
+      echo "  --port=N             Bind the UI to host port N (default: auto-detect free port from 3000)"
+      echo "  --verbose=LEVEL      Output verbosity:"
+      echo "                         info   quiet pull, detached, print URL (default)"
+      echo "                         debug  plain build output, detached, then follow logs"
+      echo "                         trace  foreground mode, full output (blocks until Ctrl-C)"
+      echo "  --help, -h           Show this help message"
+      exit 0
+      ;;
+    *) echo "Unknown option: $arg" >&2; echo "Run 'start.sh --help' for usage." >&2; exit 1 ;;
   esac
 done
 
@@ -41,6 +54,26 @@ fi
 
 export UI_PORT="$PORT"
 export GOOGLE_REDIRECT_BASE="${GOOGLE_REDIRECT_BASE:-http://localhost:$PORT}"
+
+# Check gcloud CLI on the host (needed to complete Google sign-in)
+if ! command -v gcloud >/dev/null 2>&1; then
+  echo ""
+  echo "WARNING: gcloud CLI not found on this machine."
+  echo "Google account sign-in requires gcloud on your local machine."
+  echo ""
+  echo "Install options:"
+  echo "  macOS (Homebrew): brew install --cask google-cloud-sdk"
+  echo "  Linux:            curl https://sdk.cloud.google.com | bash"
+  echo "  All platforms:    https://cloud.google.com/sdk/docs/install"
+  echo ""
+  printf "Continue without gcloud? [y/N] "
+  read -r _ans
+  case "$_ans" in
+    y|Y) ;;
+    *) exit 1 ;;
+  esac
+  echo ""
+fi
 
 # Build flags
 BUILD_FLAGS=

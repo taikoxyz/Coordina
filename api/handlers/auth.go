@@ -225,13 +225,56 @@ func (h *Handler) WorkspaceAuthStatus(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	email := settings.WorkspaceAuthedEmail
+	connected := settings.WorkspaceRefreshToken != "" || gcp.GCloudADCIsAuthenticated()
 	writeJSON(w, http.StatusOK, map[string]any{
-		"connected": settings.WorkspaceRefreshToken != "",
-		"email":     settings.WorkspaceAuthedEmail,
+		"connected": connected,
+		"email":     email,
 	})
 }
 
 func (h *Handler) WorkspaceAuthRevoke(w http.ResponseWriter, r *http.Request) {
+	gcp.GCloudADCRevoke()
+	if err := h.store.ClearAuthTokens("workspace"); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "revoked"})
+}
+
+func (h *Handler) GCloudADCBegin(w http.ResponseWriter, r *http.Request) {
+	cmd, err := gcp.GCloudADCBegin()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"url": cmd})
+}
+
+func (h *Handler) GCloudADCSubmit(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Code string `json:"code"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Code == "" {
+		writeError(w, http.StatusBadRequest, "code is required")
+		return
+	}
+	if err := gcp.GCloudADCSubmit(body.Code); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	token, err := gcp.GCloudADCGetAccessToken()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	email, _ := gcp.GetUserEmail(token)
+	h.store.SaveAuthTokens("workspace", "", time.Time{}, email)
+	writeJSON(w, http.StatusOK, map[string]string{"email": email})
+}
+
+func (h *Handler) GCloudADCRevoke(w http.ResponseWriter, r *http.Request) {
+	gcp.GCloudADCRevoke()
 	if err := h.store.ClearAuthTokens("workspace"); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

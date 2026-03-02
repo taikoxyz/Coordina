@@ -41,11 +41,17 @@ export default function OnboardingWizard({ onComplete }: Props) {
   const [gcpPolling, setGCPPolling] = useState(false)
   const [wsPolling, setWSPolling] = useState(false)
 
-  // gcloud device auth
+  // gcloud device auth (GCP)
   const [gcloudURL, setGCloudURL] = useState('')
   const [gcloudCode, setGCloudCode] = useState('')
   const [gcloudError, setGCloudError] = useState('')
   const [gcloudSubmitting, setGCloudSubmitting] = useState(false)
+
+  // gcloud ADC auth (Workspace)
+  const [wsGcloudURL, setWSGCloudURL] = useState('')
+  const [wsGcloudCode, setWSGCloudCode] = useState('')
+  const [wsGcloudError, setWSGCloudError] = useState('')
+  const [wsGcloudSubmitting, setWSGCloudSubmitting] = useState(false)
 
   // Manual SA key fallback
   const [showManual, setShowManual] = useState(false)
@@ -135,6 +141,31 @@ export default function OnboardingWizard({ onComplete }: Props) {
         }
       }, 2000)
     } catch { /* ignore */ }
+  }
+
+  async function startWSGCloudAuth() {
+    setWSGCloudError('')
+    try {
+      const { url } = await api.gcloudADCBegin()
+      setWSGCloudURL(url)
+    } catch (err) {
+      setWSGCloudError(err instanceof Error ? err.message : 'Failed to start login')
+    }
+  }
+
+  async function submitWSGCloudCode() {
+    setWSGCloudSubmitting(true)
+    setWSGCloudError('')
+    try {
+      const { email } = await api.gcloudADCSubmit(wsGcloudCode)
+      setWSGCloudURL('')
+      setWSGCloudCode('')
+      setWSStatus({ connected: true, email })
+    } catch (err) {
+      setWSGCloudError(err instanceof Error ? err.message : 'Authentication failed')
+    } finally {
+      setWSGCloudSubmitting(false)
+    }
   }
 
   async function handleManualTest() {
@@ -404,18 +435,61 @@ export default function OnboardingWizard({ onComplete }: Props) {
               </p>
 
               {!wsStatus?.connected ? (
-                <button
-                  onClick={startWSAuth}
-                  disabled={wsPolling}
-                  className="w-full py-3 rounded-lg text-sm font-medium text-white mb-4 flex items-center justify-center gap-2 disabled:opacity-60"
-                  style={{ background: '#2563eb' }}
-                >
-                  {wsPolling ? (
-                    <><span className="animate-spin">⟳</span> Waiting for authentication…</>
-                  ) : (
-                    '🔗 Connect Google Workspace'
-                  )}
-                </button>
+                gcpStatus?.oauth_configured ? (
+                  <button
+                    onClick={startWSAuth}
+                    disabled={wsPolling}
+                    className="w-full py-3 rounded-lg text-sm font-medium text-white mb-4 flex items-center justify-center gap-2 disabled:opacity-60"
+                    style={{ background: '#2563eb' }}
+                  >
+                    {wsPolling ? (
+                      <><span className="animate-spin">⟳</span> Waiting for authentication…</>
+                    ) : (
+                      '🔗 Connect Google Workspace'
+                    )}
+                  </button>
+                ) : (
+                  <div className="mb-4 rounded-lg px-4 py-3 text-sm space-y-3" style={{ background: 'var(--c-bg-surface)', border: '1px solid var(--c-border)' }}>
+                    {wsGcloudError && <p className="text-xs text-red-400">{wsGcloudError}</p>}
+                    {!wsGcloudURL ? (
+                      <button
+                        onClick={startWSGCloudAuth}
+                        className="w-full py-2.5 rounded-lg text-sm font-medium text-white flex items-center justify-center gap-2"
+                        style={{ background: '#1a6b3e' }}
+                      >
+                        🔗 Sign in with Google Workspace
+                      </button>
+                    ) : (
+                      <>
+                        <p className="text-xs" style={{ color: 'var(--c-text-muted)' }}>Run this command on your local machine (requires gcloud CLI):</p>
+                        <div className="flex items-start gap-2">
+                          <code className="text-xs flex-1 break-all font-mono p-2 rounded" style={{ background: 'var(--c-bg-base)', color: 'var(--c-text-secondary)' }}>{wsGcloudURL}</code>
+                          <button
+                            onClick={() => navigator.clipboard.writeText(wsGcloudURL)}
+                            className="text-xs px-2 py-1 rounded shrink-0 mt-1"
+                            style={{ border: '1px solid var(--c-border-strong)', color: 'var(--c-text-muted)' }}
+                          >Copy</button>
+                        </div>
+                        <p className="text-xs" style={{ color: 'var(--c-text-muted)' }}>Then paste the output here:</p>
+                        <textarea
+                          className="w-full px-3 py-2 rounded text-xs outline-none focus:ring-1 focus:ring-green-500 font-mono"
+                          style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border-strong)', color: 'var(--c-text-primary)', height: 80 }}
+                          placeholder="Paste the output of the command here"
+                          value={wsGcloudCode}
+                          onChange={(e) => setWSGCloudCode(e.target.value)}
+                        />
+                        <button
+                          onClick={submitWSGCloudCode}
+                          disabled={wsGcloudSubmitting || !wsGcloudCode}
+                          className="w-full py-2.5 rounded-lg text-sm font-medium text-white disabled:opacity-50"
+                          style={{ background: '#1a6b3e' }}
+                        >
+                          {wsGcloudSubmitting ? 'Verifying…' : 'Submit'}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )
               ) : (
                 <div className="mb-4 rounded-lg px-4 py-3 text-sm" style={{ background: 'var(--c-bg-surface)', border: '1px solid var(--c-border)' }}>
                   <p className="text-green-400 font-medium">✓ Connected as {wsStatus.email}</p>

@@ -81,6 +81,9 @@ func main() {
 			r.Get("/workspace/callback", h.WorkspaceAuthCallback)
 			r.Get("/workspace/status", h.WorkspaceAuthStatus)
 			r.Post("/workspace/revoke", h.WorkspaceAuthRevoke)
+			r.Get("/workspace/gcloud/begin", h.GCloudADCBegin)
+			r.Post("/workspace/gcloud/submit", h.GCloudADCSubmit)
+			r.Post("/workspace/gcloud/revoke", h.GCloudADCRevoke)
 		})
 	})
 
