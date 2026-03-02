@@ -162,71 +162,35 @@ Files visible (all OpenClaw workspace files): `SOUL.md`, `IDENTITY.md`, `MEMORY.
 
 ### What lives in the repo
 
-The repo has two top-level directories with completely separate ownership:
+The repo contains only the team's **configuration spec** — the static definition that Coordina manages. Agent runtime state (memory, daily logs, heartbeat) is not in git; it lives in the deployment environment's persistent disk.
 
 ```
 team-spec-repo/
-│
-├── spec/                        ← Coordina ONLY writes here
-│   ├── team.json                   Machine-readable team manifest
-│   ├── agents/
-│   │   ├── alice/
-│   │   │   ├── SOUL.md             Generated from form (AI-enhanced + template)
-│   │   │   ├── IDENTITY.md         Generated from form fields
-│   │   │   ├── AGENTS.md           Generated operational rules
-│   │   │   └── openclaw.json       Model provider config
-│   │   └── bob/
-│   │       └── ...
-│   └── deploy/
-│       └── helm/
-│           ├── Chart.yaml
-│           └── values.yaml      Generated from team config
-│
-└── memory/                      ← Agents ONLY write here (each to their own subdirectory)
-    ├── alice/
-    │   ├── MEMORY.md               Curated long-term memory (agent maintains)
-    │   ├── HEARTBEAT.md            Runtime state
-    │   ├── TOOLS.md                Discovered tools
-    │   └── daily/
-    │       ├── 2026-03-01.md
-    │       └── 2026-03-02.md
-    └── bob/
-        ├── MEMORY.md
-        └── daily/
+├── team.json                    # Machine-readable team manifest
+├── agents/
+│   ├── alice/
+│   │   ├── SOUL.md              Generated from form (AI-enhanced + template)
+│   │   ├── IDENTITY.md          Generated from form fields
+│   │   ├── AGENTS.md            Generated operational rules
+│   │   └── openclaw.json        Model provider config
+│   └── bob/
+│       └── ...
+└── deploy/
+    └── helm/
+        ├── Chart.yaml
+        └── values.yaml          Generated from team config
 ```
-
-### Why this separation matters
-
-**No conflicts between Coordina and agents.** Git conflicts only occur when two writers touch the same path. With strict directory ownership:
-- Coordina commits to `spec/` — agents never touch this
-- Each agent commits only to `memory/<its-slug>/` — no two writers share a path
-- Concurrent commits from multiple agents are safe: pull-rebase-push retry resolves any race
-
-**The deploy gate only checks `spec/`.** Agent memory commits (which happen continuously and autonomously) never block deployment.
-
-### Memory durability across undeploy/redeploy
-
-Because memory lives in git, it survives the undeploy/redeploy lifecycle:
-
-1. **Before undeploy**: Coordina triggers a final checkpoint commit on each agent pod, flushing current memory to `memory/<slug>/` in the repo
-2. **On deploy**: Coordina pulls `memory/<slug>/` from git and seeds it into each agent's fresh PVC before the pod starts
-3. **Result**: Memory is preserved when moving a team from one environment to another
-
-### How agents commit their memory
-
-Each deployed agent pod has:
-- A **GitHub deploy key** (scoped to the team spec repo) injected as a K8s Secret at deploy time
-- A **periodic commit cron** (configurable, default: every hour and on session end) that git-commits `memory/<slug>/` changes
-- Commit message format: `memory(alice): checkpoint 2026-03-02T14:00Z`
-
-Coordina generates the deploy key and injects it into the Helm values at deploy time. The key has write access only to the `memory/` path (enforced via GitHub's path-scoped deploy keys or a GitHub App with restricted permissions).
 
 ### Commit policy
 
-- Coordina commits `spec/` changes automatically on save — descriptive messages: `feat: add agent bob-smith`, `config: update alice-chen soul`
-- **Materialization is blocked** until `spec/` files on `main` match the current form state
-- Agent memory commits to `memory/` never block deployment
+- Coordina commits all changes to `main` automatically on save
+- Commit messages are descriptive: `feat: add agent bob-smith`, `config: update alice-chen soul`
+- **Materialization is blocked** until the repo's `main` matches the current form state
 - Admins can browse the repo at any time (link in team settings) but must not edit files manually
+
+### What is NOT in the repo
+
+Agent runtime state — `MEMORY.md`, daily logs (`memory/YYYY-MM-DD.md`), `HEARTBEAT.md`, `TOOLS.md` — is stored exclusively in the agent pod's **persistent disk** (PVC). See [Persistent Disk Strategy](#persistent-disk-strategy) below.
 
 ---
 
@@ -277,18 +241,44 @@ OpenClaw Gateway Pod (:18789)
 
 Coordina configures IAP automatically when setting up a deployment environment (as part of the wizard).
 
+### Persistent Disk Strategy
+
+Agent runtime state (memory, logs, tools) lives in the agent pod's **PersistentVolumeClaim**, not in git. On GCP, persistent disks survive indefinitely unless explicitly deleted — this is the durability mechanism.
+
+PVCs are named deterministically after team + agent slug:
+```
+workspace-<team-slug>-<agent-slug>-0
+e.g. workspace-eng-alpha-alice-0
+```
+
+Because the name is stable and derived from identity (not from a deployment run), the same disk reattaches automatically whenever the pod is recreated in the same cluster — across restarts, config changes, and redeployments.
+
 ### Environment lifecycle rules
 
 - An environment **cannot be deleted** once a team has been deployed to it
 - A team can only be deployed to **one environment at a time**
-- To move a team: undeploy from current env → deploy to new env
-- Undeploying destroys all pods and PVCs — runtime data is lost (team spec in GitHub is preserved)
+
+**Undeploy (soft)** — stops the pods but keeps all disks:
+- Deletes StatefulSets, Services, Ingress
+- **Preserves PVCs** — agent memory and runtime state remain on the disk
+- Team can be redeployed to the same environment; pods reattach their existing disks and resume where they left off
+
+**Delete team disks (hard)** — explicit destructive action, separate from undeploy:
+- Deletes PVCs and the underlying GCP persistent disks
+- Shown as a distinct, confirmed action: "Permanently delete all agent disks for this team in [env name]"
+- Cannot be undone
+
+**Moving a team to a different environment:**
+- Undeploy from current env (disks stay on source cluster)
+- Deploy to new env (fresh disks, agents start with spec-only state)
+- Agent runtime memory does not transfer across clusters in v1
+- Cross-environment memory migration is a future feature (GCS snapshot/restore)
 
 ### What gets deployed
 
 Per agent:
 - **StatefulSet** — one pod per agent, stable identity (via OpenClaw K8s operator `OpenClawInstance` CRD)
-- **PersistentVolumeClaim** — 10Gi by default, stores OpenClaw workspace
+- **PersistentVolumeClaim** — named `workspace-<team-slug>-<agent-slug>-0`, 10Gi default; persists on undeploy
 - **Service** — ClusterIP for internal cluster routing
 
 Per team:
