@@ -339,6 +339,7 @@ export default function TeamNav() {
       {showNewMember && teamForMember && (
         <MemberForm
           team={teamForMember}
+          members={members[teamForMember.id] ?? []}
           onSave={async () => {
             setShowNewMember(null)
             await loadTeams()

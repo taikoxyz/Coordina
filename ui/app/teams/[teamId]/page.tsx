@@ -1,27 +1,39 @@
 'use client'
-import { use, useEffect, useState } from 'react'
+import { use, useEffect, useState, useCallback } from 'react'
 import { api } from '@/lib/api'
 import type { Team, Member } from '@/lib/types'
-import ChatPanel from '@/components/ChatPanel'
-import ContextSidebar from '@/components/ContextSidebar'
+import TeamRosterPage from '@/components/TeamRosterPage'
 
 export default function TeamPage({ params }: { params: Promise<{ teamId: string }> }) {
   const { teamId } = use(params)
   const [team, setTeam] = useState<Team | null>(null)
-  const [lead, setLead] = useState<Member | null>(null)
+  const [members, setMembers] = useState<Member[]>([])
+  const [gcpConnected, setGcpConnected] = useState(false)
+  const [wsConnected, setWsConnected] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [t, members] = await Promise.all([api.getTeam(teamId), api.getMembers(teamId)])
-        setTeam(t)
-        setLead(members.find((m) => m.is_team_lead) ?? members[0] ?? null)
-      } finally {
-        setLoading(false)
-      }
+  const load = useCallback(async () => {
+    try {
+      const [t, m, gcpStatus, wsStatus] = await Promise.all([
+        api.getTeam(teamId),
+        api.getMembers(teamId),
+        api.getGCPAuthStatus(),
+        api.getWorkspaceAuthStatus(),
+      ])
+      setTeam(t)
+      setMembers(m)
+      setGcpConnected(gcpStatus.connected)
+      setWsConnected(wsStatus.connected)
+    } finally {
+      setLoading(false)
     }
-    load()
+  }, [teamId])
+
+  useEffect(() => { load() }, [load])
+
+  const refreshMembers = useCallback(async () => {
+    const m = await api.getMembers(teamId)
+    setMembers(m)
   }, [teamId])
 
   if (loading) {
@@ -32,21 +44,23 @@ export default function TeamPage({ params }: { params: Promise<{ teamId: string 
     )
   }
 
-  if (!team || !lead) {
+  if (!team) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <p className="text-white mb-1">No members yet</p>
-          <p className="text-sm" style={{ color: '#666' }}>Add a member to start chatting.</p>
-        </div>
+      <div className="flex items-center justify-center h-full" style={{ color: '#666' }}>
+        Team not found
       </div>
     )
   }
 
   return (
-    <div className="flex h-full">
-      <ChatPanel teamId={teamId} memberId={lead.id} />
-      <ContextSidebar team={team} member={lead} />
+    <div className="h-full overflow-y-auto">
+      <TeamRosterPage
+        team={team}
+        members={members}
+        gcpConnected={gcpConnected}
+        wsConnected={wsConnected}
+        onMembersChange={refreshMembers}
+      />
     </div>
   )
 }

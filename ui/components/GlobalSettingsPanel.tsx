@@ -328,7 +328,7 @@ export default function GlobalSettingsPanel({ onClose }: Props) {
             <div>
               <h4 className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--c-text-faint)' }}>Google Cloud</h4>
               {gcpStatus?.connected ? (
-                <div className="rounded-lg px-3 py-3 text-sm space-y-1" style={{ background: 'var(--c-bg-surface)', border: '1px solid var(--c-border)' }}>
+                <div className="rounded-lg px-3 py-3 text-sm space-y-2" style={{ background: 'var(--c-bg-surface)', border: '1px solid var(--c-border)' }}>
                   <div className="flex items-center justify-between">
                     <span className="text-green-400 text-xs font-medium">● {gcpStatus.email}</span>
                     <button onClick={revokeGCP} className="text-xs hover:text-red-400 transition-colors" style={{ color: 'var(--c-text-faint)' }}>Revoke</button>
@@ -344,9 +344,51 @@ export default function GlobalSettingsPanel({ onClose }: Props) {
                   ) : gcpStatus.provisioning_status?.startsWith('error') ? (
                     <p className="text-xs text-red-400">✗ {gcpStatus.provisioning_status}</p>
                   ) : null}
-                  <button onClick={startGCPAuth} disabled={gcpPolling} className="text-xs underline disabled:opacity-50" style={{ color: 'var(--c-text-faint)' }}>
-                    {gcpPolling ? 'Waiting…' : 'Re-authenticate'}
-                  </button>
+                  {gcpStatus.oauth_configured ? (
+                    <button onClick={startGCPAuth} disabled={gcpPolling} className="text-xs underline disabled:opacity-50" style={{ color: 'var(--c-text-faint)' }}>
+                      {gcpPolling ? 'Waiting…' : 'Re-authenticate'}
+                    </button>
+                  ) : (
+                    <>
+                      {gcloudError && <p className="text-xs text-red-400">{gcloudError}</p>}
+                      {!gcloudURL ? (
+                        <button
+                          onClick={startGCloudAuth}
+                          className="text-xs underline"
+                          style={{ color: 'var(--c-text-faint)' }}
+                        >
+                          Re-authenticate
+                        </button>
+                      ) : (
+                        <>
+                          <p className="text-xs" style={{ color: 'var(--c-text-muted)' }}>Run this command on your local machine:</p>
+                          <div className="flex items-start gap-2">
+                            <code className="text-xs flex-1 break-all font-mono p-2 rounded" style={{ background: 'var(--c-bg-base)', color: 'var(--c-text-secondary)' }}>{gcloudURL}</code>
+                            <button
+                              onClick={() => navigator.clipboard.writeText(gcloudURL)}
+                              className="text-xs px-2 py-1 rounded shrink-0 mt-1"
+                              style={{ border: '1px solid var(--c-border-strong)', color: 'var(--c-text-muted)' }}
+                            >Copy</button>
+                          </div>
+                          <textarea
+                            className="w-full px-3 py-2 rounded text-xs outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+                            style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border-strong)', color: 'var(--c-text-primary)', height: 80 }}
+                            placeholder="Paste the output of the command here"
+                            value={gcloudCode}
+                            onChange={(e) => setGCloudCode(e.target.value)}
+                          />
+                          <button
+                            onClick={submitGCloudCode}
+                            disabled={gcloudSubmitting || !gcloudCode}
+                            className="w-full py-2 rounded text-sm font-medium text-white disabled:opacity-50"
+                            style={{ background: '#2563eb' }}
+                          >
+                            {gcloudSubmitting ? 'Verifying…' : 'Submit'}
+                          </button>
+                        </>
+                      )}
+                    </>
+                  )}
                 </div>
               ) : gcpStatus && !gcpStatus.oauth_configured ? (
                 <div className="rounded-lg px-3 py-3 text-sm space-y-2" style={{ background: 'var(--c-bg-surface)', border: '1px solid var(--c-border)' }}>

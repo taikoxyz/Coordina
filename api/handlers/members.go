@@ -71,6 +71,19 @@ func (h *Handler) CreateMember(w http.ResponseWriter, r *http.Request) {
 		req.ToolsEnabled = []string{}
 	}
 
+	// Enforce one team lead per team
+	if req.IsTeamLead {
+		leads, err := h.store.CountTeamLeads(teamID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if leads > 0 {
+			writeError(w, http.StatusConflict, "team already has a team lead")
+			return
+		}
+	}
+
 	// Validate prefix is in allowlist
 	if len(team.PrefixAllowlist) > 0 {
 		allowed := false
@@ -187,10 +200,14 @@ func (h *Handler) UpdateMember(w http.ResponseWriter, r *http.Request) {
 		member.Role = *req.Role
 	}
 	if req.IsTeamLead != nil {
-		if !*req.IsTeamLead && member.IsTeamLead {
+		if *req.IsTeamLead && !member.IsTeamLead {
 			leads, err := h.store.CountTeamLeads(teamID)
-			if err != nil || leads <= 1 {
-				writeError(w, http.StatusBadRequest, "cannot remove the last team lead")
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			if leads > 0 {
+				writeError(w, http.StatusConflict, "team already has a team lead")
 				return
 			}
 		}

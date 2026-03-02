@@ -22,7 +22,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       > /etc/apt/sources.list.d/google-cloud-sdk.list && \
     curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
       | gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg && \
-    apt-get update && apt-get install -y --no-install-recommends google-cloud-cli && \
+    apt-get update && apt-get install -y --no-install-recommends \
+      google-cloud-cli \
+      google-cloud-cli-gke-gcloud-auth-plugin \
+      kubectl && \
     rm -rf /var/lib/apt/lists/*
 COPY --from=builder /platform-api /platform-api
 EXPOSE 8080

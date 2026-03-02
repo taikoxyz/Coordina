@@ -34,7 +34,30 @@ func (s *Store) migrate() error {
 	if _, err := s.db.Exec(schema); err != nil {
 		return err
 	}
-	return s.migrateV2()
+	if err := s.migrateV2(); err != nil {
+		return err
+	}
+	return s.migrateV3()
+}
+
+func (s *Store) migrateV3() error {
+	teamCols := []struct{ name, def string }{
+		{"materialize_status", "TEXT NOT NULL DEFAULT 'idle'"},
+		{"materialize_step", "INTEGER NOT NULL DEFAULT 0"},
+		{"materialize_error", "TEXT NOT NULL DEFAULT ''"},
+	}
+	for _, c := range teamCols {
+		_, _ = s.db.Exec("ALTER TABLE teams ADD COLUMN " + c.name + " " + c.def)
+	}
+	memberCols := []struct{ name, def string }{
+		{"google_provisioned", "INTEGER NOT NULL DEFAULT 0"},
+		{"google_password", "TEXT NOT NULL DEFAULT ''"},
+		{"k8s_deployed", "INTEGER NOT NULL DEFAULT 0"},
+	}
+	for _, c := range memberCols {
+		_, _ = s.db.Exec("ALTER TABLE members ADD COLUMN " + c.name + " " + c.def)
+	}
+	return nil
 }
 
 func (s *Store) migrateV2() error {
@@ -125,7 +148,7 @@ func parseTS(s string) time.Time {
 // --- Teams ---
 
 func (s *Store) ListTeams() ([]*models.Team, error) {
-	rows, err := s.db.Query(`SELECT id, name, display_name, domain, gcp_project_id, gcp_project_status, default_cpu, default_memory, default_disk, prefix_allowlist, created_at, updated_at FROM teams ORDER BY created_at`)
+	rows, err := s.db.Query(`SELECT id, name, display_name, domain, gcp_project_id, gcp_project_status, default_cpu, default_memory, default_disk, prefix_allowlist, materialize_status, materialize_step, materialize_error, created_at, updated_at FROM teams ORDER BY created_at`)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +168,7 @@ func (s *Store) ListTeams() ([]*models.Team, error) {
 }
 
 func (s *Store) GetTeam(id string) (*models.Team, error) {
-	row := s.db.QueryRow(`SELECT id, name, display_name, domain, gcp_project_id, gcp_project_status, default_cpu, default_memory, default_disk, prefix_allowlist, created_at, updated_at FROM teams WHERE id = ?`, id)
+	row := s.db.QueryRow(`SELECT id, name, display_name, domain, gcp_project_id, gcp_project_status, default_cpu, default_memory, default_disk, prefix_allowlist, materialize_status, materialize_step, materialize_error, created_at, updated_at FROM teams WHERE id = ?`, id)
 	return scanTeam(row)
 }
 
@@ -188,7 +211,8 @@ func scanTeam(row scanner) (*models.Team, error) {
 		&t.ID, &t.Name, &t.DisplayName, &t.Domain,
 		&t.GCPProjectID, &t.GCPProjectStatus,
 		&t.DefaultCPU, &t.DefaultMemory, &t.DefaultDisk,
-		&allowlistJSON, &createdAt, &updatedAt,
+		&allowlistJSON, &t.MaterializeStatus, &t.MaterializeStep, &t.MaterializeError,
+		&createdAt, &updatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -203,7 +227,7 @@ func scanTeam(row scanner) (*models.Team, error) {
 
 func (s *Store) ListMembers(teamID string) ([]*models.Member, error) {
 	rows, err := s.db.Query(
-		`SELECT id, team_id, name, prefix, display_name, role, is_team_lead, model_provider, model_id, tools_enabled, cpu, memory, disk, container_port, created_at, updated_at FROM members WHERE team_id=? ORDER BY created_at`,
+		`SELECT id, team_id, name, prefix, display_name, role, is_team_lead, model_provider, model_id, tools_enabled, cpu, memory, disk, container_port, google_provisioned, google_password, k8s_deployed, created_at, updated_at FROM members WHERE team_id=? ORDER BY created_at`,
 		teamID,
 	)
 	if err != nil {
@@ -226,7 +250,7 @@ func (s *Store) ListMembers(teamID string) ([]*models.Member, error) {
 
 func (s *Store) GetMember(id string) (*models.Member, error) {
 	row := s.db.QueryRow(
-		`SELECT id, team_id, name, prefix, display_name, role, is_team_lead, model_provider, model_id, tools_enabled, cpu, memory, disk, container_port, created_at, updated_at FROM members WHERE id=?`,
+		`SELECT id, team_id, name, prefix, display_name, role, is_team_lead, model_provider, model_id, tools_enabled, cpu, memory, disk, container_port, google_provisioned, google_password, k8s_deployed, created_at, updated_at FROM members WHERE id=?`,
 		id,
 	)
 	return scanMember(row)
@@ -281,20 +305,71 @@ func (s *Store) DeleteMember(id string) error {
 func scanMember(row scanner) (*models.Member, error) {
 	var m models.Member
 	var toolsJSON, createdAt, updatedAt string
-	var isLead int
+	var isLead, googleProvisioned, k8sDeployed int
 	err := row.Scan(
 		&m.ID, &m.TeamID, &m.Name, &m.Prefix, &m.DisplayName, &m.Role, &isLead,
 		&m.ModelProvider, &m.ModelID, &toolsJSON, &m.CPU, &m.Memory, &m.Disk,
-		&m.ContainerPort, &createdAt, &updatedAt,
+		&m.ContainerPort, &googleProvisioned, &m.GooglePassword, &k8sDeployed,
+		&createdAt, &updatedAt,
 	)
 	if err != nil {
 		return nil, err
 	}
 	m.IsTeamLead = isLead == 1
+	m.GoogleProvisioned = googleProvisioned == 1
+	m.K8sDeployed = k8sDeployed == 1
 	json.Unmarshal([]byte(toolsJSON), &m.ToolsEnabled)
 	m.CreatedAt = parseTS(createdAt)
 	m.UpdatedAt = parseTS(updatedAt)
 	return &m, nil
+}
+
+func (s *Store) SetMaterializeStatus(teamID, status string) error {
+	_, err := s.db.Exec(
+		`UPDATE teams SET materialize_status=?, updated_at=? WHERE id=?`,
+		status, ts(time.Now()), teamID,
+	)
+	return err
+}
+
+func (s *Store) SetMaterializeStep(teamID string, step int) error {
+	_, err := s.db.Exec(
+		`UPDATE teams SET materialize_step=?, updated_at=? WHERE id=?`,
+		step, ts(time.Now()), teamID,
+	)
+	return err
+}
+
+func (s *Store) ResetMaterialize(teamID string) error {
+	_, err := s.db.Exec(
+		`UPDATE teams SET materialize_status='in_progress', materialize_step=0, materialize_error='', updated_at=? WHERE id=?`,
+		ts(time.Now()), teamID,
+	)
+	return err
+}
+
+func (s *Store) SetMaterializeError(teamID string, step int, errMsg string) error {
+	_, err := s.db.Exec(
+		`UPDATE teams SET materialize_status='error', materialize_step=?, materialize_error=?, updated_at=? WHERE id=?`,
+		step, errMsg, ts(time.Now()), teamID,
+	)
+	return err
+}
+
+func (s *Store) SetMemberGoogleProvisioned(memberID, password string) error {
+	_, err := s.db.Exec(
+		`UPDATE members SET google_provisioned=1, google_password=?, updated_at=? WHERE id=?`,
+		password, ts(time.Now()), memberID,
+	)
+	return err
+}
+
+func (s *Store) SetMemberK8sDeployed(memberID string) error {
+	_, err := s.db.Exec(
+		`UPDATE members SET k8s_deployed=1, updated_at=? WHERE id=?`,
+		ts(time.Now()), memberID,
+	)
+	return err
 }
 
 // --- Chat ---

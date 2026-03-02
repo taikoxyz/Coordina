@@ -9,13 +9,12 @@ ENV INTERNAL_API_URL=$INTERNAL_API_URL
 ARG OPTIMIZE=0
 ENV OPTIMIZE=$OPTIMIZE
 RUN --mount=type=cache,target=/root/.npm \
-    npm run build
+    if [ "$OPTIMIZE" = "1" ]; then npm run build; fi
 
 FROM node:20-alpine
 WORKDIR /app
-ENV NODE_ENV=production
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
+ARG OPTIMIZE=0
+ENV OPTIMIZE=$OPTIMIZE
+COPY --from=builder /app ./
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["sh", "-c", "if [ \"$OPTIMIZE\" = \"1\" ]; then NODE_ENV=production node .next/standalone/server.js; else npm run dev; fi"]

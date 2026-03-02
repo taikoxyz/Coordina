@@ -9,6 +9,9 @@ export interface Team {
   default_memory: string
   default_disk: string
   prefix_allowlist: string[]
+  materialize_status: 'idle' | 'in_progress' | 'done' | 'error'
+  materialize_step: number
+  materialize_error: string
   created_at: string
   updated_at: string
   members?: Member[]
@@ -29,6 +32,8 @@ export interface Member {
   memory: string | null
   disk: string | null
   container_port: number
+  google_provisioned: boolean
+  k8s_deployed: boolean
   created_at: string
   updated_at: string
 }
@@ -69,4 +74,19 @@ export interface FileEntry {
   size: number
   modified: string
   is_memory: boolean
+}
+
+export interface MaterializeStep {
+  n: number
+  label: string
+  done: boolean
+  error: string
+}
+
+export interface MaterializeStatus {
+  status: 'idle' | 'in_progress' | 'done' | 'error'
+  step: number
+  steps: MaterializeStep[]
+  error: string
+  members: Array<{ id: string; k8s_deployed: boolean }>
 }

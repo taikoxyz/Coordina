@@ -61,6 +61,8 @@ func main() {
 			r.Get("/gcp/status", h.GetGCPStatus)
 			r.Post("/gcp/reprovision", h.ReprovisionGCP)
 			r.Get("/export/docker-compose", h.ExportDockerCompose)
+			r.Post("/materialize", h.StartMaterialize)
+			r.Get("/materialize/status", h.GetMaterializeStatus)
 		})
 
 		r.Route("/settings", func(r chi.Router) {

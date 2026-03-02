@@ -5,12 +5,13 @@ import { api } from '@/lib/api'
 import type { Team, Member } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
-type Props = { team: Team; member?: Member; onSave: () => void; onClose: () => void }
+type Props = { team: Team; member?: Member; members?: Member[]; onSave: () => void; onClose: () => void }
 
 type Tab = 'basic' | 'integrations' | 'resources'
 
-export default function MemberForm({ team, member, onSave, onClose }: Props) {
+export default function MemberForm({ team, member, members, onSave, onClose }: Props) {
   const isEdit = !!member
+  const hasLead = (members ?? []).some((m) => m.is_team_lead && m.id !== member?.id)
   const [tab, setTab] = useState<Tab>('basic')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -159,11 +160,16 @@ export default function MemberForm({ team, member, onSave, onClose }: Props) {
                     type="checkbox"
                     id="team_lead"
                     checked={form.is_team_lead}
+                    disabled={hasLead && !form.is_team_lead}
                     onChange={(e) => setForm((p) => ({ ...p, is_team_lead: e.target.checked }))}
-                    className="accent-blue-500"
+                    className="accent-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
                   />
-                  <label htmlFor="team_lead" className="text-sm" style={{ color: 'var(--c-text-secondary)' }}>
-                    Team Lead
+                  <label
+                    htmlFor="team_lead"
+                    className="text-sm"
+                    style={{ color: hasLead && !form.is_team_lead ? 'var(--c-text-faint)' : 'var(--c-text-secondary)' }}
+                  >
+                    Team Lead{hasLead && !form.is_team_lead && <span className="ml-1 text-xs">(already assigned)</span>}
                   </label>
                 </div>
 

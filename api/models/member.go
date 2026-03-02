@@ -16,7 +16,10 @@ type Member struct {
 	CPU           *string   `json:"cpu"`
 	Memory        *string   `json:"memory"`
 	Disk          *string   `json:"disk"`
-	ContainerPort int       `json:"container_port"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	ContainerPort     int       `json:"container_port"`
+	GoogleProvisioned bool      `json:"google_provisioned"`
+	GooglePassword    string    `json:"google_password,omitempty"`
+	K8sDeployed       bool      `json:"k8s_deployed"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
 }

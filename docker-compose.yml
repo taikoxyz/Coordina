@@ -1,5 +1,6 @@
 services:
   platform-api:
+    image: coordina-api:latest
     build:
       context: ./api
       dockerfile: Dockerfile
@@ -21,6 +22,7 @@ services:
     restart: unless-stopped
 
   ui:
+    image: coordina-ui:latest
     build:
       context: ./ui
       dockerfile: Dockerfile

@@ -1,4 +1,4 @@
-import type { Team, Member, ChatMessage, MemberHealth, GlobalSettings, GCPStatus, FileEntry } from './types'
+import type { Team, Member, ChatMessage, MemberHealth, GlobalSettings, GCPStatus, FileEntry, MaterializeStatus } from './types'
 
 async function req<T>(path: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(path, {
@@ -125,4 +125,9 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ name: newName }),
     }),
+
+  startMaterialize: (teamId: string) =>
+    req<{ status: string }>(`/api/teams/${teamId}/materialize`, { method: 'POST' }),
+  getMaterializeStatus: (teamId: string) =>
+    req<MaterializeStatus>(`/api/teams/${teamId}/materialize/status`),
 }
