@@ -439,7 +439,7 @@ export default function GlobalSettingsPanel({ onClose }: Props) {
                           style={{ border: '1px solid var(--c-border-strong)', color: 'var(--c-text-muted)' }}
                         >Copy</button>
                       </div>
-                      <p className="text-xs" style={{ color: 'var(--c-text-muted)' }}>Then paste the output here:</p>
+                      <p className="text-xs" style={{ color: 'var(--c-text-muted)' }}>Then paste the callback URL here:</p>
                       <textarea
                         className="w-full px-3 py-2 rounded text-xs outline-none focus:ring-1 focus:ring-green-500 font-mono"
                         style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border-strong)', color: 'var(--c-text-primary)', height: 80 }}

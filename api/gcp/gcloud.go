@@ -4,11 +4,14 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
 	"time"
 )
+
+const wsConfigDir = "/root/.config/gcloud-workspace"
 
 var (
 	gcloudMu      sync.Mutex
@@ -144,8 +147,8 @@ func GCloudRevoke() {
 	exec.Command("gcloud", "auth", "revoke", "--all", "--quiet").Run()
 }
 
-// GCloudADCBegin spawns gcloud auth application-default login --no-browser with
-// Workspace scopes, extracts the remote-bootstrap command to run locally.
+// GCloudADCBegin spawns gcloud auth login --no-browser --force with Workspace
+// scopes in an isolated config dir, extracts the remote-bootstrap command.
 func GCloudADCBegin() (string, error) {
 	adcMu.Lock()
 	defer adcMu.Unlock()
@@ -154,8 +157,8 @@ func GCloudADCBegin() (string, error) {
 		return adcSession.url, nil
 	}
 
-	cmd := exec.Command("gcloud", "auth", "application-default", "login",
-		"--no-browser", "--scopes="+adcScopes)
+	cmd := exec.Command("gcloud", "auth", "application-default", "login", "--no-browser")
+	cmd.Env = append(os.Environ(), "CLOUDSDK_CONFIG="+wsConfigDir)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return "", fmt.Errorf("gcloud stdin pipe: %w", err)
@@ -174,7 +177,7 @@ func GCloudADCBegin() (string, error) {
 	}
 
 	urlCh := make(chan string, 1)
-	scanForCmd := func(r io.Reader) {
+	scanForADC := func(r io.Reader) {
 		s := bufio.NewScanner(r)
 		for s.Scan() {
 			line := strings.TrimSpace(s.Text())
@@ -186,8 +189,8 @@ func GCloudADCBegin() (string, error) {
 			}
 		}
 	}
-	go scanForCmd(stdout)
-	go scanForCmd(stderr)
+	go scanForADC(stdout)
+	go scanForADC(stderr)
 
 	select {
 	case authCmd := <-urlCh:
@@ -195,7 +198,7 @@ func GCloudADCBegin() (string, error) {
 		return authCmd, nil
 	case <-time.After(20 * time.Second):
 		cmd.Process.Kill()
-		return "", fmt.Errorf("timeout waiting for gcloud ADC auth command")
+		return "", fmt.Errorf("timeout waiting for gcloud auth URL")
 	}
 }
 
@@ -225,29 +228,35 @@ func GCloudADCSubmit(code string) error {
 	return nil
 }
 
-// GCloudADCIsAuthenticated checks whether application-default credentials are active.
+func wsCmd(args ...string) *exec.Cmd {
+	c := exec.Command("gcloud", args...)
+	c.Env = append(os.Environ(), "CLOUDSDK_CONFIG="+wsConfigDir)
+	return c
+}
+
+// GCloudADCIsAuthenticated checks whether workspace ADC credentials are active.
 func GCloudADCIsAuthenticated() bool {
-	out, err := exec.Command("gcloud", "auth", "application-default", "print-access-token").Output()
+	out, err := wsCmd("auth", "application-default", "print-access-token").Output()
 	if err != nil {
 		return false
 	}
 	return strings.TrimSpace(string(out)) != ""
 }
 
-// GCloudADCGetAccessToken returns the current application-default access token.
+// GCloudADCGetAccessToken returns the current workspace access token.
 func GCloudADCGetAccessToken() (string, error) {
-	out, err := exec.Command("gcloud", "auth", "application-default", "print-access-token").Output()
+	out, err := wsCmd("auth", "application-default", "print-access-token").Output()
 	if err != nil {
-		return "", fmt.Errorf("gcloud application-default print-access-token: %w", err)
+		return "", fmt.Errorf("gcloud workspace print-access-token: %w", err)
 	}
 	token := strings.TrimSpace(string(out))
 	if token == "" {
-		return "", fmt.Errorf("empty ADC access token")
+		return "", fmt.Errorf("empty workspace access token")
 	}
 	return token, nil
 }
 
-// GCloudADCRevoke revokes application-default credentials.
+// GCloudADCRevoke revokes workspace credentials.
 func GCloudADCRevoke() {
-	exec.Command("gcloud", "auth", "application-default", "revoke", "--quiet").Run()
+	wsCmd("auth", "revoke", "--all", "--quiet").Run()
 }

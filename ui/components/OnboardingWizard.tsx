@@ -7,7 +7,7 @@ import HelpPopover from '@/components/HelpPopover'
 const WORKSPACE_AUTH_STEPS = [
   {
     title: 'What this grants',
-    text: 'Workspace auth gives your AI agents access to Google Drive, Calendar, Gmail, and Admin SDK. Used so agents can read/write files, schedule meetings, and send emails on your behalf.',
+    text: 'This authorizes your local Coordina platform to manage Workspace resources on your behalf — provisioning agent accounts, creating shared drives, and setting up calendars. Deployed agent containers on GCP use separate, narrowly-scoped credentials.',
   },
   {
     title: 'Required Google Workspace role',
@@ -245,7 +245,7 @@ export default function OnboardingWizard({ onComplete }: Props) {
               </p>
               <p className="text-sm mb-6" style={{ color: 'var(--c-text-secondary)' }}>
                 Before creating your first team, connect your Google accounts. This enables automatic
-                GCP project provisioning and grants your agents access to Google Workspace.
+                GCP project provisioning and lets Coordina manage Workspace resources on your behalf.
               </p>
               <button
                 onClick={() => setStep(1)}
@@ -307,7 +307,7 @@ export default function OnboardingWizard({ onComplete }: Props) {
                         </button>
                       </>
                     )}
-                    {gcpPolling && <p className="text-xs text-yellow-400">⟳ Provisioning service account…</p>}
+                    {gcpPolling && <p className="text-xs text-yellow-400"><span className="inline-block animate-spin mr-1">⟳</span>Provisioning service account…</p>}
                   </div>
                 ) : (
                 <button
@@ -333,7 +333,7 @@ export default function OnboardingWizard({ onComplete }: Props) {
                       {gcpStatus.billing_account && <> · Billing: {gcpStatus.billing_account}</>}
                     </p>
                   ) : provStatus === 'running' ? (
-                    <p className="text-xs mt-1 text-yellow-400">⟳ Provisioning service account…</p>
+                    <p className="text-xs mt-1 text-yellow-400"><span className="inline-block animate-spin mr-1">⟳</span>Provisioning service account…</p>
                   ) : provStatus.startsWith('error') ? (
                     <p className="text-xs mt-1 text-red-400">✗ {provStatus}</p>
                   ) : (
@@ -419,7 +419,7 @@ export default function OnboardingWizard({ onComplete }: Props) {
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={() => setStep(2)}
-                  disabled={!gcpDone && !gcpConnectedNotDone && !gcpStatus?.sa_created}
+                  disabled={!gcpDone}
                   className="flex-1 py-2 rounded text-sm font-medium text-white disabled:opacity-40"
                   style={{ background: '#2563eb' }}
                 >
@@ -434,7 +434,7 @@ export default function OnboardingWizard({ onComplete }: Props) {
             <div>
               <h2 className="text-xl font-bold mb-1" style={{ color: 'var(--c-text-primary)' }}>Connect Google Workspace</h2>
               <p className="text-sm mb-5" style={{ color: 'var(--c-text-muted)' }}>
-                Grant your AI agents access to Drive, Calendar, Gmail, and Admin SDK.
+                Authorize your local Coordina platform to manage Workspace resources (provisioning, shared drives, calendars).
                 <HelpPopover title="About Workspace access" steps={WORKSPACE_AUTH_STEPS} />
               </p>
 
@@ -474,7 +474,7 @@ export default function OnboardingWizard({ onComplete }: Props) {
                             style={{ border: '1px solid var(--c-border-strong)', color: 'var(--c-text-muted)' }}
                           >Copy</button>
                         </div>
-                        <p className="text-xs" style={{ color: 'var(--c-text-muted)' }}>Then paste the output here:</p>
+                        <p className="text-xs" style={{ color: 'var(--c-text-muted)' }}>Then paste the callback URL here:</p>
                         <textarea
                           className="w-full px-3 py-2 rounded text-xs outline-none focus:ring-1 focus:ring-green-500 font-mono"
                           style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border-strong)', color: 'var(--c-text-primary)', height: 80 }}

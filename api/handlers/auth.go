@@ -227,6 +227,14 @@ func (h *Handler) WorkspaceAuthStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	email := settings.WorkspaceAuthedEmail
 	connected := settings.WorkspaceRefreshToken != "" || gcp.GCloudADCIsAuthenticated()
+	if connected && email == "" {
+		if token, err := gcp.GCloudADCGetAccessToken(); err == nil {
+			if fetchedEmail, err := gcp.GetUserEmail(token); err == nil && fetchedEmail != "" {
+				h.store.SaveAuthTokens("workspace", "", time.Time{}, fetchedEmail)
+				email = fetchedEmail
+			}
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"connected": connected,
 		"email":     email,
