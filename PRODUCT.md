@@ -266,12 +266,60 @@ The user's Google ID token is included in every request. No separate gateway tok
 
 Electron — web-based shell with Node.js backend. Chosen over Tauri because the Google Cloud and GitHub SDK ecosystems are significantly richer in Node.js, and Coordina's local backend is SDK-heavy (GKE API, GitHub API, OAuth flows). macOS-only deployment eliminates Electron's main weakness (cross-platform WebView inconsistencies).
 
+### Modularity Principle
+
+Model Providers and Deployment Environments are **independent modules** implementing a shared interface. Adding a new provider or environment type means adding one new module file — no changes to core application logic, forms, or routing.
+
+Both module types use a **Registry** pattern: modules register themselves at startup, and the core app looks them up by ID. The frontend renders configuration forms from **JSON Schema** supplied by each module — so the form system is schema-driven and generic.
+
+See [`research/05-architecture.md`](research/05-architecture.md) for full interface definitions and source tree layout.
+
+### Module: Model Provider
+
+Each provider implements a single interface:
+
+```typescript
+interface ModelProvider {
+  id: string                          // e.g. "anthropic"
+  displayName: string                 // e.g. "Anthropic"
+  configSchema: JSONSchema            // drives the Add Provider form
+  supportedModels: string[]
+  validate(config: unknown): ValidationResult
+  toOpenClawJson(config: unknown): OpenClawModelConfig
+}
+```
+
+Built-in providers: `anthropic`, `openai`, `deepseek`, `ollama`, `openrouter`.
+Adding a new provider = one new file implementing `ModelProvider`, registered in `src/providers/index.ts`.
+
+### Module: Deployment Environment
+
+Each environment type implements a single interface:
+
+```typescript
+interface DeploymentEnvironment {
+  id: string                          // e.g. "gke"
+  displayName: string                 // e.g. "Google Kubernetes Engine"
+  configSchema: JSONSchema            // drives the Add Environment wizard
+  validate(config: unknown): ValidationResult
+  setupAuth(config: unknown): Promise<AuthCredential>
+  deploy(spec: TeamSpec, config: unknown): Promise<DeployResult>
+  undeploy(spec: TeamSpec, config: unknown): Promise<void>
+  getStatus(config: unknown): Promise<EnvironmentStatus>
+  generateManifests(spec: TeamSpec, config: unknown): Manifest[]
+}
+```
+
+Built-in environments: `gke`.
+Adding AWS EKS later = one new file implementing `DeploymentEnvironment`, registered in `src/environments/index.ts`. Zero changes to core.
+
 ### Local backend
 
-A lightweight local server (Node.js or Rust) that:
-- Stores GitHub OAuth tokens and GKE credentials in the OS keychain
-- Manages the local state of team specs (git operations via GitHub API)
-- Proxies requests to deployed team gateways (adds auth headers)
+A lightweight local Express server (Node.js/TypeScript) that:
+- Stores GitHub OAuth tokens and GKE credentials in the OS keychain (`keytar`)
+- Manages team specs via GitHub API (`octokit`)
+- Proxies requests to deployed team gateways (injects Google ID token header)
+- Loads provider and environment modules at startup via registries
 - Runs only while the Mac app is open
 
 ### Frontend
@@ -279,16 +327,17 @@ A lightweight local server (Node.js or Rust) that:
 - **Framework**: React
 - **Styling**: Tailwind CSS
 - **Component reference**: https://component.gallery/
-- **State management**: TBD (Zustand or React Query)
+- **State management**: Zustand (local) + React Query (server/API state)
+- **Config forms**: Schema-driven — each module's `configSchema` drives form rendering; no per-provider or per-environment form code in the frontend
 
 ### Data storage
 
 | Data | Storage |
 |------|---------|
-| GitHub OAuth token | OS keychain |
-| GKE credentials | OS keychain |
+| GitHub OAuth token | OS keychain (`keytar`) |
+| GKE credentials | OS keychain (`keytar`) |
 | Team configs | GitHub repo (source of truth) |
-| Local cache | SQLite or JSON files in app data dir |
+| Local cache | SQLite (via `better-sqlite3`) |
 
 ---
 
@@ -343,3 +392,4 @@ Lead Agent  ←──── orchestrates ────→  Agent B, Agent C, ...
 - [`research/03-multi-agent-orchestration.md`](research/03-multi-agent-orchestration.md) — AutoGen, CrewAI, LangGraph, OpenAI Swarm, lead agent pattern synthesis
 - [`research/04-ui-patterns.md`](research/04-ui-patterns.md) — Component Gallery reference, form-driven UX, AI enhancement patterns
 - [`research/gke_auth_compare.md`](research/gke_auth_compare.md) — GKE auth options comparison (OAuth vs service account JSON) + IAP gateway architecture
+- [`research/05-architecture.md`](research/05-architecture.md) — Module system, Registry pattern, interface definitions, schema-driven forms, source tree layout
