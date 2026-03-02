@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/coordina/coordina/api/gcp"
 )
@@ -114,9 +116,13 @@ func (h *Handler) GCPAuthStatus(w http.ResponseWriter, r *http.Request) {
 	ps := provStatus
 	provMu.Unlock()
 	clientID, _, _ := oauthCreds()
+	email := settings.GCPAuthedEmail
+	if email == "" {
+		email = gcp.GCloudGetEmail()
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"connected":           settings.GCPRefreshToken != "",
-		"email":               settings.GCPAuthedEmail,
+		"connected":           settings.GCPRefreshToken != "" || gcp.GCloudIsAuthenticated(),
+		"email":               email,
 		"sa_email":            settings.GCPSAEmail,
 		"sa_created":          settings.GCPSAEmail != "" || settings.BootstrapSAKey != "",
 		"provisioning_status": ps,
@@ -131,9 +137,54 @@ func (h *Handler) GCPAuthRevoke(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	gcp.GCloudRevoke()
 	provMu.Lock()
 	provStatus = ""
 	provMu.Unlock()
+	writeJSON(w, http.StatusOK, map[string]string{"status": "revoked"})
+}
+
+func (h *Handler) GCloudAuthBegin(w http.ResponseWriter, r *http.Request) {
+	url, err := gcp.GCloudBegin()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"url": url})
+}
+
+func (h *Handler) GCloudAuthSubmit(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Code string `json:"code"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Code == "" {
+		writeError(w, http.StatusBadRequest, "code is required")
+		return
+	}
+	if err := gcp.GCloudSubmit(body.Code); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	email := gcp.GCloudGetEmail()
+	if err := h.store.SaveAuthTokens("gcp", "", time.Time{}, email); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	token, err := gcp.GCloudGetAccessToken()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	go h.runProvision(token)
+	writeJSON(w, http.StatusOK, map[string]string{"email": email})
+}
+
+func (h *Handler) GCloudAuthRevoke(w http.ResponseWriter, r *http.Request) {
+	gcp.GCloudRevoke()
+	if err := h.store.ClearAuthTokens("gcp"); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "revoked"})
 }
 

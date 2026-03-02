@@ -87,6 +87,13 @@ export const api = {
     }>('/api/auth/gcp/status'),
   revokeGCPAuth: () => req<void>('/api/auth/gcp/revoke', { method: 'POST' }),
 
+  gcloudBegin: () => req<{ url: string }>('/api/auth/gcloud/begin'),
+  gcloudSubmit: (code: string) =>
+    req<{ email: string }>('/api/auth/gcloud/submit', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    }),
+
   getWorkspaceAuthURL: () => req<{ url: string }>('/api/auth/workspace/begin'),
   getWorkspaceAuthStatus: () =>
     req<{ connected: boolean; email: string }>('/api/auth/workspace/status'),

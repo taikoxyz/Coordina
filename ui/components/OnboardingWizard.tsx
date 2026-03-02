@@ -4,25 +4,6 @@ import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import HelpPopover from '@/components/HelpPopover'
 
-const OAUTH_CLIENT_STEPS = [
-  {
-    title: 'Create an OAuth2 Client',
-    text: 'Go to https://console.cloud.google.com/apis/credentials. Click "+ Create Credentials" → "OAuth client ID". If prompted, configure the OAuth consent screen first (External or Internal, add your email as test user).',
-  },
-  {
-    title: 'Choose "Desktop app"',
-    text: 'Select application type "Desktop app". Give it a name like "Coordina Local". Click "Create".',
-  },
-  {
-    title: 'Add Redirect URIs',
-    text: 'In the client settings, add these authorized redirect URIs:\n• http://localhost:3000/api/auth/gcp/callback\n• http://localhost:3000/api/auth/workspace/callback',
-  },
-  {
-    title: 'Copy credentials to .env',
-    text: 'Copy the Client ID and Client Secret into a .env file in the biarritz/ directory:\nGOOGLE_OAUTH_CLIENT_ID=...\nGOOGLE_OAUTH_CLIENT_SECRET=...\nThen restart the Docker containers.',
-  },
-]
-
 const WORKSPACE_AUTH_STEPS = [
   {
     title: 'What this grants',
@@ -59,7 +40,12 @@ export default function OnboardingWizard({ onComplete }: Props) {
   const [wsStatus, setWSStatus] = useState<WSStatus | null>(null)
   const [gcpPolling, setGCPPolling] = useState(false)
   const [wsPolling, setWSPolling] = useState(false)
-  const [oauthMissing, setOAuthMissing] = useState(false)
+
+  // gcloud device auth
+  const [gcloudURL, setGCloudURL] = useState('')
+  const [gcloudCode, setGCloudCode] = useState('')
+  const [gcloudError, setGCloudError] = useState('')
+  const [gcloudSubmitting, setGCloudSubmitting] = useState(false)
 
   // Manual SA key fallback
   const [showManual, setShowManual] = useState(false)
@@ -72,7 +58,7 @@ export default function OnboardingWizard({ onComplete }: Props) {
   const wsPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    api.getGCPAuthStatus().then((s) => { setGCPStatus(s); if (!s.oauth_configured) setOAuthMissing(true) }).catch(() => {})
+    api.getGCPAuthStatus().then(setGCPStatus).catch(() => {})
     api.getWorkspaceAuthStatus().then(setWSStatus).catch(() => {})
     return () => {
       if (gcpPollRef.current) clearInterval(gcpPollRef.current)
@@ -81,7 +67,6 @@ export default function OnboardingWizard({ onComplete }: Props) {
   }, [])
 
   async function startGCPAuth() {
-    setOAuthMissing(false)
     try {
       const { url } = await api.getGCPAuthURL()
       window.open(url, '_blank')
@@ -96,9 +81,41 @@ export default function OnboardingWizard({ onComplete }: Props) {
           }
         }
       }, 2000)
+    } catch { /* ignore */ }
+  }
+
+  async function startGCloudAuth() {
+    setGCloudError('')
+    try {
+      const { url } = await api.gcloudBegin()
+      setGCloudURL(url)
     } catch (err) {
-      const msg = err instanceof Error ? err.message : ''
-      if (msg.includes('not configured')) setOAuthMissing(true)
+      setGCloudError(err instanceof Error ? err.message : 'Failed to start login')
+    }
+  }
+
+  async function submitGCloudCode() {
+    setGCloudSubmitting(true)
+    setGCloudError('')
+    try {
+      await api.gcloudSubmit(gcloudCode)
+      setGCloudURL('')
+      setGCloudCode('')
+      setGCPPolling(true)
+      gcpPollRef.current = setInterval(async () => {
+        const s = await api.getGCPAuthStatus().catch(() => null)
+        if (s) {
+          setGCPStatus(s)
+          if (s.connected && s.sa_created) {
+            clearInterval(gcpPollRef.current!)
+            setGCPPolling(false)
+          }
+        }
+      }, 2000)
+    } catch (err) {
+      setGCloudError(err instanceof Error ? err.message : 'Authentication failed')
+    } finally {
+      setGCloudSubmitting(false)
     }
   }
 
@@ -214,15 +231,50 @@ export default function OnboardingWizard({ onComplete }: Props) {
                 auto-create a <code className="text-xs px-1 py-0.5 rounded" style={{ background: 'var(--c-bg-elevated)' }}>coordina-service-account</code> with the required IAM roles.
               </p>
 
-              {oauthMissing && (
-                <div className="mb-4 rounded-lg px-4 py-3 text-sm" style={{ background: '#2a1a00', border: '1px solid #664400', color: '#fbbf24' }}>
-                  <p className="font-medium mb-1">OAuth credentials not configured</p>
-                  <p className="text-xs opacity-80">Set GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET in your .env file and restart Docker.
-                    <HelpPopover title="How to create OAuth credentials" steps={OAUTH_CLIENT_STEPS} /></p>
-                </div>
-              )}
-
               {!gcpStatus?.connected ? (
+                gcpStatus && !gcpStatus.oauth_configured ? (
+                  <div className="mb-4 rounded-lg px-4 py-3 text-sm space-y-3" style={{ background: 'var(--c-bg-surface)', border: '1px solid var(--c-border)' }}>
+                    {gcloudError && <p className="text-xs text-red-400">{gcloudError}</p>}
+                    {!gcloudURL ? (
+                      <button
+                        onClick={startGCloudAuth}
+                        className="w-full py-2.5 rounded text-sm font-medium text-white flex items-center justify-center gap-2"
+                        style={{ background: '#2563eb' }}
+                      >
+                        🔗 Sign in with Google
+                      </button>
+                    ) : (
+                      <>
+                        <p className="text-xs" style={{ color: 'var(--c-text-muted)' }}>Run this command on your local machine (requires gcloud CLI):</p>
+                        <div className="flex items-start gap-2">
+                          <code className="text-xs flex-1 break-all font-mono p-2 rounded" style={{ background: 'var(--c-bg-base)', color: 'var(--c-text-secondary)' }}>{gcloudURL}</code>
+                          <button
+                            onClick={() => navigator.clipboard.writeText(gcloudURL)}
+                            className="text-xs px-2 py-1 rounded shrink-0 mt-1"
+                            style={{ border: '1px solid var(--c-border-strong)', color: 'var(--c-text-muted)' }}
+                          >Copy</button>
+                        </div>
+                        <p className="text-xs" style={{ color: 'var(--c-text-muted)' }}>Then paste the output here:</p>
+                        <textarea
+                          className="w-full px-3 py-2 rounded text-xs outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+                          style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border-strong)', color: 'var(--c-text-primary)', height: 80 }}
+                          placeholder="Paste the output of the command here"
+                          value={gcloudCode}
+                          onChange={(e) => setGCloudCode(e.target.value)}
+                        />
+                        <button
+                          onClick={submitGCloudCode}
+                          disabled={gcloudSubmitting || !gcloudCode}
+                          className="w-full py-2.5 rounded text-sm font-medium text-white disabled:opacity-50"
+                          style={{ background: '#2563eb' }}
+                        >
+                          {gcloudSubmitting ? 'Verifying…' : 'Submit'}
+                        </button>
+                      </>
+                    )}
+                    {gcpPolling && <p className="text-xs text-yellow-400">⟳ Provisioning service account…</p>}
+                  </div>
+                ) : (
                 <button
                   onClick={startGCPAuth}
                   disabled={gcpPolling}
@@ -235,6 +287,7 @@ export default function OnboardingWizard({ onComplete }: Props) {
                     '🔗 Connect Google Account'
                   )}
                 </button>
+                )
               ) : (
                 <div className="mb-4 rounded-lg px-4 py-3 text-sm" style={{ background: 'var(--c-bg-surface)', border: '1px solid var(--c-border)' }}>
                   <p className="text-green-400 font-medium">✓ Connected as {gcpStatus.email}</p>

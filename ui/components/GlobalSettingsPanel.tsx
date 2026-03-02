@@ -108,6 +108,12 @@ export default function GlobalSettingsPanel({ onClose }: Props) {
   const gcpPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const wsPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // gcloud device auth
+  const [gcloudURL, setGCloudURL] = useState('')
+  const [gcloudCode, setGCloudCode] = useState('')
+  const [gcloudError, setGCloudError] = useState('')
+  const [gcloudSubmitting, setGCloudSubmitting] = useState(false)
+
   const DRAFT_KEY = 'coordina_settings_draft'
 
   useEffect(() => {
@@ -148,6 +154,41 @@ export default function GlobalSettingsPanel({ onClose }: Props) {
         }
       }, 2000)
     } catch { /* ignore */ }
+  }
+
+  async function startGCloudAuth() {
+    setGCloudError('')
+    try {
+      const { url } = await api.gcloudBegin()
+      setGCloudURL(url)
+    } catch (err) {
+      setGCloudError(err instanceof Error ? err.message : 'Failed to start login')
+    }
+  }
+
+  async function submitGCloudCode() {
+    setGCloudSubmitting(true)
+    setGCloudError('')
+    try {
+      await api.gcloudSubmit(gcloudCode)
+      setGCloudURL('')
+      setGCloudCode('')
+      setGCPPolling(true)
+      gcpPollRef.current = setInterval(async () => {
+        const s = await api.getGCPAuthStatus().catch(() => null)
+        if (s) {
+          setGCPStatus(s)
+          if (s.connected && s.sa_created) {
+            clearInterval(gcpPollRef.current!)
+            setGCPPolling(false)
+          }
+        }
+      }, 2000)
+    } catch (err) {
+      setGCloudError(err instanceof Error ? err.message : 'Authentication failed')
+    } finally {
+      setGCloudSubmitting(false)
+    }
   }
 
   async function startWSAuth() {
@@ -275,11 +316,48 @@ export default function GlobalSettingsPanel({ onClose }: Props) {
                   </button>
                 </div>
               ) : gcpStatus && !gcpStatus.oauth_configured ? (
-                <div className="rounded-lg px-3 py-3 text-xs space-y-1" style={{ background: 'var(--c-bg-surface)', border: '1px solid var(--c-border)' }}>
-                  <p style={{ color: 'var(--c-text-muted)' }}>OAuth not configured. Add to <code className="font-mono">.env</code>:</p>
-                  <pre className="text-xs mt-1 p-2 rounded overflow-x-auto" style={{ background: 'var(--c-bg-base)', color: 'var(--c-text-secondary)' }}>{`GOOGLE_OAUTH_CLIENT_ID=...
-GOOGLE_OAUTH_CLIENT_SECRET=...`}</pre>
-                  <p style={{ color: 'var(--c-text-faint)' }}>Then restart: <code className="font-mono">docker compose up -d</code></p>
+                <div className="rounded-lg px-3 py-3 text-sm space-y-2" style={{ background: 'var(--c-bg-surface)', border: '1px solid var(--c-border)' }}>
+                  {gcloudError && (
+                    <p className="text-xs text-red-400">{gcloudError}</p>
+                  )}
+                  {!gcloudURL ? (
+                    <button
+                      onClick={startGCloudAuth}
+                      className="w-full py-2 rounded text-sm font-medium text-white flex items-center justify-center gap-2"
+                      style={{ background: '#2563eb' }}
+                    >
+                      🔗 Sign in with Google
+                    </button>
+                  ) : (
+                    <>
+                      <p className="text-xs" style={{ color: 'var(--c-text-muted)' }}>Run this command on your local machine (requires gcloud CLI):</p>
+                      <div className="flex items-start gap-2">
+                        <code className="text-xs flex-1 break-all font-mono p-2 rounded" style={{ background: 'var(--c-bg-base)', color: 'var(--c-text-secondary)' }}>{gcloudURL}</code>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(gcloudURL)}
+                          className="text-xs px-2 py-1 rounded shrink-0 mt-1"
+                          style={{ border: '1px solid var(--c-border-strong)', color: 'var(--c-text-muted)' }}
+                        >Copy</button>
+                      </div>
+                      <p className="text-xs" style={{ color: 'var(--c-text-muted)' }}>Then paste the output here:</p>
+                      <textarea
+                        className="w-full px-3 py-2 rounded text-xs outline-none focus:ring-1 focus:ring-blue-500 font-mono"
+                        style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border-strong)', color: 'var(--c-text-primary)', height: 80 }}
+                        placeholder="Paste the output of the command here"
+                        value={gcloudCode}
+                        onChange={(e) => setGCloudCode(e.target.value)}
+                      />
+                      <button
+                        onClick={submitGCloudCode}
+                        disabled={gcloudSubmitting || !gcloudCode}
+                        className="w-full py-2 rounded text-sm font-medium text-white disabled:opacity-50"
+                        style={{ background: '#2563eb' }}
+                      >
+                        {gcloudSubmitting ? 'Verifying…' : 'Submit'}
+                      </button>
+                    </>
+                  )}
+                  {gcpPolling && <p className="text-xs text-yellow-400">⟳ Provisioning service account…</p>}
                 </div>
               ) : (
                 <button
