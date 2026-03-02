@@ -84,9 +84,9 @@ See [Agent Configuration Model](#agent-configuration-model) below.
 ### 5. Undeploy a Team
 
 1. Click "Undeploy"
-2. Confirmation dialog: "This will destroy all agent pods and permanently delete their runtime data. This cannot be undone. The team spec remains in GitHub."
-3. Confirm → app tears down all pods and PVCs in the environment
-4. Team is now undeployed and can be redeployed to any environment
+2. Confirmation dialog: "This will stop all agent pods. Their memory and runtime data will be preserved on disk. The team can be redeployed to the same environment to resume where it left off."
+3. Confirm → app deletes StatefulSets, Services, and Ingress; PVCs and GCP disks are kept
+4. Team is now undeployed; redeploy to same environment reattaches existing disks
 
 ### 6. Interact with the Lead Agent
 
@@ -418,8 +418,6 @@ Lead Agent  ←──── orchestrates ────→  Agent B, Agent C, ...
 - Team templates / agent templates marketplace
 - Multi-cluster environments
 - GitLab / Bitbucket support
-
----
 
 ---
 
