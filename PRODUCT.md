@@ -1,13 +1,13 @@
-# ClawTeam — Product Specification
+# Coordina — Product Specification
 
-> Version: 0.1 (initial brainstorm)
+> Version: 0.2
 > Last updated: March 2026
 
 ---
 
 ## Vision
 
-ClawTeam is a macOS app that lets anyone compose, configure, and deploy teams of OpenClaw AI agents to cloud infrastructure — without writing YAML, editing files, or understanding Kubernetes. The admin describes the team through forms; ClawTeam materializes it into a production-grade deployment with a single click.
+Coordina is a macOS app that lets anyone compose, configure, and deploy teams of OpenClaw AI agents to cloud infrastructure — without writing YAML, editing files, or understanding Kubernetes. The admin describes the team through forms; Coordina materializes it into a production-grade deployment with a single click.
 
 ---
 
@@ -15,7 +15,7 @@ ClawTeam is a macOS app that lets anyone compose, configure, and deploy teams of
 
 OpenClaw makes it possible to run capable, persistent AI agents. But assembling a *team* of agents — each with the right personality, skills, and connections — requires manually editing config files, managing a Kubernetes cluster, and understanding OpenClaw's internal file structure. This is inaccessible to most people who would benefit from it, and tedious even for those who understand it.
 
-ClawTeam removes that friction entirely.
+Coordina removes that friction entirely.
 
 ---
 
@@ -189,9 +189,45 @@ team-spec-repo/
 Wizard flow:
 1. Name the environment
 2. Select type: Google Kubernetes Engine
-3. Authenticate: Google OAuth (recommended) or service account JSON upload
+3. Authenticate: Google OAuth (default) or service account JSON upload (secondary option)
 4. Select GCP project and cluster
-5. Confirm
+5. Coordina configures IAP on the cluster (one-time per environment)
+6. Confirm
+
+### GKE Authentication
+
+**Primary: Google OAuth**
+The user signs in with their Google account. Coordina uses the `gke-gcloud-auth-plugin` standard for cluster API calls (the same approach kubectl, Lens, and k9s use). Short-lived tokens (1 hour), auto-refreshed, no long-lived credentials stored.
+
+**Secondary: Service Account JSON**
+Available for CI/automated workflows or restricted-OAuth environments. The admin uploads a JSON key file; Coordina stores only the private key in the OS keychain. Carries inherent long-lived credential risk — shown with a warning in the UI. See [`research/gke_auth_compare.md`](research/gke_auth_compare.md) for full comparison.
+
+### Gateway Access via Google Identity-Aware Proxy (IAP)
+
+Rather than maintaining a separate auth layer for the OpenClaw gateway, Coordina uses **Google Cloud IAP** to gate all gateway access behind the user's Google identity.
+
+```
+Coordina macOS App
+  │
+  ├─ Authenticated via Google OAuth (same session as GKE auth)
+  │  → Holds a Google ID token
+  │
+  ├─ HTTP/WebSocket request to: https://<team-slug>.<env-domain>/
+  │  Header: Authorization: Bearer <google-id-token>
+  │
+  ▼
+Google Cloud Load Balancer (GKE Ingress)
+  │
+  ├─ IAP verifies ID token
+  ├─ IAP checks IAM role: IAP-secured Web App User
+  │
+  ▼  ← only authenticated, authorized users reach this point
+OpenClaw Gateway Pod (:18789)
+```
+
+**Net effect**: A user cannot reach any agent gateway unless they hold valid Google credentials with the correct IAM role. No gateway-level tokens need to be stored or rotated by Coordina. GKE cluster authentication and gateway access share a single credential: the user's Google account.
+
+Coordina configures IAP automatically when setting up a deployment environment (as part of the wizard).
 
 ### Environment lifecycle rules
 
@@ -203,23 +239,24 @@ Wizard flow:
 ### What gets deployed
 
 Per agent:
-- **StatefulSet** — one pod per agent, stable identity
+- **StatefulSet** — one pod per agent, stable identity (via OpenClaw K8s operator `OpenClawInstance` CRD)
 - **PersistentVolumeClaim** — 10Gi by default, stores OpenClaw workspace
 - **Service** — ClusterIP for internal cluster routing
 
 Per team:
-- **API Server Pod** — the lead agent's OpenClaw gateway, exposed externally
 - **GKE Ingress** — routes external traffic to the lead agent's gateway (port 18789)
 - **TLS certificate** — managed via GKE-managed certificates
-- **NetworkPolicy** — isolates agent pods by default
+- **IAP BackendConfig** — gates Ingress access via Google identity
+- **NetworkPolicy** — isolates agent pods by default (K8s operator default)
+- **OAuth credentials Secret** — `iap-oauth-credentials` containing IAP client ID and secret
 
 ### Interacting with a deployed team
 
-The Mac app connects to the team via the lead agent's exposed gateway URL:
+The Mac app connects to the team via the lead agent's IAP-protected Ingress URL:
 ```
 https://<team-slug>.<env-domain>/
 ```
-Auth token is stored in the Mac app's local keychain and sent with each request.
+The user's Google ID token is included in every request. No separate gateway token management.
 
 ---
 
@@ -299,11 +336,8 @@ Lead Agent  ←──── orchestrates ────→  Agent B, Agent C, ...
 
 ## Open Questions
 
-1. **Product name**: "ClawTeam" is a working title — needs proper naming.
-2. **GKE authentication**: Google OAuth vs. service account JSON — likely support both (OAuth as default onboarding path, service account for power users/CI).
-3. **OpenClaw gateway remote exposure**: Does the K8s operator handle auth and remote exposure by default, or does the app need to configure this explicitly? Needs verification against the operator docs.
-4. **App shell**: Electron vs. Tauri — performance vs. bundle size trade-off.
-5. **Skill browsing**: Should v1 include a ClawHub skill browser, or just a free-text skill slug input?
+1. **App shell**: Electron vs. Tauri — performance vs. bundle size trade-off.
+2. **Skill browsing**: Should v1 include a ClawHub skill browser, or just a free-text skill slug input?
 
 ---
 
@@ -313,3 +347,4 @@ Lead Agent  ←──── orchestrates ────→  Agent B, Agent C, ...
 - [`research/02-deployment-patterns.md`](research/02-deployment-patterns.md) — GKE StatefulSets, PVCs, Ingress, Helm + Terraform patterns
 - [`research/03-multi-agent-orchestration.md`](research/03-multi-agent-orchestration.md) — AutoGen, CrewAI, LangGraph, OpenAI Swarm, lead agent pattern synthesis
 - [`research/04-ui-patterns.md`](research/04-ui-patterns.md) — Component Gallery reference, form-driven UX, AI enhancement patterns
+- [`research/gke_auth_compare.md`](research/gke_auth_compare.md) — GKE auth options comparison (OAuth vs service account JSON) + IAP gateway architecture
