@@ -131,12 +131,12 @@ export default function MemberForm({ team, member, onSave, onClose }: Props) {
                   />
                   {!isEdit && slug && (
                     <p className="mt-1 text-xs font-mono" style={{ color: 'var(--c-text-muted)' }}>
-                      slug: {slug}
+                      slug: {previewId}
                     </p>
                   )}
                   {isEdit && (
                     <p className="mt-1 text-xs font-mono" style={{ color: 'var(--c-text-muted)' }}>
-                      slug: {slug} <span title="Immutable after creation">🔒</span>
+                      slug: {previewId} <span title="Immutable after creation">🔒</span>
                     </p>
                   )}
                 </div>
