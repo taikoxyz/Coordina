@@ -192,6 +192,8 @@ export default function GlobalSettingsPanel({ onClose }: Props) {
       }, 2000)
     } catch (err) {
       setGCloudError(err instanceof Error ? err.message : 'Authentication failed')
+      setGCloudURL('')
+      setGCloudCode('')
     } finally {
       setGCloudSubmitting(false)
     }

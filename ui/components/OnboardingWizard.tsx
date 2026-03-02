@@ -120,6 +120,8 @@ export default function OnboardingWizard({ onComplete }: Props) {
       }, 2000)
     } catch (err) {
       setGCloudError(err instanceof Error ? err.message : 'Authentication failed')
+      setGCloudURL('')
+      setGCloudCode('')
     } finally {
       setGCloudSubmitting(false)
     }
@@ -163,6 +165,8 @@ export default function OnboardingWizard({ onComplete }: Props) {
       setWSStatus({ connected: true, email })
     } catch (err) {
       setWSGCloudError(err instanceof Error ? err.message : 'Authentication failed')
+      setWSGCloudURL('')
+      setWSGCloudCode('')
     } finally {
       setWSGCloudSubmitting(false)
     }

@@ -14,6 +14,7 @@ services:
     volumes:
       - platform_data:/data
       - team_shared:/mnt/team
+      - gcloud_config:/root/.config/gcloud
     restart: unless-stopped
 
   ui:
@@ -59,4 +60,5 @@ services:
 volumes:
   platform_data:
   team_shared:
+  gcloud_config:
   # example_agent_data:
