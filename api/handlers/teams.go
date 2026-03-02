@@ -51,13 +51,13 @@ func (h *Handler) CreateTeam(w http.ResponseWriter, r *http.Request) {
 		req.DisplayName = req.Name
 	}
 	if req.DefaultCPU == "" {
-		req.DefaultCPU = "500m"
+		req.DefaultCPU = "1"
 	}
 	if req.DefaultMemory == "" {
-		req.DefaultMemory = "512Mi"
+		req.DefaultMemory = "2Gi"
 	}
 	if req.DefaultDisk == "" {
-		req.DefaultDisk = "5Gi"
+		req.DefaultDisk = "100Gi"
 	}
 	if len(req.PrefixAllowlist) == 0 {
 		req.PrefixAllowlist = []string{"Agent"}

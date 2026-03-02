@@ -61,9 +61,9 @@ CREATE TABLE IF NOT EXISTS teams (
 	domain TEXT NOT NULL,
 	gcp_project_id TEXT NOT NULL DEFAULT '',
 	gcp_project_status TEXT NOT NULL DEFAULT 'pending',
-	default_cpu TEXT NOT NULL DEFAULT '500m',
-	default_memory TEXT NOT NULL DEFAULT '512Mi',
-	default_disk TEXT NOT NULL DEFAULT '5Gi',
+	default_cpu TEXT NOT NULL DEFAULT '1',
+	default_memory TEXT NOT NULL DEFAULT '2Gi',
+	default_disk TEXT NOT NULL DEFAULT '100Gi',
 	prefix_allowlist TEXT NOT NULL DEFAULT '["Agent"]',
 	created_at TEXT NOT NULL,
 	updated_at TEXT NOT NULL
