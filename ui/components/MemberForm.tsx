@@ -115,48 +115,29 @@ export default function MemberForm({ team, member, onSave, onClose }: Props) {
           <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
             {tab === 'basic' && (
               <>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs mb-1" style={{ color: 'var(--c-text-secondary)' }}>
-                      Display prefix
-                    </label>
-                    <select
+                <div>
+                  <label className="block text-xs mb-1" style={{ color: 'var(--c-text-secondary)' }}>
+                    Name (slug) *
+                  </label>
+                  {isEdit ? (
+                    <div
+                      className="flex items-center gap-1.5 px-3 py-2 rounded text-sm"
+                      style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border)', color: 'var(--c-text-muted)' }}
+                    >
+                      <span>{form.name}</span>
+                      <span className="text-xs" title="Immutable after creation">🔒</span>
+                    </div>
+                  ) : (
+                    <input
                       className="w-full px-3 py-2 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500"
                       style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border-strong)', color: 'var(--c-text-primary)' }}
-                      value={form.prefix}
-                      onChange={(e) => setForm((p) => ({ ...p, prefix: e.target.value }))}
-                    >
-                      {team.prefix_allowlist.map((p) => (
-                        <option key={p} value={p}>
-                          {p}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs mb-1" style={{ color: 'var(--c-text-secondary)' }}>
-                      Name (slug) *
-                    </label>
-                    {isEdit ? (
-                      <div
-                        className="flex items-center gap-1.5 px-3 py-2 rounded text-sm"
-                        style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border)', color: 'var(--c-text-muted)' }}
-                      >
-                        <span>{form.name}</span>
-                        <span className="text-xs" title="Immutable after creation">🔒</span>
-                      </div>
-                    ) : (
-                      <input
-                        className="w-full px-3 py-2 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500"
-                        style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border-strong)', color: 'var(--c-text-primary)' }}
-                        placeholder="alice"
-                        value={form.name}
-                        onChange={(e) => setForm((p) => ({ ...p, name: e.target.value.toLowerCase() }))}
-                        pattern="^[a-z][a-z0-9_]*$"
-                        required
-                      />
-                    )}
-                  </div>
+                      placeholder="alice"
+                      value={form.name}
+                      onChange={(e) => setForm((p) => ({ ...p, name: e.target.value.toLowerCase() }))}
+                      pattern="^[a-z][a-z0-9_]*$"
+                      required
+                    />
+                  )}
                 </div>
 
                 <div>
