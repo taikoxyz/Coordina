@@ -1,0 +1,24 @@
+# ZeroClaw configuration for member: ${MEMBER_ID}
+# Generated at container startup from environment variables.
+# NOTE: Schema is approximate — verify against ZeroClaw docs before Phase 1.
+
+[identity]
+id = "${MEMBER_ID}"
+role = "${MEMBER_ROLE}"
+prefix = "${MEMBER_PREFIX}"
+
+[model]
+provider = "${MEMBER_MODEL_PROVIDER}"
+model_id = "${MEMBER_MODEL_ID}"
+api_key = "${ANTHROPIC_API_KEY}"
+
+[tools]
+# Comma-separated list from MEMBER_TOOLS env var
+# Parsed at runtime: enabled = [${MEMBER_TOOLS}]
+
+[storage]
+memory_path = "/home/zeroclaw/.local/share/zeroclaw"
+
+[channels]
+# Channels configured at runtime (Slack, HTTP gateway, etc.)
+# Phase 0: coordination sidecar handles HTTP channel

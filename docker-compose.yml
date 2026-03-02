@@ -1,0 +1,57 @@
+services:
+  platform-api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_PATH: /data/clawteam.db
+      PORT: "8080"
+    volumes:
+      - platform_data:/data
+      - team_shared:/mnt/team
+    restart: unless-stopped
+
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: "http://platform-api:8080"
+    depends_on:
+      - platform-api
+    restart: unless-stopped
+
+  # Example agent container — replace MEMBER_ID with actual value
+  # Uncomment and duplicate for each team member.
+  # Tip: use `GET /api/teams/{id}/export/docker-compose` to generate a full compose file.
+  #
+  # example_agent:
+  #   build:
+  #     context: ./agent
+  #     dockerfile: Dockerfile
+  #   environment:
+  #     MEMBER_ID: "myteam_alice"
+  #     MEMBER_PREFIX: "Agent"
+  #     MEMBER_ROLE: "Coordinator"
+  #     MEMBER_MODEL_PROVIDER: "anthropic"
+  #     MEMBER_MODEL_ID: "claude-opus-4-6"
+  #     MEMBER_TOOLS: "web_search,file_write"
+  #     ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+  #     TEAM_VOLUME: "/mnt/team"
+  #     SIDECAR_PORT: "18788"
+  #     PLATFORM_API_URL: "http://platform-api:8080"
+  #   volumes:
+  #     - example_agent_data:/home/zeroclaw/.local/share/zeroclaw
+  #     - team_shared:/mnt/team
+  #   ports:
+  #     - "18800:18788"
+  #   restart: unless-stopped
+
+volumes:
+  platform_data:
+  team_shared:
+  # example_agent_data:

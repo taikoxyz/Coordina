@@ -1,0 +1,78 @@
+package main
+
+import (
+	"log"
+	"net/http"
+	"os"
+
+	"github.com/go-chi/chi/v5"
+	chimid "github.com/go-chi/chi/v5/middleware"
+
+	"github.com/coordina/clawteam/api/db"
+	"github.com/coordina/clawteam/api/handlers"
+)
+
+func main() {
+	dbPath := os.Getenv("DATABASE_PATH")
+	if dbPath == "" {
+		dbPath = "./clawteam.db"
+	}
+
+	store, err := db.Open(dbPath)
+	if err != nil {
+		log.Fatalf("failed to open database: %v", err)
+	}
+	defer store.Close()
+
+	r := chi.NewRouter()
+	r.Use(chimid.Logger)
+	r.Use(chimid.Recoverer)
+	r.Use(handlers.CORS)
+
+	h := handlers.New(store)
+
+	r.Route("/api", func(r chi.Router) {
+		r.Get("/teams", h.ListTeams)
+		r.Post("/teams", h.CreateTeam)
+
+		r.Route("/teams/{teamID}", func(r chi.Router) {
+			r.Get("/", h.GetTeam)
+			r.Put("/", h.UpdateTeam)
+			r.Delete("/", h.DeleteTeam)
+
+			r.Get("/members", h.ListMembers)
+			r.Post("/members", h.CreateMember)
+
+			r.Route("/members/{memberID}", func(r chi.Router) {
+				r.Get("/", h.GetMember)
+				r.Put("/", h.UpdateMember)
+				r.Delete("/", h.DeleteMember)
+
+				r.Post("/chat", h.SendMessage)
+				r.Get("/chat/history", h.GetChatHistory)
+				r.Get("/stream", h.StreamChat)
+
+				r.Get("/health", h.GetMemberHealth)
+			})
+
+			r.Get("/health", h.GetTeamHealth)
+			r.Get("/gcp/status", h.GetGCPStatus)
+			r.Post("/gcp/reprovision", h.ReprovisionGCP)
+			r.Get("/export/docker-compose", h.ExportDockerCompose)
+		})
+
+		r.Route("/settings", func(r chi.Router) {
+			r.Put("/gcp", h.SaveGlobalSettings)
+			r.Get("/gcp", h.GetGlobalSettings)
+			r.Get("/gcp/test", h.TestGlobalSettings)
+		})
+	})
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	log.Printf("ClawTeam Platform API listening on :%s", port)
+	log.Fatal(http.ListenAndServe(":"+port, r))
+}
