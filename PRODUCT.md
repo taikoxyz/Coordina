@@ -120,7 +120,7 @@ See [Agent Configuration Model](#agent-configuration-model) below.
 | **Slug** | Auto-derived from name | No (locked) | No |
 | **Role** | Select (Engineer, Designer, PM, QA, Researcher, Writer, Other) | Yes | No |
 | **Model Provider** | Reference to configured provider | Yes (triggers pod restart) | No |
-| **Skills** | Tag list of OpenClaw skill slugs | Yes (triggers skill re-eval on restart) | Yes (AI suggests skills based on role) |
+| **Skills** | Tag list of OpenClaw skill slugs (free-text input) | Yes (triggers skill re-eval on restart) | Yes (AI suggests skills based on role) |
 | **Soul Description** | Long text | Yes | Yes |
 | **Email** | Text | Yes | No |
 | **Slack handle** | Text | Yes | No |
@@ -264,7 +264,7 @@ The user's Google ID token is included in every request. No separate gateway tok
 
 ### Shell
 
-Web-based (Electron or Tauri) wrapping a local web application. Electron for fastest iteration; Tauri for smaller binary and better OS integration. **Decision deferred.**
+Electron — web-based shell with Node.js backend. Chosen over Tauri because the Google Cloud and GitHub SDK ecosystems are significantly richer in Node.js, and Coordina's local backend is SDK-heavy (GKE API, GitHub API, OAuth flows). macOS-only deployment eliminates Electron's main weakness (cross-platform WebView inconsistencies).
 
 ### Local backend
 
@@ -333,11 +333,6 @@ Lead Agent  ←──── orchestrates ────→  Agent B, Agent C, ...
 - GitLab / Bitbucket support
 
 ---
-
-## Open Questions
-
-1. **App shell**: Electron vs. Tauri — performance vs. bundle size trade-off.
-2. **Skill browsing**: Should v1 include a ClawHub skill browser, or just a free-text skill slug input?
 
 ---
 
