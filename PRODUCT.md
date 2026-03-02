@@ -1,0 +1,315 @@
+# ClawTeam — Product Specification
+
+> Version: 0.1 (initial brainstorm)
+> Last updated: March 2026
+
+---
+
+## Vision
+
+ClawTeam is a macOS app that lets anyone compose, configure, and deploy teams of OpenClaw AI agents to cloud infrastructure — without writing YAML, editing files, or understanding Kubernetes. The admin describes the team through forms; ClawTeam materializes it into a production-grade deployment with a single click.
+
+---
+
+## Problem
+
+OpenClaw makes it possible to run capable, persistent AI agents. But assembling a *team* of agents — each with the right personality, skills, and connections — requires manually editing config files, managing a Kubernetes cluster, and understanding OpenClaw's internal file structure. This is inaccessible to most people who would benefit from it, and tedious even for those who understand it.
+
+ClawTeam removes that friction entirely.
+
+---
+
+## Core Concepts
+
+| Concept | Definition |
+|---------|-----------|
+| **Team** | A named group of AI agents with a lead, a GitHub repo (team spec), and optionally a deployed environment |
+| **Agent** | An OpenClaw instance running as a Kubernetes pod, with its own persistent workspace and LLM config |
+| **Lead Agent** | The first agent in a team; the default point of contact for humans, and the orchestrator of all other agents |
+| **Team Member** | Any non-lead agent in the team |
+| **Model Provider** | A reusable LLM configuration (provider, model, API key) that agents reference |
+| **Team Spec** | The git repository that stores all config files for a team; the single source of truth |
+| **Deployment Environment** | A cloud K8s cluster where a team can be materialized into running pods |
+| **Skill** | An OpenClaw skill (SKILL.md + optional install.sh) that extends an agent's capabilities |
+| **Materialization** | The act of deploying a committed team spec to a deployment environment |
+
+---
+
+## User Roles
+
+**Admin (human)**
+- Creates and manages teams and agents
+- Fills out configuration forms
+- Never edits files directly
+- Deploys and undeploys teams
+- Interacts with the lead agent (and optionally, any agent)
+
+**AI Enhancer (embedded AI)**
+- Improves admin-provided text for skills and soul descriptions
+- Operates on demand (admin clicks "Enhance")
+- Does not touch system-provided default content from OpenClaw templates
+
+---
+
+## Key User Flows
+
+### 1. Create a Team
+
+1. Click "+ New Team"
+2. Enter team name → slug is derived and previewed (`Engineering Alpha → engineering-alpha`)
+3. Connect a GitHub repo (OAuth, select org + repo name; app creates the repo if it doesn't exist)
+4. First agent is created automatically as the **Lead Agent**
+
+### 2. Add / Edit an Agent
+
+See [Agent Configuration Model](#agent-configuration-model) below.
+
+### 3. Configure Model Providers
+
+1. Navigate to Model Providers (global, shared across teams)
+2. Click "+ Add Provider"
+3. Select provider type (Anthropic, OpenAI, DeepSeek, Ollama, etc.)
+4. Enter API key and select model
+5. Name the provider (e.g., "Claude Sonnet — Production")
+6. Provider is now available in all agent config forms
+
+### 4. Deploy a Team
+
+1. All changes must be committed to the team spec's GitHub `main` branch (app enforces this; "Deploy" button is disabled with uncommitted changes)
+2. Click "Deploy Team"
+3. Select a deployment environment
+4. App generates Helm values from team spec, applies to GKE cluster via K8s operator
+5. Deploy progress shown inline; success/failure notification
+
+### 5. Undeploy a Team
+
+1. Click "Undeploy"
+2. Confirmation dialog: "This will destroy all agent pods and permanently delete their runtime data. This cannot be undone. The team spec remains in GitHub."
+3. Confirm → app tears down all pods and PVCs in the environment
+4. Team is now undeployed and can be redeployed to any environment
+
+### 6. Interact with the Lead Agent
+
+1. Click "Chat" on the lead agent card (or use the team-level "Chat" button)
+2. App opens a chat interface routed to the lead agent's OpenClaw gateway
+3. Lead agent handles orchestration of other team members internally
+
+### 7. Interact with Any Agent Directly
+
+1. Navigate to an agent's detail page
+2. Click "Chat with [agent name]"
+3. App routes directly to that agent's gateway, bypassing the lead
+4. Banner: "You are talking directly to Bob Smith, bypassing the lead agent"
+
+### 8. View Agent Memory
+
+1. Navigate to an agent's detail page → "Memory" tab
+2. Read-only view of MEMORY.md, SOUL.md, IDENTITY.md
+3. Files shown with last-modified timestamp
+4. Refresh button to pull latest from the running pod
+
+---
+
+## Agent Configuration Model
+
+### Fields
+
+| Field | Type | Editable after creation? | AI-enhanceable? |
+|-------|------|--------------------------|-----------------|
+| **Name** | Text (human-readable) | Yes | No |
+| **Slug** | Auto-derived from name | No (locked) | No |
+| **Role** | Select (Engineer, Designer, PM, QA, Researcher, Writer, Other) | Yes | No |
+| **Model Provider** | Reference to configured provider | Yes (triggers pod restart) | No |
+| **Skills** | Tag list of OpenClaw skill slugs | Yes (triggers skill re-eval on restart) | Yes (AI suggests skills based on role) |
+| **Soul Description** | Long text | Yes | Yes |
+| **Email** | Text | Yes | No |
+| **Slack handle** | Text | Yes | No |
+| **GitHub ID** | Text | Yes | No |
+| **Custom identity fields** | Key-value pairs | Yes | No |
+
+### AI Enhancement Rules
+
+**The golden rule**: *Enhance then merge, not merge then enhance.*
+
+1. Admin provides input in a form field
+2. Admin clicks "✨ Enhance" — AI improves the input
+3. A before/after preview is shown
+4. Admin selects "Use enhanced" or "Keep original"
+5. The selected version is merged with OpenClaw's default template content
+6. The OpenClaw default template portions are **never** AI-enhanced — only admin-provided sections are
+
+**Fields that are never AI-enhanced**: Name, slug, role, email, Slack handle, GitHub ID, model provider selection.
+
+### How agent config maps to OpenClaw files
+
+| Config field | OpenClaw file | Location in file |
+|-------------|---------------|-----------------|
+| Name, role, slug | `IDENTITY.md` | Core identity section |
+| Soul description | `SOUL.md` | Merged with default template |
+| Email, Slack, GitHub ID | `IDENTITY.md` | Contact/identity fields |
+| Skills | Skill installation + `AGENTS.md` | Skill list |
+| Model provider | `openclaw.json` | `model` and `apiKey` fields |
+
+---
+
+## Team Spec (GitHub Repo)
+
+### Structure
+
+```
+team-spec-repo/
+├── agents/
+│   ├── <slug>/               # One directory per agent
+│   │   ├── SOUL.md
+│   │   ├── IDENTITY.md
+│   │   ├── AGENTS.md
+│   │   └── openclaw.json     # Model provider config
+├── deploy/
+│   └── helm/
+│       ├── Chart.yaml
+│       └── values.yaml       # Generated from team config
+├── infra/
+│   └── terraform/            # Optional: GKE cluster definition
+└── team.json                 # Machine-readable team manifest
+```
+
+### Commit policy
+
+- App commits all changes to `main` automatically on save
+- Commit messages are descriptive: `"feat: add agent bob-smith"`, `"config: update alice-chen skills"`
+- **Materialization is blocked** until the local spec matches the latest `main` commit
+- Admins can view the GitHub repo at any time (link in team settings) but should not edit files manually
+
+---
+
+## Deployment Environments
+
+### Adding an environment (GKE)
+
+Wizard flow:
+1. Name the environment
+2. Select type: Google Kubernetes Engine
+3. Authenticate: Google OAuth (recommended) or service account JSON upload
+4. Select GCP project and cluster
+5. Confirm
+
+### Environment lifecycle rules
+
+- An environment **cannot be deleted** once a team has been deployed to it
+- A team can only be deployed to **one environment at a time**
+- To move a team: undeploy from current env → deploy to new env
+- Undeploying destroys all pods and PVCs — runtime data is lost (team spec in GitHub is preserved)
+
+### What gets deployed
+
+Per agent:
+- **StatefulSet** — one pod per agent, stable identity
+- **PersistentVolumeClaim** — 10Gi by default, stores OpenClaw workspace
+- **Service** — ClusterIP for internal cluster routing
+
+Per team:
+- **API Server Pod** — the lead agent's OpenClaw gateway, exposed externally
+- **GKE Ingress** — routes external traffic to the lead agent's gateway (port 18789)
+- **TLS certificate** — managed via GKE-managed certificates
+- **NetworkPolicy** — isolates agent pods by default
+
+### Interacting with a deployed team
+
+The Mac app connects to the team via the lead agent's exposed gateway URL:
+```
+https://<team-slug>.<env-domain>/
+```
+Auth token is stored in the Mac app's local keychain and sent with each request.
+
+---
+
+## Mac App Architecture
+
+### Shell
+
+Web-based (Electron or Tauri) wrapping a local web application. Electron for fastest iteration; Tauri for smaller binary and better OS integration. **Decision deferred.**
+
+### Local backend
+
+A lightweight local server (Node.js or Rust) that:
+- Stores GitHub OAuth tokens and GKE credentials in the OS keychain
+- Manages the local state of team specs (git operations via GitHub API)
+- Proxies requests to deployed team gateways (adds auth headers)
+- Runs only while the Mac app is open
+
+### Frontend
+
+- **Framework**: React
+- **Styling**: Tailwind CSS
+- **Component reference**: https://component.gallery/
+- **State management**: TBD (Zustand or React Query)
+
+### Data storage
+
+| Data | Storage |
+|------|---------|
+| GitHub OAuth token | OS keychain |
+| GKE credentials | OS keychain |
+| Team configs | GitHub repo (source of truth) |
+| Local cache | SQLite or JSON files in app data dir |
+
+---
+
+## Team Interaction Model
+
+```
+Human
+  │
+  ▼ (default)
+Lead Agent  ←──── orchestrates ────→  Agent B, Agent C, ...
+  │
+  └── OpenClaw gateway (port 18789, exposed via GKE Ingress)
+```
+
+- All human→team communication routes to the lead agent by default
+- Admin can bypass the lead and talk directly to any agent
+- Inter-agent communication is handled by OpenClaw's internal routing
+- Admin can view any agent's memory files (read-only) at any time
+
+---
+
+## MVP Scope
+
+**In scope for v1:**
+- Team CRUD (create, edit, delete)
+- Agent configuration form (all fields above)
+- Model Provider management
+- GitHub repo connection and auto-commit
+- GKE deployment environment (add, deploy, undeploy)
+- Chat with lead agent
+- Chat with any agent directly
+- Read-only view of agent memory files (MEMORY.md, SOUL.md, IDENTITY.md)
+- AI enhancement for skills and soul description
+
+**Explicitly out of scope for v1:**
+- Multiple deployment environment types (AWS EKS, Azure AKS, Docker Compose)
+- Agent-to-agent communication visualization
+- Custom skill authoring via UI (skill browsing from ClawHub only)
+- Agent logs / observability dashboard
+- Team templates / agent templates marketplace
+- Multi-cluster environments
+- GitLab / Bitbucket support
+
+---
+
+## Open Questions
+
+1. **Product name**: "ClawTeam" is a working title — needs proper naming.
+2. **GKE authentication**: Google OAuth vs. service account JSON — likely support both (OAuth as default onboarding path, service account for power users/CI).
+3. **OpenClaw gateway remote exposure**: Does the K8s operator handle auth and remote exposure by default, or does the app need to configure this explicitly? Needs verification against the operator docs.
+4. **App shell**: Electron vs. Tauri — performance vs. bundle size trade-off.
+5. **Skill browsing**: Should v1 include a ClawHub skill browser, or just a free-text skill slug input?
+
+---
+
+## Research Files
+
+- [`research/01-openclaw-framework.md`](research/01-openclaw-framework.md) — OpenClaw architecture, config files, gateway, K8s operator, skills, LLM providers
+- [`research/02-deployment-patterns.md`](research/02-deployment-patterns.md) — GKE StatefulSets, PVCs, Ingress, Helm + Terraform patterns
+- [`research/03-multi-agent-orchestration.md`](research/03-multi-agent-orchestration.md) — AutoGen, CrewAI, LangGraph, OpenAI Swarm, lead agent pattern synthesis
+- [`research/04-ui-patterns.md`](research/04-ui-patterns.md) — Component Gallery reference, form-driven UX, AI enhancement patterns
