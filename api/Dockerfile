@@ -6,9 +6,14 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     go mod download
 COPY . .
+ARG OPTIMIZE=0
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=1 go build -o /platform-api .
+    if [ "$OPTIMIZE" = "1" ]; then \
+      CGO_ENABLED=1 go build -o /platform-api .; \
+    else \
+      CGO_ENABLED=1 go build -gcflags="all=-N -l" -o /platform-api .; \
+    fi
 
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \

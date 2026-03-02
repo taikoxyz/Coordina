@@ -3,6 +3,8 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
+      args:
+        OPTIMIZE: "${OPTIMIZE:-0}"
     ports:
       - "8080:8080"
     environment:

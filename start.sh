@@ -5,10 +5,12 @@ cd "$(dirname "$0")"
 BUILD=0
 VERBOSE=info
 PORT=
+OPTIMIZE=0
 
 for arg in "$@"; do
   case "$arg" in
     --build)       BUILD=1 ;;
+    --optimize)    OPTIMIZE=1 ;;
     --verbose=*)   VERBOSE="${arg#--verbose=}" ;;
     --port=*)      PORT="${arg#--port=}" ;;
     --help|-h)
@@ -16,6 +18,7 @@ for arg in "$@"; do
       echo ""
       echo "Options:"
       echo "  --build              Force rebuild of Docker images before starting"
+      echo "  --optimize           Enable compiler optimizations (default: off)"
       echo "  --port=N             Bind the UI to host port N (default: auto-detect free port from 3000)"
       echo "  --verbose=LEVEL      Output verbosity:"
       echo "                         info   quiet pull, detached, print URL (default)"
@@ -53,6 +56,7 @@ if [ -z "$PORT" ]; then
 fi
 
 export UI_PORT="$PORT"
+export OPTIMIZE
 export GOOGLE_REDIRECT_BASE="${GOOGLE_REDIRECT_BASE:-http://localhost:$PORT}"
 
 # Check gcloud CLI on the host (needed to complete Google sign-in)
