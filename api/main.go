@@ -8,14 +8,14 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimid "github.com/go-chi/chi/v5/middleware"
 
-	"github.com/coordina/clawteam/api/db"
-	"github.com/coordina/clawteam/api/handlers"
+	"github.com/coordina/coordina/api/db"
+	"github.com/coordina/coordina/api/handlers"
 )
 
 func main() {
 	dbPath := os.Getenv("DATABASE_PATH")
 	if dbPath == "" {
-		dbPath = "./clawteam.db"
+		dbPath = "./coordina.db"
 	}
 
 	store, err := db.Open(dbPath)
@@ -73,6 +73,6 @@ func main() {
 		port = "8080"
 	}
 
-	log.Printf("ClawTeam Platform API listening on :%s", port)
+	log.Printf("Coordina Platform API listening on :%s", port)
 	log.Fatal(http.ListenAndServe(":"+port, r))
 }

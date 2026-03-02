@@ -3,7 +3,7 @@ import './globals.css'
 import TeamNavWrapper from '@/components/TeamNavWrapper'
 
 export const metadata: Metadata = {
-  title: 'ClawTeam',
+  title: 'Coordina',
   description: 'Agentic Teams Platform',
 }
 

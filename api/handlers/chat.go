@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 
-	"github.com/coordina/clawteam/api/models"
+	"github.com/coordina/coordina/api/models"
 )
 
 var upgrader = websocket.Upgrader{

@@ -20,6 +20,7 @@ export default function TeamNav() {
   const [showNewMember, setShowNewMember] = useState<string | null>(null)
   const [newTeam, setNewTeam] = useState({ name: '', display_name: '', domain: '' })
   const [createError, setCreateError] = useState('')
+  const [gcpConfigured, setGcpConfigured] = useState(true)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   async function loadTeams() {
@@ -68,6 +69,9 @@ export default function TeamNav() {
 
   useEffect(() => {
     loadTeams()
+    api.getGlobalSettings()
+      .then((s) => setGcpConfigured(s.has_bootstrap_sa_key))
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -78,13 +82,26 @@ export default function TeamNav() {
     }
   }, [members])
 
+  function toSlug(value: string): string {
+    return value
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 20)
+      .replace(/-+$/, '')
+  }
+
   async function handleCreateTeam(e: React.FormEvent) {
     e.preventDefault()
     setCreateError('')
+    const slug = toSlug(newTeam.display_name)
     try {
       const team = await api.createTeam({
-        name: newTeam.name,
-        display_name: newTeam.display_name || newTeam.name,
+        name: slug,
+        display_name: newTeam.display_name,
         domain: newTeam.domain,
       })
       setShowNewTeam(false)
@@ -109,7 +126,7 @@ export default function TeamNav() {
           className="flex items-center justify-between px-4 py-3 shrink-0"
           style={{ borderBottom: '1px solid #222' }}
         >
-          <span className="font-semibold text-white text-sm tracking-wide">ClawTeam</span>
+          <span className="font-semibold text-white text-sm tracking-wide">Coordina</span>
           <button
             onClick={() => setShowSettings(true)}
             className="p-1 rounded hover:bg-white/10 transition-colors"
@@ -118,6 +135,17 @@ export default function TeamNav() {
             <Settings size={15} style={{ color: '#666' }} />
           </button>
         </div>
+
+        {/* GCP warning banner */}
+        {!gcpConfigured && (
+          <button
+            onClick={() => setShowSettings(true)}
+            className="w-full text-left px-3 py-2 text-xs transition-colors hover:bg-yellow-500/10"
+            style={{ background: '#1a1500', borderBottom: '1px solid #3a2e00', color: '#ca8a04' }}
+          >
+            ⚠ GCP not configured — click to set up
+          </button>
+        )}
 
         {/* Teams list */}
         <div className="flex-1 py-2 overflow-y-auto">
@@ -227,20 +255,7 @@ export default function TeamNav() {
             <form onSubmit={handleCreateTeam} className="space-y-3">
               <div>
                 <label className="block text-xs mb-1" style={{ color: '#888' }}>
-                  Team name (slug) *
-                </label>
-                <input
-                  className="w-full px-3 py-2 rounded text-sm text-white outline-none focus:ring-1 focus:ring-blue-500"
-                  style={{ background: '#111', border: '1px solid #333' }}
-                  placeholder="acme (3-20 chars, lowercase)"
-                  value={newTeam.name}
-                  onChange={(e) => setNewTeam((p) => ({ ...p, name: e.target.value }))}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-xs mb-1" style={{ color: '#888' }}>
-                  Display name
+                  Name *
                 </label>
                 <input
                   className="w-full px-3 py-2 rounded text-sm text-white outline-none focus:ring-1 focus:ring-blue-500"
@@ -248,7 +263,14 @@ export default function TeamNav() {
                   placeholder="Acme Corp AI Team"
                   value={newTeam.display_name}
                   onChange={(e) => setNewTeam((p) => ({ ...p, display_name: e.target.value }))}
+                  autoFocus
+                  required
                 />
+                {newTeam.display_name && (
+                  <p className="mt-1 text-xs" style={{ color: '#555' }}>
+                    Slug: <span style={{ color: '#666' }}>{toSlug(newTeam.display_name) || '—'}</span>
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-xs mb-1" style={{ color: '#888' }}>
@@ -277,7 +299,8 @@ export default function TeamNav() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 rounded text-sm font-medium text-white transition-colors"
+                  disabled={toSlug(newTeam.display_name).length < 3}
+                  className="flex-1 py-2 rounded text-sm font-medium text-white transition-colors disabled:opacity-40"
                   style={{ background: '#2563eb' }}
                 >
                   Create
@@ -301,7 +324,16 @@ export default function TeamNav() {
       )}
 
       {/* Global Settings Panel */}
-      {showSettings && <GlobalSettingsPanel onClose={() => setShowSettings(false)} />}
+      {showSettings && (
+        <GlobalSettingsPanel
+          onClose={() => {
+            setShowSettings(false)
+            api.getGlobalSettings()
+              .then((s) => setGcpConfigured(s.has_bootstrap_sa_key))
+              .catch(() => {})
+          }}
+        />
+      )}
     </>
   )
 }

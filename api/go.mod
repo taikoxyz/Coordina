@@ -1,4 +1,4 @@
-module github.com/coordina/clawteam/api
+module github.com/coordina/coordina/api
 
 go 1.22
 

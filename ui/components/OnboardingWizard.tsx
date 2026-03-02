@@ -2,6 +2,30 @@
 import { useState } from 'react'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import HelpPopover from '@/components/HelpPopover'
+
+const BOOTSTRAP_SA_STEPS = [
+  {
+    title: 'Open Service Accounts',
+    text: 'Go to https://console.cloud.google.com → IAM & Admin → Service Accounts. Select (or create) a project to host the bootstrap SA.',
+  },
+  {
+    title: 'Create Service Account',
+    text: 'Click "+ Create Service Account". Enter a name (e.g. coordina-bootstrap) and click "Create and continue".',
+  },
+  {
+    title: 'Grant required roles',
+    text: 'Add these four roles: Billing Account User, Project Creator, Service Account Admin, Service Usage Admin. Click "Continue → Done".',
+  },
+  {
+    title: 'Create a JSON key',
+    text: 'Click the new SA in the list → Keys tab → Add Key → Create new key → JSON → Create. A .json file downloads automatically.',
+  },
+  {
+    title: 'Paste the key',
+    text: 'Open the downloaded .json file in a text editor and paste its entire contents into this field.',
+  },
+]
 
 type Props = { onComplete: () => void }
 
@@ -83,9 +107,9 @@ export default function OnboardingWizard({ onComplete }: Props) {
         <div className="px-8 pb-8">
           {step === 0 && (
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-white mb-3">Welcome to ClawTeam</h2>
+              <h2 className="text-2xl font-bold text-white mb-3">Welcome to Coordina</h2>
               <p className="text-sm mb-2" style={{ color: '#999' }}>
-                ClawTeam lets you create and manage AI agent teams powered by ZeroClaw.
+                Coordina lets you create and manage AI agent teams powered by ZeroClaw.
               </p>
               <p className="text-sm mb-6" style={{ color: '#999' }}>
                 Before creating your first team, you need to configure your GCP bootstrap credentials.
@@ -134,8 +158,9 @@ export default function OnboardingWizard({ onComplete }: Props) {
                   />
                 </div>
                 <div>
-                  <label className="block text-xs mb-1 font-medium" style={{ color: '#888' }}>
+                  <label className="flex items-center gap-1.5 text-xs mb-1 font-medium" style={{ color: '#888' }}>
                     Bootstrap Service Account Key (JSON) *
+                    <HelpPopover title="How to get your Bootstrap SA Key" steps={BOOTSTRAP_SA_STEPS} />
                   </label>
                   <textarea
                     className="w-full px-3 py-2 rounded text-xs text-white outline-none focus:ring-1 focus:ring-blue-500 font-mono"

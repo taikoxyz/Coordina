@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/coordina/clawteam/api/db"
+	"github.com/coordina/coordina/api/db"
 )
 
 type Handler struct {

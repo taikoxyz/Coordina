@@ -8,7 +8,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 
-	"github.com/coordina/clawteam/api/models"
+	"github.com/coordina/coordina/api/models"
 )
 
 type Store struct {

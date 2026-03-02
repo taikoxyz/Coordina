@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/coordina/clawteam/api/models"
+	"github.com/coordina/coordina/api/models"
 )
 
 var memberNameRe = regexp.MustCompile(`^[a-z][a-z0-9_]*$`)

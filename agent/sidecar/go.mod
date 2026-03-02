@@ -1,3 +1,3 @@
-module github.com/coordina/clawteam/sidecar
+module github.com/coordina/coordina/sidecar
 
 go 1.22

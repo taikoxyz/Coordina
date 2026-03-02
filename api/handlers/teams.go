@@ -11,7 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
-	"github.com/coordina/clawteam/api/models"
+	"github.com/coordina/coordina/api/models"
 )
 
 var teamNameRe = regexp.MustCompile(`^[a-z][a-z0-9-]{1,18}[a-z0-9]$`)
@@ -233,7 +233,7 @@ func (h *Handler) ExportDockerCompose(w http.ResponseWriter, r *http.Request) {
 		tools := strings.Join(m.ToolsEnabled, ",")
 		volumeName := m.ID + "_data"
 		sb.WriteString(fmt.Sprintf("  %s:\n", m.ID))
-		sb.WriteString("    image: clawteam-agent:latest\n")
+		sb.WriteString("    image: coordina-agent:latest\n")
 		sb.WriteString("    environment:\n")
 		sb.WriteString(fmt.Sprintf("      MEMBER_ID: \"%s\"\n", m.ID))
 		sb.WriteString(fmt.Sprintf("      MEMBER_PREFIX: \"%s\"\n", m.Prefix))
@@ -257,18 +257,18 @@ func (h *Handler) ExportDockerCompose(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sb.WriteString("  platform-api:\n")
-	sb.WriteString("    image: clawteam-platform-api:latest\n")
+	sb.WriteString("    image: coordina-platform-api:latest\n")
 	sb.WriteString("    ports:\n")
 	sb.WriteString("      - \"8080:8080\"\n")
 	sb.WriteString("    environment:\n")
-	sb.WriteString("      DATABASE_PATH: \"/data/clawteam.db\"\n")
+	sb.WriteString("      DATABASE_PATH: \"/data/coordina.db\"\n")
 	sb.WriteString("    volumes:\n")
 	sb.WriteString("      - platform_data:/data\n")
 	sb.WriteString("      - team_shared:/mnt/team\n")
 	sb.WriteString("    restart: unless-stopped\n\n")
 
 	sb.WriteString("  ui:\n")
-	sb.WriteString("    image: clawteam-ui:latest\n")
+	sb.WriteString("    image: coordina-ui:latest\n")
 	sb.WriteString("    ports:\n")
 	sb.WriteString("      - \"3000:3000\"\n")
 	sb.WriteString("    restart: unless-stopped\n\n")

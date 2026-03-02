@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "=== ClawTeam Agent Container ==="
+echo "=== Coordina Agent Container ==="
 echo "Member ID:    ${MEMBER_ID}"
 echo "Role:         ${MEMBER_ROLE}"
 echo "Model:        ${MEMBER_MODEL_PROVIDER}/${MEMBER_MODEL_ID}"

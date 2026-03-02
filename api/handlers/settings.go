@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/coordina/clawteam/api/models"
+	"github.com/coordina/coordina/api/models"
 )
 
 func (h *Handler) SaveGlobalSettings(w http.ResponseWriter, r *http.Request) {
