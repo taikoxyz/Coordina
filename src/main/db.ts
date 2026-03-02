@@ -25,7 +25,9 @@ export function openDb(path: string) {
       name TEXT NOT NULL,
       github_repo TEXT,
       lead_agent_slug TEXT,
-      config TEXT NOT NULL
+      config TEXT NOT NULL,
+      gateway_url TEXT,
+      deployed_env_id TEXT
     );
     CREATE TABLE IF NOT EXISTS agents (
       slug TEXT NOT NULL,

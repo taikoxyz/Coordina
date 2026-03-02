@@ -1,5 +1,20 @@
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect, beforeAll, vi } from 'vitest'
 import request from 'supertest'
+
+vi.mock('electron', () => ({
+  app: { getPath: vi.fn(() => ':memory:') },
+}))
+
+vi.mock('./environments/gke/auth', () => ({
+  getGkeAccessToken: vi.fn().mockResolvedValue(null),
+}))
+
+vi.mock('./db', () => ({
+  openDb: vi.fn(() => ({
+    prepare: vi.fn(() => ({ get: vi.fn().mockReturnValue(null), all: vi.fn().mockReturnValue([]), run: vi.fn() })),
+  })),
+}))
+
 import { createServer } from './server'
 
 describe('local server', () => {

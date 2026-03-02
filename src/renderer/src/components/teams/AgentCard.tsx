@@ -3,6 +3,7 @@ import type { AgentRecord } from '../../hooks/useTeams'
 
 interface AgentCardProps {
   agent: AgentRecord
+  isDeployed?: boolean
   deploymentStatus?: 'running' | 'pending' | 'crashed' | 'undeployed'
   onEdit: () => void
   onDelete: () => void
@@ -17,7 +18,7 @@ const STATUS_CONFIG = {
   undeployed: { dot: 'bg-gray-500', label: 'Not deployed' },
 }
 
-export function AgentCard({ agent, deploymentStatus = 'undeployed', onEdit, onDelete, onChat, onFiles }: AgentCardProps) {
+export function AgentCard({ agent, isDeployed = false, deploymentStatus = 'undeployed', onEdit, onDelete, onChat, onFiles }: AgentCardProps) {
   const status = STATUS_CONFIG[deploymentStatus]
 
   return (
@@ -38,7 +39,7 @@ export function AgentCard({ agent, deploymentStatus = 'undeployed', onEdit, onDe
         </div>
         <div className="flex gap-1 shrink-0">
           <button onClick={onChat}
-            disabled={deploymentStatus !== 'running'}
+            disabled={!isDeployed}
             className="text-xs px-2.5 py-1 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-gray-200 transition-colors">
             Chat
           </button>

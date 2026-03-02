@@ -1,14 +1,20 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useNav } from '../store/nav'
 import { useTeam, useAgents, useCreateAgent, useUpdateAgent, useDeleteAgent } from '../hooks/useTeams'
 import { AgentCard } from '../components/teams/AgentCard'
 import { AgentForm } from '../components/agents/AgentForm'
+import { ChatPane } from '../components/chat/ChatPane'
+import { FileBrowser } from '../components/files/FileBrowser'
 import type { AgentRecord } from '../hooks/useTeams'
-import { deriveSlug } from '../../../shared/slug'
 
 interface TeamDetailPageProps {
   teamSlug: string
 }
+
+type ModalState =
+  | { type: 'none' }
+  | { type: 'chat'; agentSlug?: string; agentName?: string }
+  | { type: 'files'; agentSlug: string; agentName: string }
 
 export function TeamDetailPage({ teamSlug }: TeamDetailPageProps) {
   const { setPage } = useNav()
@@ -21,6 +27,7 @@ export function TeamDetailPage({ teamSlug }: TeamDetailPageProps) {
   const [showAgentForm, setShowAgentForm] = useState(false)
   const [editingAgent, setEditingAgent] = useState<AgentRecord | undefined>()
   const [hasAiKey, setHasAiKey] = useState(false)
+  const [modal, setModal] = useState<ModalState>({ type: 'none' })
 
   useEffect(() => {
     window.api.invoke('settings:hasAnthropicKey').then(has => setHasAiKey(!!has))
@@ -37,6 +44,7 @@ export function TeamDetailPage({ teamSlug }: TeamDetailPageProps) {
   }
 
   const sortedAgents = agents ? [...agents].sort((a, b) => (b.isLead ? 1 : 0) - (a.isLead ? 1 : 0)) : []
+  const isDeployed = !!(team as any)?.gatewayUrl
 
   if (teamLoading) return <div className="p-8 text-gray-400">Loading...</div>
   if (!team) return (
@@ -58,15 +66,25 @@ export function TeamDetailPage({ teamSlug }: TeamDetailPageProps) {
           {team.githubRepo && (
             <p className="text-xs text-gray-500 mt-1">GitHub: {team.githubRepo}</p>
           )}
+          {isDeployed && (
+            <div className="flex items-center gap-1.5 mt-1">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
+              <span className="text-xs text-green-400">Deployed</span>
+              <button
+                onClick={() => setModal({ type: 'chat' })}
+                className="text-xs text-blue-400 hover:underline ml-2"
+              >
+                Chat with team →
+              </button>
+            </div>
+          )}
         </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => { setEditingAgent(undefined); setShowAgentForm(true) }}
-            className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors"
-          >
-            + Add Agent
-          </button>
-        </div>
+        <button
+          onClick={() => { setEditingAgent(undefined); setShowAgentForm(true) }}
+          className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors"
+        >
+          + Add Agent
+        </button>
       </div>
 
       {agentsLoading && <p className="text-gray-500 text-sm">Loading agents...</p>}
@@ -84,10 +102,11 @@ export function TeamDetailPage({ teamSlug }: TeamDetailPageProps) {
             <AgentCard
               key={agent.slug}
               agent={agent}
+              isDeployed={isDeployed}
               onEdit={() => { setEditingAgent(agent); setShowAgentForm(true) }}
               onDelete={() => deleteAgent.mutate({ slug: agent.slug, teamSlug })}
-              onChat={() => {}}
-              onFiles={() => {}}
+              onChat={() => setModal({ type: 'chat', agentSlug: agent.slug, agentName: agent.name })}
+              onFiles={() => setModal({ type: 'files', agentSlug: agent.slug, agentName: agent.name })}
             />
           ))}
         </div>
@@ -101,6 +120,35 @@ export function TeamDetailPage({ teamSlug }: TeamDetailPageProps) {
           onSave={handleSaveAgent}
           onClose={() => { setShowAgentForm(false); setEditingAgent(undefined) }}
         />
+      )}
+
+      {/* Chat modal */}
+      {modal.type === 'chat' && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex flex-col">
+          <div className="flex-1 flex flex-col max-w-3xl w-full mx-auto bg-gray-900 rounded-t-xl mt-8 overflow-hidden">
+            <ChatPane
+              teamSlug={teamSlug}
+              agentSlug={modal.agentSlug}
+              agentName={modal.agentName}
+              onClose={() => setModal({ type: 'none' })}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Files modal */}
+      {modal.type === 'files' && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex flex-col">
+          <div className="flex-1 flex flex-col max-w-5xl w-full mx-auto bg-gray-900 rounded-t-xl mt-8 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700 flex-shrink-0">
+              <span className="font-medium text-white">Files — {modal.agentName}</span>
+              <button onClick={() => setModal({ type: 'none' })} className="text-gray-400 hover:text-white">✕</button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <FileBrowser teamSlug={teamSlug} agentSlug={modal.agentSlug} agentName={modal.agentName} />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
