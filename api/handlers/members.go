@@ -96,7 +96,7 @@ func (h *Handler) CreateMember(w http.ResponseWriter, r *http.Request) {
 
 	now := time.Now().UTC()
 	member := &models.Member{
-		ID:            team.Name + "-" + req.Name,
+		ID:            "agent_" + team.Name + "_" + req.Name,
 		TeamID:        teamID,
 		Name:          req.Name,
 		Prefix:        req.Prefix,
@@ -277,7 +277,7 @@ func (h *Handler) DuplicateMember(w http.ResponseWriter, r *http.Request) {
 
 	now := time.Now().UTC()
 	newMember := &models.Member{
-		ID:            team.Name + "-" + req.Name,
+		ID:            "agent_" + team.Name + "_" + req.Name,
 		TeamID:        teamID,
 		Name:          req.Name,
 		Prefix:        source.Prefix,
