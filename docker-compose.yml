@@ -23,7 +23,7 @@ services:
       args:
         INTERNAL_API_URL: "http://platform-api:8080"
     ports:
-      - "3000:3000"
+      - "${UI_PORT:-3000}:3000"
     environment:
       INTERNAL_API_URL: "http://platform-api:8080"
     depends_on:
