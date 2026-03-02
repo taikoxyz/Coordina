@@ -29,8 +29,8 @@ export default function MemberForm({ team, member, onSave, onClose }: Props) {
     disk: member?.disk ?? '',
   })
 
-  const previewId = `${team.name}_${form.name || '…'}`
-  const previewEmail = `${team.name}_${form.name || '…'}@${team.domain}`
+  const previewId = `${team.name}-${form.name || '…'}`
+  const previewEmail = `${team.name}-${form.name || '…'}@${team.domain}`
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
