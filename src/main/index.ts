@@ -2,6 +2,13 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { createServer } from './server'
+
+// Start local Express server
+const localServer = createServer()
+localServer.listen(19876, '127.0.0.1', () => {
+  console.log('Local server listening on http://127.0.0.1:19876')
+})
 
 function createWindow(): void {
   // Create the browser window.
