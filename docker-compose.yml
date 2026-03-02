@@ -30,6 +30,7 @@ services:
       - "${UI_PORT:-3000}:3000"
     environment:
       INTERNAL_API_URL: "http://platform-api:8080"
+      HOSTNAME: "0.0.0.0"
     depends_on:
       - platform-api
     restart: unless-stopped
