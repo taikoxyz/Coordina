@@ -221,6 +221,78 @@ Sidebar:
 
 ---
 
+---
+
+## Agent File Browser (MiniMax-inspired)
+
+### Reference
+
+MiniMax's chat UI exposes a file browser panel for viewing the agent's full workspace. This is the reference design for Coordina's agent file browser.
+
+**What MiniMax shows:**
+- Two-tab panel: "Current Process" (tool use log) | "Files" (workspace browser)
+- Left sidebar: file tree with file names and sizes (`MEMORY.md 449 B`, `SOUL.md 1.9 KB`)
+- Tab bar: multiple files open simultaneously (`AGENTS.md × HEARTBEAT.md × MEMORY.md`)
+- Right pane: rendered markdown (Preview) or raw source toggle
+- Search box: "Search Files..."
+- Panel presented as a closeable drawer (× button top right)
+
+### Coordina's File Browser — Design
+
+```
+┌─ Agent: alice-chen ──────────────────────────────── [×] ─┐
+│  [Current Process]  [Files]                               │
+│                                                           │
+│ ┌─ Files ──────────────┐  ┌─ MEMORY.md ──────────────┐  │
+│ │ Search Files...      │  │              [Edit][Preview]│  │
+│ │                      │  │                             │  │
+│ │ ▸ .openclaw/         │  │  # MEMORY.md — Long-Term   │  │
+│ │   AGENTS.md   12.1KB │  │  Memory                    │  │
+│ │   HEARTBEAT.md  168B │  │                             │  │
+│ │   IDENTITY.md   167B │  │  ## About Alice             │  │
+│ │ ● MEMORY.md    449B  │  │  - Role: Senior Engineer    │  │
+│ │   SOUL.md      1.9KB │  │  - Skills: TypeScript, git  │  │
+│ │   TOOLS.md     860B  │  │  ...                        │  │
+│ │   USER.md      955B  │  │                             │  │
+│ │ ▸ skills/            │  │                             │  │
+│ │ ▸ memory/            │  │                             │  │
+│ │   └ 2026-03-01.md   │  │                             │  │
+│ │   └ 2026-03-02.md   │  │                             │  │
+│ └──────────────────────┘  └─────────────────────────────┘  │
+│                                          [↻ Refresh]       │
+└───────────────────────────────────────────────────────────┘
+```
+
+### Behaviour rules
+
+| Rule | Detail |
+|------|--------|
+| **Read-only** | All files are view-only. No inline editing. Admins configure agents through forms, not file edits. |
+| **Preview default** | Markdown files open in Preview (rendered) mode by default. Source mode available via toggle. |
+| **Tab persistence** | Open tabs persist while the panel is open; closing the panel resets tabs. |
+| **Live data** | Files are fetched from the running pod's filesystem via the OpenClaw gateway API. |
+| **Refresh** | Manual refresh button + optional auto-refresh every 30s when panel is open. |
+| **Offline state** | If the team is undeployed, files are served from the last committed team spec repo (static, clearly labelled "Showing last committed state — team is not deployed"). |
+| **File sizes** | Shown in the sidebar next to each filename. |
+| **Folders** | `.openclaw/`, `skills/`, `memory/` are collapsible; expanded by default. |
+
+### How files are fetched
+
+The OpenClaw gateway exposes filesystem access via its API. Coordina's local backend:
+1. Authenticates to the gateway via IAP (same Google ID token)
+2. Calls the gateway's file list and file content endpoints
+3. Streams content to the frontend
+
+This is read-only — no write operations to the gateway filesystem from Coordina.
+
+### Component Gallery references
+
+- [Tree view](https://component.gallery/components/tree-view/) — file sidebar
+- [Tabs](https://component.gallery/components/tabs/) — multi-file tab bar
+- [Code block / Prose](https://component.gallery/components/prose/) — rendered markdown pane
+
+---
+
 ## Key Sources
 
 - [Component Gallery](https://component.gallery/)

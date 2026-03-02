@@ -101,12 +101,18 @@ See [Agent Configuration Model](#agent-configuration-model) below.
 3. App routes directly to that agent's gateway, bypassing the lead
 4. Banner: "You are talking directly to Bob Smith, bypassing the lead agent"
 
-### 8. View Agent Memory
+### 8. View Agent Files
 
-1. Navigate to an agent's detail page → "Memory" tab
-2. Read-only view of MEMORY.md, SOUL.md, IDENTITY.md
-3. Files shown with last-modified timestamp
-4. Refresh button to pull latest from the running pod
+1. Navigate to an agent's detail page → click "Files" or any file badge
+2. A file browser panel opens (drawer or side panel)
+3. Left sidebar: full OpenClaw workspace file tree with file sizes
+4. Tab bar: open multiple files simultaneously
+5. Right pane: rendered markdown (Preview mode) or raw source (Source mode), toggle between them
+6. Search box to filter files by name
+7. Refresh button to pull latest from the running pod
+8. All files are **read-only** in Coordina — users configure agents through forms, not file edits
+
+Files visible (all OpenClaw workspace files): `SOUL.md`, `IDENTITY.md`, `MEMORY.md`, `AGENTS.md`, `HEARTBEAT.md`, `TOOLS.md`, `USER.md`, `skills/`, `memory/YYYY-MM-DD.md` daily logs, and any other files the agent has created in its workspace.
 
 ---
 
@@ -355,7 +361,7 @@ Lead Agent  ←──── orchestrates ────→  Agent B, Agent C, ...
 - All human→team communication routes to the lead agent by default
 - Admin can bypass the lead and talk directly to any agent
 - Inter-agent communication is handled by OpenClaw's internal routing
-- Admin can view any agent's memory files (read-only) at any time
+- Admin can view any agent's full OpenClaw workspace (read-only file browser) at any time
 
 ---
 
@@ -369,7 +375,7 @@ Lead Agent  ←──── orchestrates ────→  Agent B, Agent C, ...
 - GKE deployment environment (add, deploy, undeploy)
 - Chat with lead agent
 - Chat with any agent directly
-- Read-only view of agent memory files (MEMORY.md, SOUL.md, IDENTITY.md)
+- Full OpenClaw workspace file browser (all files, read-only, with Preview/Source toggle)
 - AI enhancement for skills and soul description
 
 **Explicitly out of scope for v1:**
