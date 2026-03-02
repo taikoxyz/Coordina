@@ -14,7 +14,7 @@ export default function HelpPopover({ title, steps }: Props) {
         type="button"
         onClick={() => setOpen(true)}
         className="w-4 h-4 rounded-full inline-flex items-center justify-center text-xs font-bold transition-colors shrink-0"
-        style={{ background: '#2a2a2a', color: '#666' }}
+        style={{ background: 'var(--c-bg-elevated)', color: 'var(--c-text-muted)' }}
         aria-label="Help"
       >
         ?

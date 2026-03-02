@@ -62,3 +62,11 @@ export interface GCPStatus {
   gcp_project_id: string
   gcp_project_status: 'pending' | 'provisioning' | 'ready' | 'error'
 }
+
+export interface FileEntry {
+  name: string
+  path: string
+  size: number
+  modified: string
+  is_memory: boolean
+}

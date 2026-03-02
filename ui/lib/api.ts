@@ -1,4 +1,4 @@
-import type { Team, Member, ChatMessage, MemberHealth, GlobalSettings, GCPStatus } from './types'
+import type { Team, Member, ChatMessage, MemberHealth, GlobalSettings, GCPStatus, FileEntry } from './types'
 
 async function req<T>(path: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(path, {
@@ -63,8 +63,52 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
-  testGlobalSettings: () => req<{ ok: boolean; message: string }>('/api/settings/gcp/test'),
+  testGlobalSettings: () => req<{
+    ok: boolean
+    message: string
+    sa_email?: string
+    checks?: Array<{ name: string; level: string; has: boolean }>
+  }>('/api/settings/gcp/test'),
 
   exportDockerCompose: (teamId: string) =>
     fetch(`/api/teams/${teamId}/export/docker-compose`).then((r) => r.text()),
+
+  getGCPAuthURL: () => req<{ url: string }>('/api/auth/gcp/begin'),
+  getGCPAuthStatus: () =>
+    req<{
+      connected: boolean
+      email: string
+      sa_email: string
+      sa_created: boolean
+      provisioning_status: string
+      org_id: string
+      billing_account: string
+      oauth_configured: boolean
+    }>('/api/auth/gcp/status'),
+  revokeGCPAuth: () => req<void>('/api/auth/gcp/revoke', { method: 'POST' }),
+
+  getWorkspaceAuthURL: () => req<{ url: string }>('/api/auth/workspace/begin'),
+  getWorkspaceAuthStatus: () =>
+    req<{ connected: boolean; email: string }>('/api/auth/workspace/status'),
+  revokeWorkspaceAuth: () => req<void>('/api/auth/workspace/revoke', { method: 'POST' }),
+
+  getMemberFiles: (
+    teamId: string,
+    memberId: string,
+    opts?: { filter?: 'memory'; format?: 'markdown' },
+  ) => {
+    const params = new URLSearchParams()
+    if (opts?.filter) params.set('filter', opts.filter)
+    if (opts?.format) params.set('format', opts.format)
+    const qs = params.toString() ? `?${params.toString()}` : ''
+    return req<{ files: FileEntry[]; offline?: boolean }>(
+      `/api/teams/${teamId}/members/${memberId}/files${qs}`,
+    )
+  },
+
+  duplicateMember: (teamId: string, memberId: string, newName: string) =>
+    req<Member>(`/api/teams/${teamId}/members/${memberId}/duplicate`, {
+      method: 'POST',
+      body: JSON.stringify({ name: newName }),
+    }),
 }

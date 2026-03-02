@@ -241,3 +241,67 @@ func (h *Handler) DeleteMember(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+func (h *Handler) DuplicateMember(w http.ResponseWriter, r *http.Request) {
+	teamID := chi.URLParam(r, "teamID")
+	memberID := chi.URLParam(r, "memberID")
+
+	source, err := h.store.GetMember(memberID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "member not found")
+		return
+	}
+	team, err := h.store.GetTeam(teamID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "team not found")
+		return
+	}
+
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Name == "" {
+		writeError(w, http.StatusBadRequest, "name is required")
+		return
+	}
+	if !memberNameRe.MatchString(req.Name) {
+		writeError(w, http.StatusBadRequest, "name must be lowercase letters, digits, or underscores, starting with a letter")
+		return
+	}
+
+	count, err := h.store.CountMembers(teamID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	now := time.Now().UTC()
+	newMember := &models.Member{
+		ID:            team.Name + "_" + req.Name,
+		TeamID:        teamID,
+		Name:          req.Name,
+		Prefix:        source.Prefix,
+		DisplayName:   source.DisplayName + " (copy)",
+		Role:          source.Role,
+		IsTeamLead:    false,
+		ModelProvider: source.ModelProvider,
+		ModelID:       source.ModelID,
+		ToolsEnabled:  source.ToolsEnabled,
+		CPU:           source.CPU,
+		Memory:        source.Memory,
+		Disk:          source.Disk,
+		ContainerPort: 18800 + count,
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
+
+	if err := h.store.CreateMember(newMember); err != nil {
+		if strings.Contains(err.Error(), "UNIQUE") {
+			writeError(w, http.StatusConflict, "member name already exists in this team")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusCreated, newMember)
+}

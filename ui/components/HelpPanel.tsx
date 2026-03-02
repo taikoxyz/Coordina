@@ -28,19 +28,19 @@ export default function HelpPanel({ title, steps, onClose }: Props) {
   return (
     <div
       className="h-full overflow-y-auto flex flex-col shrink-0"
-      style={{ width: 360, background: '#0d0d0d', borderRight: '1px solid #222' }}
+      style={{ width: 360, background: 'var(--c-bg-subtle)', borderRight: '1px solid var(--c-border)' }}
     >
       <div
         className="flex items-center justify-between px-5 py-4 shrink-0"
-        style={{ borderBottom: '1px solid #222' }}
+        style={{ borderBottom: '1px solid var(--c-border)' }}
       >
-        <span className="text-sm font-semibold text-white">{title}</span>
+        <span className="text-sm font-semibold" style={{ color: 'var(--c-text-primary)' }}>{title}</span>
         <button
           type="button"
           onClick={onClose}
           className="p-1.5 rounded hover:bg-white/10 transition-colors"
         >
-          <X size={14} style={{ color: '#666' }} />
+          <X size={14} style={{ color: 'var(--c-text-muted)' }} />
         </button>
       </div>
 
@@ -55,9 +55,9 @@ export default function HelpPanel({ title, steps, onClose }: Props) {
             </span>
             <div className="min-w-0">
               {step.title && (
-                <p className="text-sm font-semibold text-white mb-1">{step.title}</p>
+                <p className="text-sm font-semibold mb-1" style={{ color: 'var(--c-text-primary)' }}>{step.title}</p>
               )}
-              <p className="text-sm leading-relaxed" style={{ color: '#999' }}>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--c-text-secondary)' }}>
                 {renderText(step.text)}
               </p>
             </div>

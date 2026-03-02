@@ -31,8 +31,26 @@ func Open(path string) (*Store, error) {
 func (s *Store) Close() error { return s.db.Close() }
 
 func (s *Store) migrate() error {
-	_, err := s.db.Exec(schema)
-	return err
+	if _, err := s.db.Exec(schema); err != nil {
+		return err
+	}
+	return s.migrateV2()
+}
+
+func (s *Store) migrateV2() error {
+	cols := []struct{ name, def string }{
+		{"gcp_refresh_token", "TEXT NOT NULL DEFAULT ''"},
+		{"gcp_token_expiry", "TEXT NOT NULL DEFAULT ''"},
+		{"gcp_authed_email", "TEXT NOT NULL DEFAULT ''"},
+		{"gcp_sa_email", "TEXT NOT NULL DEFAULT ''"},
+		{"workspace_refresh_token", "TEXT NOT NULL DEFAULT ''"},
+		{"workspace_token_expiry", "TEXT NOT NULL DEFAULT ''"},
+		{"workspace_authed_email", "TEXT NOT NULL DEFAULT ''"},
+	}
+	for _, c := range cols {
+		_, _ = s.db.Exec("ALTER TABLE global_settings ADD COLUMN " + c.name + " " + c.def)
+	}
+	return nil
 }
 
 const schema = `
@@ -335,6 +353,93 @@ func (s *Store) GetGlobalSettings() (*models.GlobalSettings, error) {
 	g.BootstrapSAKey = ""
 	g.UpdatedAt = parseTS(updatedAt)
 	return &g, nil
+}
+
+func (s *Store) GetGlobalSettingsRaw() (*models.GlobalSettings, error) {
+	var g models.GlobalSettings
+	var updatedAt string
+	err := s.db.QueryRow(
+		`SELECT gcp_org_id, gcp_billing_account, bootstrap_sa_key, updated_at,
+		 gcp_refresh_token, gcp_authed_email, gcp_sa_email,
+		 workspace_refresh_token, workspace_authed_email
+		 FROM global_settings WHERE id=1`,
+	).Scan(&g.GCPOrgID, &g.GCPBillingAccount, &g.BootstrapSAKey, &updatedAt,
+		&g.GCPRefreshToken, &g.GCPAuthedEmail, &g.GCPSAEmail,
+		&g.WorkspaceRefreshToken, &g.WorkspaceAuthedEmail)
+	if err == sql.ErrNoRows {
+		return &models.GlobalSettings{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	g.UpdatedAt = parseTS(updatedAt)
+	return &g, nil
+}
+
+func (s *Store) SaveAuthTokens(kind, refreshToken string, expiry time.Time, email string) error {
+	now := ts(time.Now())
+	switch kind {
+	case "gcp":
+		_, err := s.db.Exec(
+			`INSERT INTO global_settings (id, gcp_org_id, gcp_billing_account, bootstrap_sa_key, updated_at,
+			 gcp_refresh_token, gcp_token_expiry, gcp_authed_email)
+			 VALUES (1,'','','',?,?,?,?)
+			 ON CONFLICT(id) DO UPDATE SET
+			 gcp_refresh_token=excluded.gcp_refresh_token,
+			 gcp_token_expiry=excluded.gcp_token_expiry,
+			 gcp_authed_email=excluded.gcp_authed_email,
+			 updated_at=excluded.updated_at`,
+			now, refreshToken, ts(expiry), email,
+		)
+		return err
+	case "workspace":
+		_, err := s.db.Exec(
+			`INSERT INTO global_settings (id, gcp_org_id, gcp_billing_account, bootstrap_sa_key, updated_at,
+			 workspace_refresh_token, workspace_token_expiry, workspace_authed_email)
+			 VALUES (1,'','','',?,?,?,?)
+			 ON CONFLICT(id) DO UPDATE SET
+			 workspace_refresh_token=excluded.workspace_refresh_token,
+			 workspace_token_expiry=excluded.workspace_token_expiry,
+			 workspace_authed_email=excluded.workspace_authed_email,
+			 updated_at=excluded.updated_at`,
+			now, refreshToken, ts(expiry), email,
+		)
+		return err
+	}
+	return fmt.Errorf("unknown auth kind: %s", kind)
+}
+
+func (s *Store) ClearAuthTokens(kind string) error {
+	now := ts(time.Now())
+	switch kind {
+	case "gcp":
+		_, err := s.db.Exec(
+			`UPDATE global_settings SET gcp_refresh_token='', gcp_token_expiry='', gcp_authed_email='',
+			 gcp_sa_email='', bootstrap_sa_key='', updated_at=? WHERE id=1`,
+			now,
+		)
+		return err
+	case "workspace":
+		_, err := s.db.Exec(
+			`UPDATE global_settings SET workspace_refresh_token='', workspace_token_expiry='',
+			 workspace_authed_email='', updated_at=? WHERE id=1`,
+			now,
+		)
+		return err
+	}
+	return fmt.Errorf("unknown auth kind: %s", kind)
+}
+
+func (s *Store) SaveSAInfo(saEmail, saKey, orgID, billingID string) error {
+	now := ts(time.Now())
+	_, err := s.db.Exec(
+		`UPDATE global_settings SET gcp_sa_email=?, bootstrap_sa_key=?,
+		 gcp_org_id=CASE WHEN gcp_org_id='' THEN ? ELSE gcp_org_id END,
+		 gcp_billing_account=CASE WHEN gcp_billing_account='' THEN ? ELSE gcp_billing_account END,
+		 updated_at=? WHERE id=1`,
+		saEmail, saKey, orgID, billingID, now,
+	)
+	return err
 }
 
 func (s *Store) HasBootstrapSAKey() (bool, error) {

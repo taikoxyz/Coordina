@@ -4,6 +4,8 @@ COPY package*.json ./
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --prefer-offline
 COPY . .
+ARG INTERNAL_API_URL=http://localhost:8080
+ENV INTERNAL_API_URL=$INTERNAL_API_URL
 RUN --mount=type=cache,target=/root/.npm \
     npm run build
 

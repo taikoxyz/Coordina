@@ -74,25 +74,25 @@ export default function MemberForm({ team, member, onSave, onClose }: Props) {
     >
       <div
         className="w-[520px] max-h-[80vh] flex flex-col rounded-xl shadow-2xl"
-        style={{ background: '#1a1a1a', border: '1px solid #333' }}
+        style={{ background: 'var(--c-bg-modal)', border: '1px solid var(--c-border-strong)' }}
       >
         {/* Header */}
         <div
           className="flex items-center justify-between px-6 py-4 shrink-0"
-          style={{ borderBottom: '1px solid #2a2a2a' }}
+          style={{ borderBottom: '1px solid var(--c-border-muted)' }}
         >
-          <h3 className="text-white font-semibold">
+          <h3 className="font-semibold" style={{ color: 'var(--c-text-primary)' }}>
             {isEdit ? `Edit ${member!.display_name}` : 'Add Member'}
           </h3>
           <button onClick={onClose} className="p-1 rounded hover:bg-white/10 transition-colors">
-            <X size={16} style={{ color: '#666' }} />
+            <X size={16} style={{ color: 'var(--c-text-muted)' }} />
           </button>
         </div>
 
         {/* Tabs */}
         <div
           className="flex shrink-0 px-6 gap-1 pt-3"
-          style={{ borderBottom: '1px solid #2a2a2a' }}
+          style={{ borderBottom: '1px solid var(--c-border-muted)' }}
         >
           {(['basic', 'integrations', 'resources'] as Tab[]).map((t) => (
             <button
@@ -117,12 +117,12 @@ export default function MemberForm({ team, member, onSave, onClose }: Props) {
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs mb-1" style={{ color: '#888' }}>
+                    <label className="block text-xs mb-1" style={{ color: 'var(--c-text-secondary)' }}>
                       Display prefix
                     </label>
                     <select
-                      className="w-full px-3 py-2 rounded text-sm text-white outline-none focus:ring-1 focus:ring-blue-500"
-                      style={{ background: '#111', border: '1px solid #333' }}
+                      className="w-full px-3 py-2 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500"
+                      style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border-strong)', color: 'var(--c-text-primary)' }}
                       value={form.prefix}
                       onChange={(e) => setForm((p) => ({ ...p, prefix: e.target.value }))}
                     >
@@ -134,21 +134,21 @@ export default function MemberForm({ team, member, onSave, onClose }: Props) {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs mb-1" style={{ color: '#888' }}>
+                    <label className="block text-xs mb-1" style={{ color: 'var(--c-text-secondary)' }}>
                       Name (slug) *
                     </label>
                     {isEdit ? (
                       <div
                         className="flex items-center gap-1.5 px-3 py-2 rounded text-sm"
-                        style={{ background: '#111', border: '1px solid #222', color: '#666' }}
+                        style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border)', color: 'var(--c-text-muted)' }}
                       >
                         <span>{form.name}</span>
                         <span className="text-xs" title="Immutable after creation">🔒</span>
                       </div>
                     ) : (
                       <input
-                        className="w-full px-3 py-2 rounded text-sm text-white outline-none focus:ring-1 focus:ring-blue-500"
-                        style={{ background: '#111', border: '1px solid #333' }}
+                        className="w-full px-3 py-2 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500"
+                        style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border-strong)', color: 'var(--c-text-primary)' }}
                         placeholder="alice"
                         value={form.name}
                         onChange={(e) => setForm((p) => ({ ...p, name: e.target.value.toLowerCase() }))}
@@ -160,12 +160,12 @@ export default function MemberForm({ team, member, onSave, onClose }: Props) {
                 </div>
 
                 <div>
-                  <label className="block text-xs mb-1" style={{ color: '#888' }}>
+                  <label className="block text-xs mb-1" style={{ color: 'var(--c-text-secondary)' }}>
                     Display name
                   </label>
                   <input
-                    className="w-full px-3 py-2 rounded text-sm text-white outline-none focus:ring-1 focus:ring-blue-500"
-                    style={{ background: '#111', border: '1px solid #333' }}
+                    className="w-full px-3 py-2 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500"
+                    style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border-strong)', color: 'var(--c-text-primary)' }}
                     placeholder="Alice Chen"
                     value={form.display_name}
                     onChange={(e) => setForm((p) => ({ ...p, display_name: e.target.value }))}
@@ -173,12 +173,12 @@ export default function MemberForm({ team, member, onSave, onClose }: Props) {
                 </div>
 
                 <div>
-                  <label className="block text-xs mb-1" style={{ color: '#888' }}>
+                  <label className="block text-xs mb-1" style={{ color: 'var(--c-text-secondary)' }}>
                     Role
                   </label>
                   <input
-                    className="w-full px-3 py-2 rounded text-sm text-white outline-none focus:ring-1 focus:ring-blue-500"
-                    style={{ background: '#111', border: '1px solid #333' }}
+                    className="w-full px-3 py-2 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500"
+                    style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border-strong)', color: 'var(--c-text-primary)' }}
                     placeholder="Coordinator, Researcher, Engineer…"
                     value={form.role}
                     onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))}
@@ -193,19 +193,19 @@ export default function MemberForm({ team, member, onSave, onClose }: Props) {
                     onChange={(e) => setForm((p) => ({ ...p, is_team_lead: e.target.checked }))}
                     className="accent-blue-500"
                   />
-                  <label htmlFor="team_lead" className="text-sm text-white/80">
+                  <label htmlFor="team_lead" className="text-sm" style={{ color: 'var(--c-text-secondary)' }}>
                     Team Lead
                   </label>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs mb-1" style={{ color: '#888' }}>
+                    <label className="block text-xs mb-1" style={{ color: 'var(--c-text-secondary)' }}>
                       Model provider
                     </label>
                     <select
-                      className="w-full px-3 py-2 rounded text-sm text-white outline-none focus:ring-1 focus:ring-blue-500"
-                      style={{ background: '#111', border: '1px solid #333' }}
+                      className="w-full px-3 py-2 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500"
+                      style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border-strong)', color: 'var(--c-text-primary)' }}
                       value={form.model_provider}
                       onChange={(e) => setForm((p) => ({ ...p, model_provider: e.target.value }))}
                     >
@@ -215,12 +215,12 @@ export default function MemberForm({ team, member, onSave, onClose }: Props) {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs mb-1" style={{ color: '#888' }}>
+                    <label className="block text-xs mb-1" style={{ color: 'var(--c-text-secondary)' }}>
                       Model ID
                     </label>
                     <input
-                      className="w-full px-3 py-2 rounded text-sm text-white outline-none focus:ring-1 focus:ring-blue-500"
-                      style={{ background: '#111', border: '1px solid #333' }}
+                      className="w-full px-3 py-2 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500"
+                      style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border-strong)', color: 'var(--c-text-primary)' }}
                       placeholder="claude-opus-4-6"
                       value={form.model_id}
                       onChange={(e) => setForm((p) => ({ ...p, model_id: e.target.value }))}
@@ -231,23 +231,23 @@ export default function MemberForm({ team, member, onSave, onClose }: Props) {
                 {/* ID + Email previews */}
                 <div className="space-y-2 pt-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs shrink-0" style={{ color: '#666' }}>
+                    <span className="text-xs shrink-0" style={{ color: 'var(--c-text-muted)' }}>
                       ID:
                     </span>
                     <span
                       className="flex-1 px-2 py-1 rounded text-xs font-mono truncate"
-                      style={{ background: '#111', color: '#aaa', border: '1px solid #222' }}
+                      style={{ background: 'var(--c-bg-base)', color: 'var(--c-text-secondary)', border: '1px solid var(--c-border)' }}
                     >
                       {previewId}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs shrink-0" style={{ color: '#666' }}>
+                    <span className="text-xs shrink-0" style={{ color: 'var(--c-text-muted)' }}>
                       Email:
                     </span>
                     <span
                       className="flex-1 px-2 py-1 rounded text-xs font-mono truncate"
-                      style={{ background: '#111', color: '#aaa', border: '1px solid #222' }}
+                      style={{ background: 'var(--c-bg-base)', color: 'var(--c-text-secondary)', border: '1px solid var(--c-border)' }}
                     >
                       {previewEmail}
                     </span>
@@ -265,10 +265,10 @@ export default function MemberForm({ team, member, onSave, onClose }: Props) {
                   <div
                     key={item.name}
                     className="rounded-lg p-4"
-                    style={{ background: '#141414', border: '1px solid #2a2a2a' }}
+                    style={{ background: 'var(--c-bg-panel)', border: '1px solid var(--c-border-muted)' }}
                   >
                     <p className="text-sm text-white/60 font-medium mb-1">{item.name}</p>
-                    <p className="text-xs" style={{ color: '#555' }}>
+                    <p className="text-xs" style={{ color: 'var(--c-text-faint)' }}>
                       Available in {item.phase}
                     </p>
                   </div>
@@ -278,7 +278,7 @@ export default function MemberForm({ team, member, onSave, onClose }: Props) {
 
             {tab === 'resources' && (
               <div className="space-y-3">
-                <p className="text-xs" style={{ color: '#666' }}>
+                <p className="text-xs" style={{ color: 'var(--c-text-muted)' }}>
                   Leave blank to use team defaults.
                 </p>
                 {[
@@ -287,12 +287,12 @@ export default function MemberForm({ team, member, onSave, onClose }: Props) {
                   { key: 'disk' as const, label: 'Disk', placeholder: team.default_disk },
                 ].map(({ key, label, placeholder }) => (
                   <div key={key}>
-                    <label className="block text-xs mb-1" style={{ color: '#888' }}>
+                    <label className="block text-xs mb-1" style={{ color: 'var(--c-text-secondary)' }}>
                       {label}
                     </label>
                     <input
-                      className="w-full px-3 py-2 rounded text-sm text-white outline-none focus:ring-1 focus:ring-blue-500"
-                      style={{ background: '#111', border: '1px solid #333' }}
+                      className="w-full px-3 py-2 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500"
+                      style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border-strong)', color: 'var(--c-text-primary)' }}
                       placeholder={`Default: ${placeholder}`}
                       value={form[key]}
                       onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))}
@@ -306,7 +306,7 @@ export default function MemberForm({ team, member, onSave, onClose }: Props) {
           {/* Footer */}
           <div
             className="shrink-0 px-6 py-4 flex flex-col gap-2"
-            style={{ borderTop: '1px solid #2a2a2a' }}
+            style={{ borderTop: '1px solid var(--c-border-muted)' }}
           >
             {error && <p className="text-xs text-red-400">{error}</p>}
             <div className="flex gap-2">
@@ -314,7 +314,7 @@ export default function MemberForm({ team, member, onSave, onClose }: Props) {
                 type="button"
                 onClick={onClose}
                 className="flex-1 py-2 rounded text-sm transition-colors hover:bg-white/10"
-                style={{ color: '#888', border: '1px solid #333' }}
+                style={{ color: 'var(--c-text-secondary)', border: '1px solid var(--c-border-strong)' }}
               >
                 Cancel
               </button>

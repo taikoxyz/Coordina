@@ -1,16 +1,19 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { ChevronDown, ChevronRight, Plus, Settings, Users } from 'lucide-react'
+import { ChevronDown, ChevronRight, Moon, Plus, Settings, Sun, Users } from 'lucide-react'
 import { api } from '@/lib/api'
 import type { Team, Member, MemberHealth } from '@/lib/types'
 import { cn, getInitials, healthColor } from '@/lib/utils'
 import GlobalSettingsPanel from './GlobalSettingsPanel'
 import MemberForm from './MemberForm'
+import DuplicateMemberModal from './DuplicateMemberModal'
+import { useTheme } from '@/components/ThemeProvider'
 
 export default function TeamNav() {
   const router = useRouter()
   const pathname = usePathname()
+  const { theme, toggle } = useTheme()
   const [teams, setTeams] = useState<Team[]>([])
   const [members, setMembers] = useState<Record<string, Member[]>>({})
   const [health, setHealth] = useState<Record<string, string>>({})
@@ -18,6 +21,7 @@ export default function TeamNav() {
   const [showSettings, setShowSettings] = useState(false)
   const [showNewTeam, setShowNewTeam] = useState(false)
   const [showNewMember, setShowNewMember] = useState<string | null>(null)
+  const [duplicating, setDuplicating] = useState<{ team: Team; member: Member } | null>(null)
   const [newTeam, setNewTeam] = useState({ name: '', display_name: '', domain: '' })
   const [createError, setCreateError] = useState('')
   const [gcpConfigured, setGcpConfigured] = useState(true)
@@ -119,21 +123,33 @@ export default function TeamNav() {
     <>
       <nav
         className="flex flex-col h-full shrink-0 overflow-y-auto"
-        style={{ width: 260, background: '#111', borderRight: '1px solid #222' }}
+        style={{ width: 260, background: 'var(--c-bg-base)', borderRight: '1px solid var(--c-border)' }}
       >
         {/* Header */}
         <div
           className="flex items-center justify-between px-4 py-3 shrink-0"
-          style={{ borderBottom: '1px solid #222' }}
+          style={{ borderBottom: '1px solid var(--c-border)' }}
         >
-          <span className="font-semibold text-white text-sm tracking-wide">Coordina</span>
-          <button
-            onClick={() => setShowSettings(true)}
-            className="p-1 rounded hover:bg-white/10 transition-colors"
-            title="Global Settings"
-          >
-            <Settings size={15} style={{ color: '#666' }} />
-          </button>
+          <span className="font-semibold text-sm tracking-wide" style={{ color: 'var(--c-text-primary)' }}>Coordina</span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={toggle}
+              className="p-1 rounded hover:bg-white/10 transition-colors"
+              title="Toggle theme"
+            >
+              {theme === 'dark'
+                ? <Moon size={15} style={{ color: 'var(--c-text-muted)' }} />
+                : <Sun size={15} style={{ color: 'var(--c-text-muted)' }} />
+              }
+            </button>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="p-1 rounded hover:bg-white/10 transition-colors"
+              title="Global Settings"
+            >
+              <Settings size={15} style={{ color: 'var(--c-text-muted)' }} />
+            </button>
+          </div>
         </div>
 
         {/* GCP warning banner */}
@@ -150,7 +166,7 @@ export default function TeamNav() {
         {/* Teams list */}
         <div className="flex-1 py-2 overflow-y-auto">
           {teams.length === 0 && (
-            <p className="px-4 py-3 text-xs" style={{ color: '#555' }}>
+            <p className="px-4 py-3 text-xs" style={{ color: 'var(--c-text-faint)' }}>
               No teams yet
             </p>
           )}
@@ -172,11 +188,11 @@ export default function TeamNav() {
                     router.push(`/teams/${team.id}`)
                   }}
                 >
-                  <span style={{ color: '#555' }}>
+                  <span style={{ color: 'var(--c-text-faint)' }}>
                     {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                   </span>
-                  <Users size={13} style={{ color: '#888' }} />
-                  <span className="flex-1 text-sm truncate text-white/80">{team.display_name}</span>
+                  <Users size={13} style={{ color: 'var(--c-text-secondary)' }} />
+                  <span className="flex-1 text-sm truncate" style={{ color: 'var(--c-text-secondary)' }}>{team.display_name}</span>
                   {team.gcp_project_status === 'provisioning' && (
                     <span className="text-xs px-1 rounded" style={{ background: '#1a3a5c', color: '#60a5fa' }}>
                       ⟳
@@ -184,7 +200,7 @@ export default function TeamNav() {
                   )}
                   <span
                     className="text-xs opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:text-white"
-                    style={{ color: '#666' }}
+                    style={{ color: 'var(--c-text-muted)' }}
                     onClick={(e) => {
                       e.stopPropagation()
                       setShowNewMember(team.id)
@@ -205,7 +221,7 @@ export default function TeamNav() {
                         <div
                           key={m.id}
                           className={cn(
-                            'flex items-center gap-2 pl-8 pr-3 py-1.5 cursor-pointer hover:bg-white/5 transition-colors',
+                            'flex items-center gap-2 pl-8 pr-2 py-1.5 cursor-pointer hover:bg-white/5 transition-colors group/member',
                             isMemberActive && 'bg-white/10',
                           )}
                           onClick={() => router.push(`/teams/${team.id}/members/${m.id}`)}
@@ -213,17 +229,25 @@ export default function TeamNav() {
                           <span
                             className={cn('w-1.5 h-1.5 rounded-full shrink-0', healthColor(memberHealth))}
                           />
-                          <span className="text-xs truncate" style={{ color: isMemberActive ? '#e5e5e5' : '#999' }}>
+                          <span className="flex-1 text-xs truncate" style={{ color: isMemberActive ? 'var(--c-text-primary)' : 'var(--c-text-secondary)' }}>
                             {m.prefix} {m.display_name}
                             {m.is_team_lead && (
                               <span className="ml-1 text-yellow-500/70 text-xs">★</span>
                             )}
                           </span>
+                          <button
+                            className="opacity-0 group-hover/member:opacity-100 transition-opacity p-0.5 rounded hover:bg-white/10 shrink-0"
+                            title="Duplicate member"
+                            onClick={(e) => { e.stopPropagation(); setDuplicating({ team, member: m }) }}
+                            style={{ color: 'var(--c-text-faint)' }}
+                          >
+                            ⎘
+                          </button>
                         </div>
                       )
                     })}
                     {teamMembers.length === 0 && (
-                      <p className="pl-8 py-1.5 text-xs" style={{ color: '#444' }}>
+                      <p className="pl-8 py-1.5 text-xs" style={{ color: 'var(--c-text-placeholder)' }}>
                         No members
                       </p>
                     )}
@@ -235,11 +259,11 @@ export default function TeamNav() {
         </div>
 
         {/* New Team button */}
-        <div className="shrink-0 p-3" style={{ borderTop: '1px solid #222' }}>
+        <div className="shrink-0 p-3" style={{ borderTop: '1px solid var(--c-border)' }}>
           <button
             onClick={() => setShowNewTeam(true)}
             className="w-full flex items-center gap-2 px-3 py-2 rounded text-sm transition-colors hover:bg-white/10"
-            style={{ color: '#888', border: '1px solid #333' }}
+            style={{ color: 'var(--c-text-secondary)', border: '1px solid var(--c-border-strong)' }}
           >
             <Plus size={14} />
             New Team
@@ -250,16 +274,16 @@ export default function TeamNav() {
       {/* New Team Modal */}
       {showNewTeam && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.7)' }}>
-          <div className="rounded-lg p-6 w-[420px] shadow-2xl" style={{ background: '#1a1a1a', border: '1px solid #333' }}>
-            <h3 className="text-white font-semibold mb-4">Create Team</h3>
+          <div className="rounded-lg p-6 w-[420px] shadow-2xl" style={{ background: 'var(--c-bg-modal)', border: '1px solid var(--c-border-strong)' }}>
+            <h3 className="font-semibold mb-4" style={{ color: 'var(--c-text-primary)' }}>Create Team</h3>
             <form onSubmit={handleCreateTeam} className="space-y-3">
               <div>
-                <label className="block text-xs mb-1" style={{ color: '#888' }}>
+                <label className="block text-xs mb-1" style={{ color: 'var(--c-text-secondary)' }}>
                   Name *
                 </label>
                 <input
-                  className="w-full px-3 py-2 rounded text-sm text-white outline-none focus:ring-1 focus:ring-blue-500"
-                  style={{ background: '#111', border: '1px solid #333' }}
+                  className="w-full px-3 py-2 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500"
+                  style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border-strong)', color: 'var(--c-text-primary)' }}
                   placeholder="Acme Corp AI Team"
                   value={newTeam.display_name}
                   onChange={(e) => setNewTeam((p) => ({ ...p, display_name: e.target.value }))}
@@ -267,18 +291,18 @@ export default function TeamNav() {
                   required
                 />
                 {newTeam.display_name && (
-                  <p className="mt-1 text-xs" style={{ color: '#555' }}>
-                    Slug: <span style={{ color: '#666' }}>{toSlug(newTeam.display_name) || '—'}</span>
+                  <p className="mt-1 text-xs" style={{ color: 'var(--c-text-faint)' }}>
+                    Slug: <span style={{ color: 'var(--c-text-muted)' }}>{toSlug(newTeam.display_name) || '—'}</span>
                   </p>
                 )}
               </div>
               <div>
-                <label className="block text-xs mb-1" style={{ color: '#888' }}>
+                <label className="block text-xs mb-1" style={{ color: 'var(--c-text-secondary)' }}>
                   Domain *
                 </label>
                 <input
-                  className="w-full px-3 py-2 rounded text-sm text-white outline-none focus:ring-1 focus:ring-blue-500"
-                  style={{ background: '#111', border: '1px solid #333' }}
+                  className="w-full px-3 py-2 rounded text-sm outline-none focus:ring-1 focus:ring-blue-500"
+                  style={{ background: 'var(--c-bg-base)', border: '1px solid var(--c-border-strong)', color: 'var(--c-text-primary)' }}
                   placeholder="acme.com"
                   value={newTeam.domain}
                   onChange={(e) => setNewTeam((p) => ({ ...p, domain: e.target.value }))}
@@ -293,7 +317,7 @@ export default function TeamNav() {
                   type="button"
                   onClick={() => { setShowNewTeam(false); setCreateError('') }}
                   className="flex-1 py-2 rounded text-sm transition-colors hover:bg-white/10"
-                  style={{ color: '#888', border: '1px solid #333' }}
+                  style={{ color: 'var(--c-text-secondary)', border: '1px solid var(--c-border-strong)' }}
                 >
                   Cancel
                 </button>
@@ -320,6 +344,19 @@ export default function TeamNav() {
             await loadTeams()
           }}
           onClose={() => setShowNewMember(null)}
+        />
+      )}
+
+      {/* Duplicate Member Modal */}
+      {duplicating && (
+        <DuplicateMemberModal
+          team={duplicating.team}
+          member={duplicating.member}
+          onSave={async () => {
+            setDuplicating(null)
+            await loadTeams()
+          }}
+          onClose={() => setDuplicating(null)}
         />
       )}
 

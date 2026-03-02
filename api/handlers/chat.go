@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -153,6 +152,14 @@ func (h *Handler) StreamChat(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type memberHealthResp struct {
+	MemberID   string   `json:"member_id"`
+	Status     string   `json:"status"`
+	ActiveTask *string  `json:"active_task,omitempty"`
+	LastSeen   *string  `json:"last_seen,omitempty"`
+	UptimeSecs *int64   `json:"uptime_seconds,omitempty"`
+}
+
 func (h *Handler) GetMemberHealth(w http.ResponseWriter, r *http.Request) {
 	memberID := chi.URLParam(r, "memberID")
 	member, err := h.store.GetMember(memberID)
@@ -160,29 +167,46 @@ func (h *Handler) GetMemberHealth(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "member not found")
 		return
 	}
-	status := h.checkMemberHealth(member)
-	writeJSON(w, http.StatusOK, map[string]string{
-		"member_id": memberID,
-		"status":    status,
-	})
+	writeJSON(w, http.StatusOK, h.fetchMemberHealth(member))
 }
 
-func (h *Handler) checkMemberHealth(m *models.Member) string {
+func (h *Handler) fetchMemberHealth(m *models.Member) memberHealthResp {
+	base := memberHealthResp{MemberID: m.ID, Status: "offline"}
 	if m.ContainerPort == 0 {
-		return "offline"
+		return base
 	}
 	url := fmt.Sprintf("http://localhost:%d/health", m.ContainerPort)
 	client := &http.Client{Timeout: 2 * time.Second}
 	resp, err := client.Get(url)
 	if err != nil {
-		return "offline"
+		return base
 	}
 	defer resp.Body.Close()
-	io.Copy(io.Discard, resp.Body)
-	if resp.StatusCode == http.StatusOK {
-		return "online"
+	if resp.StatusCode != http.StatusOK {
+		base.Status = "error"
+		return base
 	}
-	return "error"
+	var raw struct {
+		Status     string  `json:"status"`
+		UptimeSecs int64   `json:"uptime_seconds"`
+		ActiveTask *string `json:"active_task"`
+		LastSeen   *string `json:"last_seen"`
+	}
+	if json.NewDecoder(resp.Body).Decode(&raw) == nil {
+		return memberHealthResp{
+			MemberID:   m.ID,
+			Status:     raw.Status,
+			UptimeSecs: &raw.UptimeSecs,
+			ActiveTask: raw.ActiveTask,
+			LastSeen:   raw.LastSeen,
+		}
+	}
+	base.Status = "online"
+	return base
+}
+
+func (h *Handler) checkMemberHealth(m *models.Member) string {
+	return h.fetchMemberHealth(m).Status
 }
 
 func (h *Handler) getAgentReply(memberID, content string) string {

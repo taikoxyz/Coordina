@@ -110,9 +110,9 @@ export default function ChatPanel({ teamId, memberId }: Props) {
       {/* Header */}
       <div
         className="shrink-0 flex items-center px-5 py-3"
-        style={{ borderBottom: '1px solid #1e1e1e', background: '#0f0f0f' }}
+        style={{ borderBottom: '1px solid var(--c-border-subtle)', background: 'var(--c-bg-page)' }}
       >
-        <span className="font-medium text-white text-sm">{memberName}</span>
+        <span className="font-medium text-sm" style={{ color: 'var(--c-text-primary)' }}>{memberName}</span>
         {member?.is_team_lead && (
           <span className="ml-2 text-xs text-yellow-500/70">Team Lead</span>
         )}
@@ -121,12 +121,12 @@ export default function ChatPanel({ teamId, memberId }: Props) {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
         {loading && (
-          <div className="text-center text-sm py-4" style={{ color: '#555' }}>
+          <div className="text-center text-sm py-4" style={{ color: 'var(--c-text-faint)' }}>
             Loading history...
           </div>
         )}
         {!loading && messages.length === 0 && (
-          <div className="text-center text-sm py-8" style={{ color: '#555' }}>
+          <div className="text-center text-sm py-8" style={{ color: 'var(--c-text-faint)' }}>
             No messages yet. Start the conversation!
           </div>
         )}
@@ -137,7 +137,7 @@ export default function ChatPanel({ teamId, memberId }: Props) {
           <div className="flex justify-start">
             <div
               className="max-w-[70%] px-4 py-2.5 rounded-2xl rounded-bl-sm text-sm"
-              style={{ background: '#1e1e1e', color: '#e5e5e5' }}
+              style={{ background: 'var(--c-bg-surface)', color: 'var(--c-text-primary)' }}
             >
               {streamingContent}
               <span className="ml-1 inline-block w-1.5 h-3.5 bg-blue-400 animate-pulse" />
@@ -148,7 +148,7 @@ export default function ChatPanel({ teamId, memberId }: Props) {
           <div className="flex justify-start">
             <div
               className="px-4 py-2.5 rounded-2xl rounded-bl-sm text-sm"
-              style={{ background: '#1e1e1e', color: '#666' }}
+              style={{ background: 'var(--c-bg-surface)', color: 'var(--c-text-muted)' }}
             >
               <span className="animate-pulse">···</span>
             </div>
@@ -160,16 +160,16 @@ export default function ChatPanel({ teamId, memberId }: Props) {
       {/* Input */}
       <div
         className="shrink-0 px-4 py-3"
-        style={{ borderTop: '1px solid #1e1e1e', background: '#0f0f0f' }}
+        style={{ borderTop: '1px solid var(--c-border-subtle)', background: 'var(--c-bg-page)' }}
       >
         <div
           className="flex items-end gap-2 px-4 py-2 rounded-xl"
-          style={{ background: '#1a1a1a', border: '1px solid #2a2a2a' }}
+          style={{ background: 'var(--c-bg-modal)', border: '1px solid var(--c-border-muted)' }}
         >
           <textarea
             ref={inputRef}
-            className="flex-1 bg-transparent text-sm text-white outline-none resize-none leading-relaxed"
-            style={{ maxHeight: 120, minHeight: 24 }}
+            className="flex-1 bg-transparent text-sm outline-none resize-none leading-relaxed"
+            style={{ maxHeight: 120, minHeight: 24, color: 'var(--c-text-primary)' }}
             placeholder={`Message ${memberName}…`}
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -187,7 +187,7 @@ export default function ChatPanel({ teamId, memberId }: Props) {
             <Send size={14} className="text-white" />
           </button>
         </div>
-        <p className="text-center text-xs mt-1" style={{ color: '#444' }}>
+        <p className="text-center text-xs mt-1" style={{ color: 'var(--c-text-placeholder)' }}>
           Enter to send · Shift+Enter for newline
         </p>
       </div>
@@ -205,8 +205,8 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
           isUser ? 'rounded-br-sm' : 'rounded-bl-sm',
         )}
         style={{
-          background: isUser ? '#2563eb' : '#1e1e1e',
-          color: isUser ? '#fff' : '#e5e5e5',
+          background: isUser ? '#2563eb' : 'var(--c-bg-surface)',
+          color: isUser ? '#fff' : 'var(--c-text-primary)',
         }}
       >
         {msg.status === 'queued' && (
@@ -215,7 +215,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
         <span style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</span>
         <div
           className={cn('text-xs mt-1', isUser ? 'text-right' : 'text-left')}
-          style={{ color: isUser ? 'rgba(255,255,255,0.5)' : '#555' }}
+          style={{ color: isUser ? 'rgba(255,255,255,0.5)' : 'var(--c-text-faint)' }}
         >
           {formatTime(msg.created_at)}
         </div>

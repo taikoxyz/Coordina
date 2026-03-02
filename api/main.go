@@ -53,6 +53,8 @@ func main() {
 				r.Get("/stream", h.StreamChat)
 
 				r.Get("/health", h.GetMemberHealth)
+				r.Get("/files", h.GetMemberFiles)
+				r.Post("/duplicate", h.DuplicateMember)
 			})
 
 			r.Get("/health", h.GetTeamHealth)
@@ -65,6 +67,17 @@ func main() {
 			r.Put("/gcp", h.SaveGlobalSettings)
 			r.Get("/gcp", h.GetGlobalSettings)
 			r.Get("/gcp/test", h.TestGlobalSettings)
+		})
+
+		r.Route("/auth", func(r chi.Router) {
+			r.Get("/gcp/begin", h.GCPAuthBegin)
+			r.Get("/gcp/callback", h.GCPAuthCallback)
+			r.Get("/gcp/status", h.GCPAuthStatus)
+			r.Post("/gcp/revoke", h.GCPAuthRevoke)
+			r.Get("/workspace/begin", h.WorkspaceAuthBegin)
+			r.Get("/workspace/callback", h.WorkspaceAuthCallback)
+			r.Get("/workspace/status", h.WorkspaceAuthStatus)
+			r.Post("/workspace/revoke", h.WorkspaceAuthRevoke)
 		})
 	})
 
