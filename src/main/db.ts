@@ -27,6 +27,21 @@ export function openDb(path: string) {
       lead_agent_slug TEXT,
       config TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS agents (
+      slug TEXT NOT NULL,
+      team_slug TEXT NOT NULL REFERENCES teams(slug) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      role TEXT NOT NULL,
+      email TEXT,
+      slack_handle TEXT,
+      github_id TEXT,
+      skills TEXT NOT NULL DEFAULT '[]',
+      soul TEXT NOT NULL DEFAULT '',
+      provider_id TEXT,
+      model TEXT,
+      is_lead INTEGER DEFAULT 0,
+      PRIMARY KEY (slug, team_slug)
+    );
   `)
   return db
 }
