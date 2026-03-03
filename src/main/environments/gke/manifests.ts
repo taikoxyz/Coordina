@@ -37,13 +37,14 @@ export function generateTeamConfigMap(input: {
   namespace: string
   teamJson: string
   agentsMd: string
+  bootstrapInstructionsMd: string
 }): string {
-  const { teamSlug, namespace, teamJson, agentsMd } = input
+  const { teamSlug, namespace, teamJson, agentsMd, bootstrapInstructionsMd } = input
   return generateConfigMap({
     name: `${teamSlug}-shared-config`,
     namespace,
     labels: { 'coordina.team': teamSlug },
-    data: { 'team.json': teamJson, 'AGENTS.md': agentsMd },
+    data: { 'team.json': teamJson, 'AGENTS.md': agentsMd, 'BOOTSTRAP-INSTRUCTIONS.md': bootstrapInstructionsMd },
   })
 }
 
@@ -155,6 +156,15 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
             { name: 'shared-config', configMap: { name: `${teamSlug}-shared-config` } },
             { name: 'agent-config', configMap: { name: `${teamSlug}-${agentSlug}-config` } },
           ],
+          initContainers: [{
+            name: 'bootstrap-init',
+            image: 'busybox:1.36',
+            command: ['sh', '-c', 'test -f /workspace/BOOTSTRAP.md || cp /config/shared/BOOTSTRAP-INSTRUCTIONS.md /workspace/BOOTSTRAP.md'],
+            volumeMounts: [
+              { name: 'workspace', mountPath: '/workspace' },
+              { name: 'shared-config', mountPath: '/config/shared', readOnly: true },
+            ],
+          }],
           containers: [{
             name: 'openclaw',
             image,

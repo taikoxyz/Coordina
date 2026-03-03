@@ -9,6 +9,7 @@ export interface TeamRecord {
   domain?: string
   image?: string
   deployedSpecHash?: string
+  bootstrapInstructions?: string
 }
 
 export interface AgentRecord {

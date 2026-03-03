@@ -26,6 +26,14 @@ describe('generateAgentStatefulSet', () => {
     expect(manifest).toContain('/config/shared')
     expect(manifest).toContain('/config/agent')
   })
+
+  it('includes bootstrap init container', () => {
+    const manifest = generateAgentStatefulSet({ teamSlug: 'eng-alpha', agentSlug: 'alice' })
+    expect(manifest).toContain('bootstrap-init')
+    expect(manifest).toContain('busybox:1.36')
+    expect(manifest).toContain('BOOTSTRAP-INSTRUCTIONS.md')
+    expect(manifest).toContain('BOOTSTRAP.md')
+  })
 })
 
 describe('generateIapBackendConfig', () => {
@@ -75,16 +83,18 @@ describe('generateConfigMap', () => {
 })
 
 describe('generateTeamConfigMap', () => {
-  it('generates shared ConfigMap with team.json and AGENTS.md', () => {
+  it('generates shared ConfigMap with team.json, AGENTS.md and BOOTSTRAP-INSTRUCTIONS.md', () => {
     const yaml = generateTeamConfigMap({
       teamSlug: 'alpha',
       namespace: 'team-alpha',
       teamJson: '{"name":"Alpha"}',
       agentsMd: '# Agents',
+      bootstrapInstructionsMd: '# Bootstrap',
     })
     expect(yaml).toContain('name: alpha-shared-config')
     expect(yaml).toContain('team.json: |')
     expect(yaml).toContain('AGENTS.md: |')
+    expect(yaml).toContain('BOOTSTRAP-INSTRUCTIONS.md: |')
   })
 })
 

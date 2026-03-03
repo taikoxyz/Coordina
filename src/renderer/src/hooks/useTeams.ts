@@ -27,6 +27,18 @@ export function useCreateTeam() {
   })
 }
 
+export function useUpdateTeam() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ slug, data }: { slug: string; data: { name?: string; leadAgentSlug?: string; image?: string; bootstrapInstructions?: string } }) =>
+      window.api.invoke('teams:update', slug, data) as Promise<{ ok: boolean }>,
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['teams'] })
+      qc.invalidateQueries({ queryKey: ['teams', variables.slug] })
+    },
+  })
+}
+
 export function useDeleteTeam() {
   const qc = useQueryClient()
   return useMutation({

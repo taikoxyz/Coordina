@@ -1,10 +1,12 @@
-import React from 'react'
 import type { AgentRecord } from '../../hooks/useTeams'
 
 interface AgentCardProps {
   agent: AgentRecord
+  teamImage?: string
   isDeployed?: boolean
   deploymentStatus?: 'running' | 'pending' | 'crashed' | 'undeployed'
+  podUrl?: string
+  ingressUrl?: string
   onEdit: () => void
   onDelete: () => void
   onChat: () => void
@@ -18,7 +20,7 @@ const STATUS_CONFIG = {
   undeployed: { dot: 'bg-gray-500', label: 'Not deployed' },
 }
 
-export function AgentCard({ agent, isDeployed = false, deploymentStatus = 'undeployed', onEdit, onDelete, onChat, onFiles }: AgentCardProps) {
+export function AgentCard({ agent, teamImage, isDeployed = false, deploymentStatus = 'undeployed', podUrl, ingressUrl, onEdit, onDelete, onChat, onFiles }: AgentCardProps) {
   const status = STATUS_CONFIG[deploymentStatus]
 
   return (
@@ -36,8 +38,23 @@ export function AgentCard({ agent, isDeployed = false, deploymentStatus = 'undep
             </span>
           </div>
           <p className="text-sm text-gray-400">{agent.role}</p>
+          {!agent.image && !teamImage && (
+            <p className="text-xs text-yellow-500 mt-0.5">⚠ No container image set — edit agent or set a team default image before deploying</p>
+          )}
         </div>
         <div className="flex gap-1 shrink-0">
+          {ingressUrl && (
+            <button onClick={() => window.open(ingressUrl)}
+              className="text-xs px-2.5 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-200 transition-colors">
+              URL →
+            </button>
+          )}
+          {podUrl && (
+            <button onClick={() => window.open(podUrl)}
+              className="text-xs px-2.5 py-1 rounded bg-gray-700 hover:bg-gray-600 text-gray-200 transition-colors">
+              Pod →
+            </button>
+          )}
           <button onClick={onChat}
             disabled={!isDeployed}
             className="text-xs px-2.5 py-1 rounded bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-gray-200 transition-colors">

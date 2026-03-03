@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNav } from '../store/nav'
-import { useTeam, useAgents, useCreateAgent, useUpdateAgent, useDeleteAgent } from '../hooks/useTeams'
+import { useTeam, useAgents, useCreateAgent, useUpdateAgent, useDeleteAgent, useUpdateTeam } from '../hooks/useTeams'
 import { useEnvironments, useEnvironment, useDeployTeam, useUndeployTeam, useTeamStatus } from '../hooks/useEnvironments'
 import { AgentCard } from '../components/teams/AgentCard'
 import { AgentForm } from '../components/agents/AgentForm'
@@ -32,11 +32,15 @@ export function TeamDetailPage({ teamSlug }: TeamDetailPageProps) {
   const deleteAgent = useDeleteAgent()
   const deployTeam = useDeployTeam()
   const undeployTeam = useUndeployTeam()
+  const updateTeam = useUpdateTeam()
 
   const [hasAiKey, setHasAiKey] = useState(false)
   const [panel, setPanel] = useState<PanelState>({ type: 'none' })
   const [selectedEnvId, setSelectedEnvId] = useState('')
   const [deployError, setDeployError] = useState<string | null>(null)
+  const [bootstrapOpen, setBootstrapOpen] = useState(false)
+  const [bootstrapDraft, setBootstrapDraft] = useState('')
+  const [bootstrapSaved, setBootstrapSaved] = useState(false)
 
   useEffect(() => {
     window.api.invoke('settings:hasAiProvider').then(has => setHasAiKey(!!has))
@@ -46,6 +50,10 @@ export function TeamDetailPage({ teamSlug }: TeamDetailPageProps) {
     if (environments.length > 0 && !selectedEnvId) setSelectedEnvId(environments[0].id)
   }, [environments, selectedEnvId])
 
+  useEffect(() => {
+    if (team) setBootstrapDraft(team.bootstrapInstructions ?? '')
+  }, [team?.bootstrapInstructions])
+
   async function handleSaveAgent(data: Omit<AgentRecord, 'teamSlug'>) {
     if (panel.type === 'agent-form' && panel.agent) {
       await updateAgent.mutateAsync({ slug: panel.agent.slug, teamSlug, data })
@@ -53,6 +61,13 @@ export function TeamDetailPage({ teamSlug }: TeamDetailPageProps) {
       await createAgent.mutateAsync({ ...data, teamSlug })
     }
     setPanel({ type: 'none' })
+  }
+
+  async function handleSaveBootstrap() {
+    setBootstrapSaved(false)
+    await updateTeam.mutateAsync({ slug: teamSlug, data: { bootstrapInstructions: bootstrapDraft || undefined } })
+    setBootstrapSaved(true)
+    setTimeout(() => setBootstrapSaved(false), 2000)
   }
 
   async function handleDeploy() {
@@ -252,6 +267,46 @@ export function TeamDetailPage({ teamSlug }: TeamDetailPageProps) {
       <div className={panelOpen ? `${panel.type === 'agent-form' ? 'w-96' : 'w-80'} shrink-0 overflow-y-auto border-r border-gray-700 p-6` : ''}>
         {header}
         {agentsList}
+
+        {/* Bootstrap Instructions (collapsible) */}
+        <div className="mt-6 border-t border-gray-700 pt-4">
+          <button
+            onClick={() => setBootstrapOpen(!bootstrapOpen)}
+            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+          >
+            <span className="text-xs">{bootstrapOpen ? '▾' : '▸'}</span>
+            Bootstrap Instructions
+          </button>
+          {bootstrapOpen && (
+            <div className="mt-3 space-y-2">
+              <textarea
+                value={bootstrapDraft}
+                onChange={e => { setBootstrapDraft(e.target.value); setBootstrapSaved(false) }}
+                placeholder="Using default bootstrap instructions. Override here..."
+                rows={10}
+                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 font-mono resize-y focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleSaveBootstrap}
+                  disabled={updateTeam.isPending}
+                  className="text-xs px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white transition-colors"
+                >
+                  {updateTeam.isPending ? 'Saving...' : 'Save'}
+                </button>
+                {bootstrapSaved && <span className="text-xs text-green-400">Saved</span>}
+                {bootstrapDraft && (
+                  <button
+                    onClick={() => { setBootstrapDraft(''); setBootstrapSaved(false) }}
+                    className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                  >
+                    Reset to default
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Right column: inline panels */}

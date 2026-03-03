@@ -5,6 +5,7 @@ import { openDb } from '../db'
 import { deployTeam, undeployTeam, getTeamStatus } from '../environments/gke/deploy'
 import type { GkeDeployConfig } from '../environments/gke/deploy'
 import { generateTeamSpecs, hashSpecs, mapAgentRow, mapTeamRow, buildProvidersMap } from '../specs'
+import { DEFAULT_BOOTSTRAP_INSTRUCTIONS } from '../specs/bootstrap'
 import type { SpecFile } from '../specs'
 import { generateTeamConfigMap, generateAgentConfigMap } from '../environments/gke/manifests'
 
@@ -61,12 +62,14 @@ export function registerDeployHandlers() {
       const providers = await buildProvidersMap(db)
       teamSpecs = generateTeamSpecs(team, agents, providers)
       const getContent = (p: string) => teamSpecs.find(f => f.path === p)?.content ?? ''
+      const bootstrapInstructions = team.bootstrapInstructions || DEFAULT_BOOTSTRAP_INSTRUCTIONS
       configMapManifests = [
         generateTeamConfigMap({
           teamSlug,
           namespace,
           teamJson: getContent('team.json'),
           agentsMd: getContent('AGENTS.md'),
+          bootstrapInstructionsMd: bootstrapInstructions,
         }),
         ...agents.map(agent => generateAgentConfigMap({
           teamSlug,

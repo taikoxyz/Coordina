@@ -37,7 +37,6 @@ testDb.prepare("INSERT INTO teams (slug, name, config) VALUES ('eng-alpha', 'Eng
 vi.mock('../db', () => ({ openDb: vi.fn(() => testDb) }))
 
 import { openDb } from '../db'
-import { commitSpecFiles } from '../github/repo'
 
 async function createAgent(data: {
   teamSlug: string; slug: string; name: string; role: string;

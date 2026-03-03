@@ -49,5 +49,6 @@ export function openDb(path: string): Database.Database {
   try { db.exec('ALTER TABLE teams ADD COLUMN image TEXT') } catch { /* column already exists */ }
   try { db.exec('ALTER TABLE agents ADD COLUMN image TEXT') } catch { /* column already exists */ }
   try { db.exec('ALTER TABLE teams ADD COLUMN deployed_spec_hash TEXT') } catch { /* column already exists */ }
+  try { db.exec('ALTER TABLE teams ADD COLUMN bootstrap_instructions TEXT') } catch { /* column already exists */ }
   return db
 }

@@ -15,11 +15,11 @@ function getDb() {
 export function registerTeamHandlers() {
   ipcMain.handle('teams:list', () => {
     const db = getDb()
-    const rows = db.prepare('SELECT slug, name, github_repo, lead_agent_slug, config, gateway_url, deployed_env_id, domain, image FROM teams').all() as any[]
-    return rows.map(r => ({ slug: r.slug, name: r.name, githubRepo: r.github_repo, leadAgentSlug: r.lead_agent_slug, config: JSON.parse(r.config), gatewayUrl: r.gateway_url ?? undefined, deployedEnvId: r.deployed_env_id ?? undefined, domain: r.domain ?? undefined, image: r.image ?? undefined }))
+    const rows = db.prepare('SELECT slug, name, github_repo, lead_agent_slug, config, gateway_url, deployed_env_id, domain, image, bootstrap_instructions FROM teams').all() as any[]
+    return rows.map(r => ({ slug: r.slug, name: r.name, githubRepo: r.github_repo, leadAgentSlug: r.lead_agent_slug, config: JSON.parse(r.config), gatewayUrl: r.gateway_url ?? undefined, deployedEnvId: r.deployed_env_id ?? undefined, domain: r.domain ?? undefined, image: r.image ?? undefined, bootstrapInstructions: r.bootstrap_instructions ?? undefined }))
   })
 
-  ipcMain.handle('teams:create', async (_event, data: { slug: string; name: string; domain?: string; image?: string; createRepo?: boolean }) => {
+  ipcMain.handle('teams:create', async (_event, data: { slug: string; name: string; domain?: string; image?: string; bootstrapInstructions?: string; createRepo?: boolean }) => {
     try {
       const db = getDb()
       const existing = db.prepare('SELECT slug FROM teams WHERE slug = ?').get(data.slug)
@@ -31,8 +31,8 @@ export function registerTeamHandlers() {
         githubRepo = await createRepo(user, `coordina-team-${data.slug}`)
       }
 
-      db.prepare('INSERT INTO teams (slug, name, github_repo, domain, image, config) VALUES (?, ?, ?, ?, ?, ?)').run(
-        data.slug, data.name, githubRepo ?? null, data.domain ?? null, data.image ?? null, '{}'
+      db.prepare('INSERT INTO teams (slug, name, github_repo, domain, image, bootstrap_instructions, config) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+        data.slug, data.name, githubRepo ?? null, data.domain ?? null, data.image ?? null, data.bootstrapInstructions ?? null, '{}'
       )
       return { ok: true, slug: data.slug, githubRepo }
     } catch (e) {
@@ -40,11 +40,12 @@ export function registerTeamHandlers() {
     }
   })
 
-  ipcMain.handle('teams:update', (_event, slug: string, data: { name?: string; leadAgentSlug?: string; image?: string }) => {
+  ipcMain.handle('teams:update', (_event, slug: string, data: { name?: string; leadAgentSlug?: string; image?: string; bootstrapInstructions?: string }) => {
     const db = getDb()
     if (data.name) db.prepare('UPDATE teams SET name = ? WHERE slug = ?').run(data.name, slug)
     if (data.leadAgentSlug !== undefined) db.prepare('UPDATE teams SET lead_agent_slug = ? WHERE slug = ?').run(data.leadAgentSlug, slug)
     if (data.image !== undefined) db.prepare('UPDATE teams SET image = ? WHERE slug = ?').run(data.image || null, slug)
+    if (data.bootstrapInstructions !== undefined) db.prepare('UPDATE teams SET bootstrap_instructions = ? WHERE slug = ?').run(data.bootstrapInstructions || null, slug)
     return { ok: true }
   })
 
@@ -56,9 +57,9 @@ export function registerTeamHandlers() {
 
   ipcMain.handle('teams:get', (_event, slug: string) => {
     const db = getDb()
-    const row = db.prepare('SELECT slug, name, github_repo, lead_agent_slug, config, gateway_url, deployed_env_id, domain, image FROM teams WHERE slug = ?').get(slug) as any
+    const row = db.prepare('SELECT slug, name, github_repo, lead_agent_slug, config, gateway_url, deployed_env_id, domain, image, bootstrap_instructions FROM teams WHERE slug = ?').get(slug) as any
     if (!row) return null
-    return { slug: row.slug, name: row.name, githubRepo: row.github_repo, leadAgentSlug: row.lead_agent_slug, config: JSON.parse(row.config), gatewayUrl: row.gateway_url ?? undefined, deployedEnvId: row.deployed_env_id ?? undefined, domain: row.domain ?? undefined, image: row.image ?? undefined }
+    return { slug: row.slug, name: row.name, githubRepo: row.github_repo, leadAgentSlug: row.lead_agent_slug, config: JSON.parse(row.config), gatewayUrl: row.gateway_url ?? undefined, deployedEnvId: row.deployed_env_id ?? undefined, domain: row.domain ?? undefined, image: row.image ?? undefined, bootstrapInstructions: row.bootstrap_instructions ?? undefined }
   })
 
   ipcMain.handle('teams:isSpecDirty', async (_event, teamSlug: string) => {
