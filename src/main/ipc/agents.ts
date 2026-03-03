@@ -2,54 +2,68 @@ import { ipcMain, app } from 'electron'
 import path from 'path'
 import { openDb } from '../db'
 import { commitSpecFiles } from '../github/repo'
-import { generateAgentFiles, generateAgentsMd, type AgentSpec } from '../github/spec'
 import { getSecret } from '../keychain'
+import { generateTeamSpecs } from '../specs'
+import type { ProviderRecord } from './providers'
 
 function getDb() {
   return openDb(path.join(app.getPath('userData'), 'coordina.db'))
 }
 
+async function buildProvidersMap(db: ReturnType<typeof getDb>): Promise<Map<string, ProviderRecord>> {
+  const providerRows = db.prepare('SELECT id, type, name, config FROM providers').all() as Record<string, unknown>[]
+  const map = new Map<string, ProviderRecord>()
+  for (const row of providerRows) {
+    const id = row.id as string
+    const apiKey = await getSecret(id, 'provider-api-key')
+    const config = JSON.parse((row.config as string) || '{}') as Record<string, unknown>
+    map.set(id, {
+      id,
+      type: row.type as string,
+      name: row.name as string,
+      config: apiKey ? { ...config, apiKey } : config,
+    })
+  }
+  return map
+}
+
 async function autoCommitTeamSpec(teamSlug: string) {
   const db = getDb()
-  const team = db.prepare('SELECT github_repo FROM teams WHERE slug = ?').get(teamSlug) as any
-  if (!team?.github_repo) return
+  const teamRow = db.prepare('SELECT slug, name, github_repo, lead_agent_slug, config, domain, image, deployed_spec_hash FROM teams WHERE slug = ?').get(teamSlug) as Record<string, unknown> | undefined
+  if (!teamRow?.github_repo) return
 
-  const agents = db.prepare('SELECT * FROM agents WHERE team_slug = ?').all(teamSlug) as any[]
-  const files: { path: string; content: string }[] = []
-
-  for (const a of agents) {
-    const skills = JSON.parse(a.skills || '[]')
-    const providerId = a.provider_id
-    let modelConfig = { provider: 'anthropic', model: a.model || 'claude-sonnet-4-6' }
-
-    if (providerId) {
-      const provider = db.prepare('SELECT type, config FROM providers WHERE id = ?').get(providerId) as any
-      if (provider) {
-        const apiKey = await getSecret(providerId, 'provider-api-key')
-        const providerConfig = JSON.parse(provider.config)
-        modelConfig = { ...providerConfig, provider: provider.type, model: a.model || providerConfig.model || 'claude-sonnet-4-6', ...(apiKey ? { apiKey } : {}) }
-      }
-    }
-
-    const agentSpec: AgentSpec = {
-      slug: a.slug, name: a.name, role: a.role,
-      email: a.email, slackHandle: a.slack_handle, githubId: a.github_id,
-      skills, soul: { userInput: a.soul || '' },
-      modelConfig,
-    }
-
-    const agentFiles = generateAgentFiles(agentSpec)
-    for (const [filename, content] of Object.entries(agentFiles)) {
-      files.push({ path: `agents/${a.slug}/${filename}`, content })
-    }
+  const team = {
+    slug: teamRow.slug as string,
+    name: teamRow.name as string,
+    githubRepo: teamRow.github_repo as string | undefined,
+    leadAgentSlug: teamRow.lead_agent_slug as string | undefined,
+    config: JSON.parse((teamRow.config as string) || '{}') as Record<string, unknown>,
+    domain: teamRow.domain as string | undefined,
+    image: teamRow.image as string | undefined,
+    deployedSpecHash: teamRow.deployed_spec_hash as string | undefined,
   }
 
-  files.push({
-    path: 'AGENTS.md',
-    content: generateAgentsMd(agents.map(a => ({ slug: a.slug, name: a.name, role: a.role, isLead: !!a.is_lead }))),
-  })
+  const agentRows = db.prepare('SELECT * FROM agents WHERE team_slug = ?').all(teamSlug) as Record<string, unknown>[]
+  const agents = agentRows.map(r => ({
+    slug: r.slug as string,
+    teamSlug: r.team_slug as string,
+    name: r.name as string,
+    role: r.role as string,
+    email: r.email as string | undefined,
+    slackHandle: r.slack_handle as string | undefined,
+    githubId: r.github_id as string | undefined,
+    skills: JSON.parse((r.skills as string) || '[]') as string[],
+    soul: (r.soul as string) || '',
+    providerId: r.provider_id as string | undefined,
+    model: r.model as string | undefined,
+    image: r.image as string | undefined,
+    isLead: !!(r.is_lead as number),
+  }))
 
-  await commitSpecFiles(team.github_repo, files, `chore: update team spec for ${teamSlug}`)
+  const providers = await buildProvidersMap(db)
+  const files = generateTeamSpecs(team, agents, providers)
+
+  await commitSpecFiles(teamRow.github_repo as string, files, `chore: update team spec for ${teamSlug}`)
 }
 
 export interface AgentRecord {
