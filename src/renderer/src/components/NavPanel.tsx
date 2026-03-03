@@ -4,7 +4,7 @@ import { useEnvironments } from '../hooks/useEnvironments'
 import { useNav } from '../store/nav'
 import type { AgentRecord } from '../hooks/useTeams'
 
-function TeamAgentRows({ teamSlug, activeTeamSlug }: { teamSlug: string; activeTeamSlug: string | null }) {
+function TeamAgentRows({ teamSlug, isActiveTeam }: { teamSlug: string; isActiveTeam: boolean }) {
   const { data: agents } = useAgents(teamSlug)
 
   if (!agents || agents.length === 0) return null
@@ -15,9 +15,7 @@ function TeamAgentRows({ teamSlug, activeTeamSlug }: { teamSlug: string; activeT
         <div
           key={agent.slug}
           className={`pl-6 py-0.5 text-xs flex items-center gap-1.5 ${
-            activeTeamSlug === teamSlug
-              ? 'text-blue-200/70'
-              : 'text-gray-500'
+            isActiveTeam ? 'text-blue-200/70' : 'text-gray-500'
           }`}
         >
           <span className="shrink-0">{agent.isLead ? '●' : '·'}</span>
@@ -99,7 +97,7 @@ export function NavPanel() {
                   </div>
 
                   {isExpanded && (
-                    <TeamAgentRows teamSlug={team.slug} activeTeamSlug={activeSlug} />
+                    <TeamAgentRows teamSlug={team.slug} isActiveTeam={isActive} />
                   )}
                 </div>
               )
@@ -109,28 +107,32 @@ export function NavPanel() {
 
         {/* Environments group */}
         <div className="pt-2">
-          <button
-            onClick={() => setEnvsGroupOpen(o => !o)}
-            className="w-full flex items-center justify-between px-3 py-1 text-xs font-medium text-gray-500 uppercase hover:text-gray-400 transition-colors"
-          >
-            <span>Environments</span>
-            <span className="text-gray-600">{envsGroupOpen ? '▼' : '▶'}</span>
-          </button>
+          <div className={`flex items-center rounded-md ${page === 'environments' ? 'bg-blue-900/40' : ''}`}>
+            <button
+              onClick={() => setPage('environments')}
+              className={`flex-1 px-3 py-1 text-xs font-medium uppercase text-left transition-colors ${
+                page === 'environments' ? 'text-blue-300' : 'text-gray-500 hover:text-gray-400'
+              }`}
+            >
+              Environments
+            </button>
+            <button
+              onClick={() => setEnvsGroupOpen(o => !o)}
+              className="shrink-0 px-2 py-1 text-gray-600 hover:text-gray-400 transition-colors text-xs"
+            >
+              {envsGroupOpen ? '▼' : '▶'}
+            </button>
+          </div>
 
           {envsGroupOpen && (
             <div className="space-y-0.5 mt-0.5">
               {(environments ?? []).map(env => (
-                <button
+                <div
                   key={env.id}
-                  onClick={() => setPage('environments')}
-                  className={`w-full flex items-center px-3 py-1.5 text-sm rounded-md text-left transition-colors ${
-                    page === 'environments'
-                      ? 'bg-blue-900/40 text-blue-300 font-medium'
-                      : 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                  }`}
+                  className="w-full flex items-center px-3 py-1 text-xs text-gray-500 truncate"
                 >
-                  <span className="truncate">{env.name}</span>
-                </button>
+                  {env.name}
+                </div>
               ))}
             </div>
           )}
