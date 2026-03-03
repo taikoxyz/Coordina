@@ -33,7 +33,8 @@ export async function deployTeam(
   teamSlug: string,
   agents: { slug: string; image?: string }[],
   config: GkeDeployConfig,
-  domain: string = 'example.com'
+  domain: string = 'example.com',
+  configMapManifests: string[] = []
 ): Promise<DeployResult> {
   const namespace = `team-${teamSlug}`
 
@@ -59,8 +60,8 @@ export async function deployTeam(
     }
   }
 
-  // StatefulSets, Services, and Ingress are mutable — apply all at once
-  const mutable: string[] = []
+  // ConfigMaps must exist before StatefulSets reference them — apply first
+  const mutable: string[] = [...configMapManifests]
   for (const agent of agents) {
     mutable.push(generateAgentStatefulSet({ teamSlug, agentSlug: agent.slug, image: agent.image, namespace }))
     mutable.push(generateAgentService({ teamSlug, agentSlug: agent.slug, namespace }))

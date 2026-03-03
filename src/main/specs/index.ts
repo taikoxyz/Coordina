@@ -16,6 +16,8 @@ import {
   generateAgentStatefulSet,
   generateAgentService,
   generateIngress,
+  generateTeamConfigMap,
+  generateAgentConfigMap,
 } from '../environments/gke/manifests'
 import { toZone } from '../environments/gke/gcloud'
 import { getSecret } from '../keychain'
@@ -165,7 +167,8 @@ export function generateTeamSpecs(
 export function generateDeploySpecs(
   team: TeamRecord,
   agents: AgentRecord[],
-  envConfig: GkeDeployConfig
+  envConfig: GkeDeployConfig,
+  providers: Map<string, ProviderRecord>
 ): SpecFile[] {
   const files: SpecFile[] = []
   const namespace = `team-${team.slug}`
@@ -173,6 +176,35 @@ export function generateDeploySpecs(
   const domain = team.domain || 'example.com'
 
   files.push({ path: 'namespace.yaml', content: generateNamespace(namespace) })
+
+  const teamSpecs = generateTeamSpecs(team, agents, providers)
+  const getContent = (p: string) => teamSpecs.find(f => f.path === p)?.content ?? ''
+
+  files.push({
+    path: 'configmap-shared.yaml',
+    content: generateTeamConfigMap({
+      teamSlug: team.slug,
+      namespace,
+      teamJson: getContent('team.json'),
+      agentsMd: getContent('AGENTS.md'),
+    }),
+  })
+
+  for (const agent of agents) {
+    files.push({
+      path: `agents/${agent.slug}/configmap.yaml`,
+      content: generateAgentConfigMap({
+        teamSlug: team.slug,
+        agentSlug: agent.slug,
+        namespace,
+        agentJson: getContent(`agents/${agent.slug}/agent.json`),
+        identityMd: getContent(`agents/${agent.slug}/IDENTITY.md`),
+        soulMd: getContent(`agents/${agent.slug}/SOUL.md`),
+        skillsMd: getContent(`agents/${agent.slug}/SKILLS.md`),
+        openclawJson: getContent(`agents/${agent.slug}/openclaw.json`),
+      }),
+    })
+  }
 
   for (const agent of agents) {
     const image = agent.image || team.image

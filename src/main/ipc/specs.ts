@@ -42,8 +42,9 @@ export function registerSpecsHandlers() {
     const team = mapTeamRow(teamRow)
     const agents = agentRows.map(mapAgentRow)
     const envConfig = JSON.parse(envRow.config) as GkeDeployConfig
+    const providers = await buildProvidersMap(db)
 
-    return generateDeploySpecs(team, agents, envConfig)
+    return generateDeploySpecs(team, agents, envConfig, providers)
   })
 
   ipcMain.handle('specs:isDeployDirty', async (_e, teamSlug: string): Promise<boolean> => {

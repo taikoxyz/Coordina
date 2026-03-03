@@ -6,6 +6,7 @@ import { openDb } from '../db'
 import { deployTeam, undeployTeam, getTeamStatus } from '../environments/gke/deploy'
 import type { GkeDeployConfig } from '../environments/gke/deploy'
 import { generateTeamSpecs, hashSpecs, mapAgentRow, mapTeamRow, buildProvidersMap } from '../specs'
+import { generateTeamConfigMap, generateAgentConfigMap } from '../environments/gke/manifests'
 
 function getDb() {
   return openDb(path.join(app.getPath('userData'), 'coordina.db'))
@@ -51,15 +52,40 @@ export function registerDeployHandlers() {
 
     const team = mapTeamRow(teamRow)
     const agents = agentRows.map(mapAgentRow)
-
     const envConfig = JSON.parse(env.config) as GkeDeployConfig
+    const namespace = `team-${teamSlug}`
+
+    const providers = await buildProvidersMap(db)
+    const teamSpecs = generateTeamSpecs(team, agents, providers)
+    const getContent = (p: string) => teamSpecs.find(f => f.path === p)?.content ?? ''
+
+    const configMapManifests = [
+      generateTeamConfigMap({
+        teamSlug,
+        namespace,
+        teamJson: getContent('team.json'),
+        agentsMd: getContent('AGENTS.md'),
+      }),
+      ...agents.map(agent => generateAgentConfigMap({
+        teamSlug,
+        agentSlug: agent.slug,
+        namespace,
+        agentJson: getContent(`agents/${agent.slug}/agent.json`),
+        identityMd: getContent(`agents/${agent.slug}/IDENTITY.md`),
+        soulMd: getContent(`agents/${agent.slug}/SOUL.md`),
+        skillsMd: getContent(`agents/${agent.slug}/SKILLS.md`),
+        openclawJson: getContent(`agents/${agent.slug}/openclaw.json`),
+      })),
+    ]
+
     let result: { ok: boolean; gatewayUrl?: string; reason?: string }
     try {
       result = await deployTeam(
         teamSlug,
         agents.map(a => ({ slug: a.slug, image: a.image ?? teamImage ?? undefined })),
         { ...envConfig, envId },
-        team.domain || undefined
+        team.domain || undefined,
+        configMapManifests
       )
     } catch (e) {
       const msg = (e instanceof Error ? e.message : String(e)).trim()
@@ -70,9 +96,7 @@ export function registerDeployHandlers() {
       if (result.gatewayUrl) {
         db.prepare('UPDATE teams SET gateway_url = ?, deployed_env_id = ? WHERE slug = ?').run(result.gatewayUrl, envId, teamSlug)
       }
-
-      const providersMap = await buildProvidersMap(db)
-      const currentHash = hashSpecs(generateTeamSpecs(team, agents, providersMap))
+      const currentHash = hashSpecs(generateTeamSpecs(team, agents, providers))
       db.prepare('UPDATE teams SET deployed_spec_hash = ? WHERE slug = ?').run(currentHash, teamSlug)
     }
 
