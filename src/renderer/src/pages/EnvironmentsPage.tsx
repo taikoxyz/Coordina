@@ -86,8 +86,12 @@ function AddEnvironmentWizard({ existingNames, onClose }: { existingNames: strin
       clusterZone: state.clusterZone,
       authMethod: state.authMethod,
     }
-    await createEnv.mutateAsync({ type: state.type, name, config })
-    onClose()
+    try {
+      await createEnv.mutateAsync({ type: state.type, name, config })
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save environment')
+    }
   }
 
   return (

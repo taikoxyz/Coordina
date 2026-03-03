@@ -50,7 +50,7 @@ export function CreateTeamWizard({ onClose, asPanel }: CreateTeamWizardProps) {
       if (!result.ok) { setErrors(result.errors ?? ['Failed to create team']); return }
 
       onClose()
-      setPage('teams', result.slug)
+      setPage('teams', result.slug ?? slug)
     } catch (e) {
       setErrors([(e as Error).message ?? 'Failed to create team'])
     }
@@ -160,12 +160,14 @@ export function CreateTeamWizard({ onClose, asPanel }: CreateTeamWizardProps) {
       )}
 
       <div className="flex justify-between items-center mt-6">
-        <button
-          onClick={onClose}
-          className="px-4 py-2 rounded text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 transition-colors"
-        >
-          Cancel
-        </button>
+        {!asPanel && (
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 transition-colors"
+          >
+            Cancel
+          </button>
+        )}
         <div className="flex gap-2">
           {step === 'repo' && (
             <button
