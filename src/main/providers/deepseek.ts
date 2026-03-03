@@ -3,6 +3,7 @@ import { registerProvider, type ModelProvider } from './base'
 const deepseek: ModelProvider = {
   id: 'deepseek',
   displayName: 'DeepSeek',
+  defaultModel: 'deepseek-chat',
   configSchema: {
     type: 'object',
     required: ['apiKey', 'model'],

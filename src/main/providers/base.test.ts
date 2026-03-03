@@ -8,6 +8,7 @@ describe('provider registry', () => {
     registerProvider({
       id: 'test',
       displayName: 'Test',
+      defaultModel: 'test-model',
       configSchema: {},
       supportedModels: [],
       validate: () => ({ valid: true }),

@@ -3,6 +3,7 @@ import { registerProvider, type ModelProvider } from './base'
 const ollama: ModelProvider = {
   id: 'ollama',
   displayName: 'Ollama',
+  defaultModel: 'llama3.2',
   configSchema: {
     type: 'object',
     required: ['baseUrl', 'model'],

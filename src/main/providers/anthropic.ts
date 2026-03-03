@@ -3,6 +3,7 @@ import { registerProvider, type ModelProvider } from './base'
 const anthropic: ModelProvider = {
   id: 'anthropic',
   displayName: 'Anthropic',
+  defaultModel: 'claude-sonnet-4-6',
   configSchema: {
     type: 'object',
     required: ['apiKey', 'model'],

@@ -14,6 +14,7 @@ export interface OpenClawModelConfig {
 export interface ModelProvider {
   id: string
   displayName: string
+  defaultModel: string
   configSchema: object
   supportedModels: { id: string; displayName: string }[]
   validate(config: unknown): ValidationResult

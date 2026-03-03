@@ -20,6 +20,7 @@ import {
   generateAgentConfigMap,
 } from '../environments/gke/manifests'
 import { toZone } from '../environments/gke/gcloud'
+import { getProvider } from '../providers/base'
 import { getSecret } from '../keychain'
 import type Database from 'better-sqlite3'
 import type { GkeDeployConfig } from '../environments/gke/deploy'
@@ -104,10 +105,12 @@ export function generateTeamSpecs(
     if (agent.providerId) {
       const provider = providers.get(agent.providerId)
       if (provider) {
+        const registeredProvider = (() => { try { return getProvider(provider.type) } catch { return undefined } })()
+        const fallbackModel = registeredProvider?.defaultModel ?? 'claude-sonnet-4-6'
         modelConfig = {
           ...provider.config,
           provider: provider.type,
-          model: agent.model || (provider.config.model as string | undefined) || 'claude-sonnet-4-6',
+          model: agent.model || (provider.config.model as string | undefined) || fallbackModel,
         }
       }
     }
