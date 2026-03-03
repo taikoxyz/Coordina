@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const mockExecFileSync = vi.hoisted(() => vi.fn().mockReturnValue('Running'))
 
 vi.mock('child_process', () => ({
+  default: { execFileSync: mockExecFileSync },
   execFileSync: mockExecFileSync,
 }))
 
@@ -52,7 +53,10 @@ describe('getTeamStatus', () => {
   })
 
   it('returns unknown status when pod not found', async () => {
-    mockExecFileSync.mockImplementation(() => { throw new Error('not found') })
+    mockExecFileSync.mockImplementation((cmd: string) => {
+      if (cmd === 'kubectl') throw new Error('not found')
+      return ''
+    })
     const statuses = await getTeamStatus('eng-alpha', ['alice'], config)
     expect(statuses[0].status).toBe('unknown')
   })
