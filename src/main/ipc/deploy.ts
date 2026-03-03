@@ -1,11 +1,11 @@
-import { ipcMain } from 'electron'
+import { ipcMain, app } from 'electron'
 import { v4 as uuidv4 } from 'uuid'
-import { app } from 'electron'
 import path from 'path'
 import { openDb } from '../db'
 import { deployTeam, undeployTeam, getTeamStatus } from '../environments/gke/deploy'
 import type { GkeDeployConfig } from '../environments/gke/deploy'
 import { generateTeamSpecs, hashSpecs, mapAgentRow, mapTeamRow, buildProvidersMap } from '../specs'
+import type { SpecFile } from '../specs'
 import { generateTeamConfigMap, generateAgentConfigMap } from '../environments/gke/manifests'
 
 function getDb() {
@@ -55,28 +55,34 @@ export function registerDeployHandlers() {
     const envConfig = JSON.parse(env.config) as GkeDeployConfig
     const namespace = `team-${teamSlug}`
 
-    const providers = await buildProvidersMap(db)
-    const teamSpecs = generateTeamSpecs(team, agents, providers)
-    const getContent = (p: string) => teamSpecs.find(f => f.path === p)?.content ?? ''
-
-    const configMapManifests = [
-      generateTeamConfigMap({
-        teamSlug,
-        namespace,
-        teamJson: getContent('team.json'),
-        agentsMd: getContent('AGENTS.md'),
-      }),
-      ...agents.map(agent => generateAgentConfigMap({
-        teamSlug,
-        agentSlug: agent.slug,
-        namespace,
-        agentJson: getContent(`agents/${agent.slug}/agent.json`),
-        identityMd: getContent(`agents/${agent.slug}/IDENTITY.md`),
-        soulMd: getContent(`agents/${agent.slug}/SOUL.md`),
-        skillsMd: getContent(`agents/${agent.slug}/SKILLS.md`),
-        openclawJson: getContent(`agents/${agent.slug}/openclaw.json`),
-      })),
-    ]
+    let teamSpecs: SpecFile[]
+    let configMapManifests: string[]
+    try {
+      const providers = await buildProvidersMap(db)
+      teamSpecs = generateTeamSpecs(team, agents, providers)
+      const getContent = (p: string) => teamSpecs.find(f => f.path === p)?.content ?? ''
+      configMapManifests = [
+        generateTeamConfigMap({
+          teamSlug,
+          namespace,
+          teamJson: getContent('team.json'),
+          agentsMd: getContent('AGENTS.md'),
+        }),
+        ...agents.map(agent => generateAgentConfigMap({
+          teamSlug,
+          agentSlug: agent.slug,
+          namespace,
+          agentJson: getContent(`agents/${agent.slug}/agent.json`),
+          identityMd: getContent(`agents/${agent.slug}/IDENTITY.md`),
+          soulMd: getContent(`agents/${agent.slug}/SOUL.md`),
+          skillsMd: getContent(`agents/${agent.slug}/SKILLS.md`),
+          openclawJson: getContent(`agents/${agent.slug}/openclaw.json`),
+        })),
+      ]
+    } catch (e) {
+      const msg = (e instanceof Error ? e.message : String(e)).trim()
+      return { ok: false, reason: msg || 'Failed to build provider configuration' }
+    }
 
     let result: { ok: boolean; gatewayUrl?: string; reason?: string }
     try {
