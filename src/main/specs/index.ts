@@ -9,6 +9,7 @@ import {
   generateSkillsMd,
   generateOpenClawJson,
 } from '../github/spec'
+import { DEFAULT_BOOTSTRAP_INSTRUCTIONS } from './bootstrap'
 import {
   generateNamespace,
   generateAgentPv,
@@ -54,6 +55,7 @@ export function mapTeamRow(r: Record<string, unknown>): TeamRecord {
     domain: r.domain as string | undefined,
     image: r.image as string | undefined,
     deployedSpecHash: r.deployed_spec_hash as string | undefined,
+    bootstrapInstructions: r.bootstrap_instructions as string | undefined,
   }
 }
 
@@ -105,7 +107,8 @@ export function generateTeamSpecs(
     if (agent.providerId) {
       const provider = providers.get(agent.providerId)
       if (provider) {
-        const registeredProvider = (() => { try { return getProvider(provider.type) } catch { return undefined } })()
+        let registeredProvider
+        try { registeredProvider = getProvider(provider.type) } catch { /* unregistered provider type */ }
         const fallbackModel = registeredProvider?.defaultModel ?? 'claude-sonnet-4-6'
         modelConfig = {
           ...provider.config,
@@ -176,6 +179,8 @@ export function generateDeploySpecs(
   const teamSpecs = generateTeamSpecs(team, agents, providers)
   const getContent = (p: string) => teamSpecs.find(f => f.path === p)?.content ?? ''
 
+  const bootstrapInstructions = team.bootstrapInstructions || DEFAULT_BOOTSTRAP_INSTRUCTIONS
+
   files.push({
     path: 'configmap-shared.yaml',
     content: generateTeamConfigMap({
@@ -183,6 +188,7 @@ export function generateDeploySpecs(
       namespace,
       teamJson: getContent('team.json'),
       agentsMd: getContent('AGENTS.md'),
+      bootstrapInstructionsMd: bootstrapInstructions,
     }),
   })
 
