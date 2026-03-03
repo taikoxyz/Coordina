@@ -1,19 +1,12 @@
 import { ipcMain } from 'electron'
 import { v4 as uuidv4 } from 'uuid'
-import { openDb } from '../db'
+import { getDb } from '../db'
 import { setSecret, getSecret, deleteSecret } from '../keychain'
 import { getProvider } from '../providers/base'
 import '../providers/index'
-import { app } from 'electron'
-import path from 'path'
 import type { ProviderRecord } from '../../shared/types'
 
 export type { ProviderRecord }
-
-function getDb() {
-  const dbPath = path.join(app.getPath('userData'), 'coordina.db')
-  return openDb(dbPath)
-}
 
 export function registerProviderHandlers() {
   ipcMain.handle('providers:list', async () => {

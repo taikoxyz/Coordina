@@ -1,11 +1,5 @@
 import { ipcMain } from 'electron'
-import { app } from 'electron'
-import path from 'path'
-import { openDb } from '../db'
-
-function getDb() {
-  return openDb(path.join(app.getPath('userData'), 'coordina.db'))
-}
+import { getDb } from '../db'
 
 const LOCAL_PORT = 19876
 

@@ -1,15 +1,10 @@
-import { ipcMain, app } from 'electron'
-import path from 'path'
-import { openDb } from '../db'
+import { ipcMain } from 'electron'
+import { getDb } from '../db'
 import { commitSpecFiles } from '../github/repo'
 import { generateTeamSpecs, mapAgentRow, mapTeamRow, buildProvidersMap } from '../specs'
 import type { AgentRecord } from '../../shared/types'
 
 export type { AgentRecord }
-
-function getDb() {
-  return openDb(path.join(app.getPath('userData'), 'coordina.db'))
-}
 
 async function autoCommitTeamSpec(teamSlug: string) {
   const db = getDb()

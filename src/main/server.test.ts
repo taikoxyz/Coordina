@@ -9,10 +9,14 @@ vi.mock('./environments/gke/auth', () => ({
   getGkeAccessToken: vi.fn().mockResolvedValue(null),
 }))
 
+const mockDb = {
+  prepare: vi.fn(() => ({ get: vi.fn().mockReturnValue(null), all: vi.fn().mockReturnValue([]), run: vi.fn() })),
+}
+
 vi.mock('./db', () => ({
-  openDb: vi.fn(() => ({
-    prepare: vi.fn(() => ({ get: vi.fn().mockReturnValue(null), all: vi.fn().mockReturnValue([]), run: vi.fn() })),
-  })),
+  openDb: vi.fn(() => mockDb),
+  getDb: vi.fn(() => mockDb),
+  getDataDir: vi.fn(() => ':memory:'),
 }))
 
 import { createServer } from './server'

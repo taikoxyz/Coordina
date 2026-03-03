@@ -1,6 +1,7 @@
-import { ipcMain, app } from 'electron'
-import path from 'path'
+import { ipcMain } from 'electron'
+import { join } from 'path'
 import fs from 'fs'
+import { getDataDir } from '../db'
 
 const MODELS_URL = 'https://models.dev/api.json'
 const CACHE_TTL_MS = 60 * 60 * 1000
@@ -24,7 +25,7 @@ interface CachedModels {
 }
 
 async function fetchModelsWithCache(): Promise<Record<string, unknown>> {
-  const cachePath = path.join(app.getPath('userData'), 'models-cache.json')
+  const cachePath = join(getDataDir(), 'models-cache.json')
   try {
     const raw = fs.readFileSync(cachePath, 'utf-8')
     const cached: CachedModels = JSON.parse(raw)

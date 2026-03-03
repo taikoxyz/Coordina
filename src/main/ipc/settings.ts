@@ -1,9 +1,7 @@
 import { ipcMain } from 'electron'
 import { setSecret, getSecret } from '../keychain'
 import { isGhInstalled, importGhToken, getStoredGitHubToken, deleteGitHubToken } from '../github/auth'
-import path from 'path'
-import { app } from 'electron'
-import { openDb } from '../db'
+import { getDb } from '../db'
 
 export function registerSettingsHandlers() {
   ipcMain.handle('settings:setAnthropicKey', async (_event, key: string) => {
@@ -49,7 +47,7 @@ export function registerSettingsHandlers() {
     const anthropicKey = await getSecret('app', 'anthropic-key')
     if (anthropicKey) return true
 
-    const db = openDb(path.join(app.getPath('userData'), 'coordina.db'))
+    const db = getDb()
     const providers = db.prepare('SELECT id, type FROM providers').all() as { id: string; type: string }[]
     for (const p of providers) {
       if (p.type === 'ollama') return true

@@ -1,4 +1,18 @@
 import Database from 'better-sqlite3'
+import { join } from 'path'
+import { mkdirSync } from 'fs'
+import { homedir } from 'os'
+
+const DATA_DIR = join(homedir(), '.coordina')
+
+export function getDataDir(): string {
+  mkdirSync(DATA_DIR, { recursive: true })
+  return DATA_DIR
+}
+
+export function getDb(): Database.Database {
+  return openDb(join(getDataDir(), 'coordina.db'))
+}
 
 export function openDb(path: string): Database.Database {
   const db = new Database(path)

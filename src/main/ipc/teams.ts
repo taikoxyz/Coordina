@@ -1,16 +1,10 @@
 import { ipcMain } from 'electron'
-import { app } from 'electron'
-import path from 'path'
-import { openDb } from '../db'
+import { getDb } from '../db'
 import { createRepo, isSpecDirty, getAuthenticatedUser } from '../github/repo'
 import { generateAgentsMd, generateIdentityMd, generateSoulMd, generateSkillsMd } from '../github/spec'
 import type { TeamRecord } from '../../shared/types'
 
 export type { TeamRecord }
-
-function getDb() {
-  return openDb(path.join(app.getPath('userData'), 'coordina.db'))
-}
 
 export function registerTeamHandlers() {
   ipcMain.handle('teams:list', () => {

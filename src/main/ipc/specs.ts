@@ -1,16 +1,8 @@
-// IPC handlers exposing spec generation and dirty detection to the renderer
-// FEATURE: Spec generation layer — getTeamSpecs, getDeploySpecs, isDeployDirty
-
-import { ipcMain, app } from 'electron'
-import path from 'path'
-import { openDb } from '../db'
+import { ipcMain } from 'electron'
+import { getDb } from '../db'
 import { generateTeamSpecs, generateDeploySpecs, hashSpecs, mapAgentRow, mapTeamRow, buildProvidersMap } from '../specs'
 import type { SpecFile } from '../specs'
 import type { GkeDeployConfig } from '../environments/gke/deploy'
-
-function getDb() {
-  return openDb(path.join(app.getPath('userData'), 'coordina.db'))
-}
 
 export function registerSpecsHandlers() {
   ipcMain.handle('specs:getTeamSpecs', async (_e, teamSlug: string): Promise<SpecFile[]> => {

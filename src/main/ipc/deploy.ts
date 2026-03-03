@@ -1,17 +1,12 @@
-import { ipcMain, app } from 'electron'
+import { ipcMain } from 'electron'
 import { v4 as uuidv4 } from 'uuid'
-import path from 'path'
-import { openDb } from '../db'
+import { getDb } from '../db'
 import { deployTeam, undeployTeam, getTeamStatus } from '../environments/gke/deploy'
 import type { GkeDeployConfig } from '../environments/gke/deploy'
 import { generateTeamSpecs, hashSpecs, mapAgentRow, mapTeamRow, buildProvidersMap } from '../specs'
 import { DEFAULT_BOOTSTRAP_INSTRUCTIONS } from '../specs/bootstrap'
 import type { SpecFile } from '../specs'
 import { generateTeamConfigMap, generateAgentConfigMap } from '../environments/gke/manifests'
-
-function getDb() {
-  return openDb(path.join(app.getPath('userData'), 'coordina.db'))
-}
 
 export function registerDeployHandlers() {
   ipcMain.handle('environments:list', () => {

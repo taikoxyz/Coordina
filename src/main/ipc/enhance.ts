@@ -1,13 +1,8 @@
-import { ipcMain, app } from 'electron'
-import path from 'path'
+import { ipcMain } from 'electron'
 import { getSecret } from '../keychain'
-import { openDb } from '../db'
+import { getDb } from '../db'
 import { createModel } from '../ai/provider'
 import { enhanceSkills, enhanceSoul } from '../ai/enhance'
-
-function getDb() {
-  return openDb(path.join(app.getPath('userData'), 'coordina.db'))
-}
 
 async function getBestModel() {
   const anthropicKey = await getSecret('app', 'anthropic-key')
