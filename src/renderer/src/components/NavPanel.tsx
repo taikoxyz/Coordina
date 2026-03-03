@@ -75,22 +75,28 @@ export function NavPanel() {
 
               return (
                 <div key={team.slug}>
-                  <button
-                    onClick={() => handleTeamClick(team.slug)}
-                    className={`w-full flex items-center justify-between px-3 py-1.5 text-sm rounded-md text-left transition-colors ${
-                      isActive
-                        ? 'bg-blue-900/40 text-blue-300 font-medium'
-                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                  <div
+                    className={`flex items-center rounded-md ${
+                      isActive ? 'bg-blue-900/40' : 'hover:bg-gray-800'
                     }`}
                   >
-                    <span className="truncate">{team.name}</span>
+                    <button
+                      onClick={() => handleTeamClick(team.slug)}
+                      className={`flex-1 min-w-0 flex items-center px-3 py-1.5 text-sm text-left transition-colors ${
+                        isActive
+                          ? 'text-blue-300 font-medium'
+                          : 'text-gray-300 hover:text-white'
+                      }`}
+                    >
+                      <span className="truncate">{team.name}</span>
+                    </button>
                     <button
                       onClick={(e) => toggleExpand(team.slug, e)}
-                      className="ml-1 shrink-0 text-gray-500 hover:text-gray-300 transition-colors"
+                      className="shrink-0 px-2 py-1.5 text-gray-500 hover:text-gray-300 transition-colors"
                     >
                       {isExpanded ? '▼' : '▶'}
                     </button>
-                  </button>
+                  </div>
 
                   {isExpanded && (
                     <TeamAgentRows teamSlug={team.slug} activeTeamSlug={activeSlug} />
