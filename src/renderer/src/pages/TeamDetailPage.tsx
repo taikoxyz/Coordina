@@ -44,7 +44,7 @@ export function TeamDetailPage({ teamSlug }: TeamDetailPageProps) {
 
   useEffect(() => {
     if (environments.length > 0 && !selectedEnvId) setSelectedEnvId(environments[0].id)
-  }, [environments])
+  }, [environments, selectedEnvId])
 
   async function handleSaveAgent(data: Omit<AgentRecord, 'teamSlug'>) {
     if (panel.type === 'agent-form' && panel.agent) {
@@ -74,23 +74,23 @@ export function TeamDetailPage({ teamSlug }: TeamDetailPageProps) {
   const sortedAgents = agents ? [...agents].sort((a, b) => (b.isLead ? 1 : 0) - (a.isLead ? 1 : 0)) : []
   const isDeployed = !!team?.gatewayUrl
   const { data: agentStatuses } = useTeamStatus(teamSlug, team?.deployedEnvId)
-  // Use deployed env if available, otherwise fall back to the selected env
   const deployedEnv = useEnvironment(team?.deployedEnvId)
   const selectedEnv = useEnvironment(selectedEnvId || environments[0]?.id)
   const activeEnv = deployedEnv ?? selectedEnv
-  const gkeCfg = activeEnv?.type === 'gke'
+  const rawGkeCfg = activeEnv?.type === 'gke'
     ? activeEnv.config as { projectId?: string; clusterName?: string; clusterZone?: string }
     : null
-  const gkeBase = gkeCfg?.projectId && gkeCfg?.clusterName && gkeCfg?.clusterZone
-    ? `https://console.cloud.google.com/kubernetes`
+  const gkeConfig = (rawGkeCfg?.projectId && rawGkeCfg?.clusterName && rawGkeCfg?.clusterZone)
+    ? { projectId: rawGkeCfg.projectId, clusterName: rawGkeCfg.clusterName, clusterZone: rawGkeCfg.clusterZone }
     : null
+  const gkeBase = gkeConfig ? `https://console.cloud.google.com/kubernetes` : null
   const k8sNamespace = `team-${teamSlug}`
-  const teamNamespaceUrl = gkeBase && gkeCfg
-    ? `${gkeBase}/workload_/gke/${gkeCfg.clusterZone}/${gkeCfg.clusterName}/${k8sNamespace}?project=${gkeCfg.projectId}`
+  const teamNamespaceUrl = gkeConfig
+    ? `${gkeBase}/workload_/gke/${gkeConfig.clusterZone}/${gkeConfig.clusterName}/${k8sNamespace}?project=${gkeConfig.projectId}`
     : null
   function agentPodUrl(agentSlug: string) {
-    if (!gkeBase || !gkeCfg) return undefined
-    return `${gkeBase}/pod/${gkeCfg.clusterZone}/${gkeCfg.clusterName}/${k8sNamespace}/agent-${agentSlug}-0?project=${gkeCfg.projectId}`
+    if (!gkeConfig) return undefined
+    return `${gkeBase}/pod/${gkeConfig.clusterZone}/${gkeConfig.clusterName}/${k8sNamespace}/agent-${agentSlug}-0?project=${gkeConfig.projectId}`
   }
   function agentIngressUrl(agentSlug: string) {
     if (!team?.gatewayUrl) return undefined

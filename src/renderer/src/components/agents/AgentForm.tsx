@@ -240,7 +240,7 @@ export function AgentForm({ agent, teamSlug, teamDomain, teamDefaultImage, hasAi
 
   if (asPanel) {
     return (
-      <div className="flex flex-col h-full overflow-y-auto">
+      <div className="flex flex-col h-full overflow-hidden">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700 flex-shrink-0">
           <span className="font-medium text-white text-sm">
             {agent ? 'Edit Agent' : forceLead ? 'Add Lead Agent' : 'Add Agent'}
