@@ -5,6 +5,10 @@ export interface TeamRecord {
   name: string
   githubRepo?: string
   leadAgentSlug?: string
+  gatewayUrl?: string
+  deployedEnvId?: string
+  domain?: string
+  image?: string
   config: Record<string, unknown>
 }
 
@@ -20,6 +24,7 @@ export interface AgentRecord {
   soul: string
   providerId?: string
   model?: string
+  image?: string
   isLead: boolean
 }
 
@@ -41,7 +46,7 @@ export function useTeam(slug: string) {
 export function useCreateTeam() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { slug: string; name: string; createRepo?: boolean }) =>
+    mutationFn: (data: { slug: string; name: string; domain?: string; image?: string; createRepo?: boolean }) =>
       window.api.invoke('teams:create', data) as Promise<{ ok: boolean; slug?: string; githubRepo?: string; errors?: string[] }>,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['teams'] }),
   })
@@ -69,7 +74,11 @@ export function useCreateAgent() {
   return useMutation({
     mutationFn: (data: Partial<AgentRecord> & { teamSlug: string; slug: string; name: string; role: string }) =>
       window.api.invoke('agents:create', data) as Promise<{ ok: boolean }>,
-    onSuccess: (_data, variables) => qc.invalidateQueries({ queryKey: ['agents', variables.teamSlug] }),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['agents', variables.teamSlug] })
+      qc.invalidateQueries({ queryKey: ['specs', 'team', variables.teamSlug] })
+      qc.invalidateQueries({ queryKey: ['specs', 'dirty', variables.teamSlug] })
+    },
   })
 }
 
@@ -78,7 +87,11 @@ export function useUpdateAgent() {
   return useMutation({
     mutationFn: ({ slug, teamSlug, data }: { slug: string; teamSlug: string; data: Partial<AgentRecord> }) =>
       window.api.invoke('agents:update', slug, teamSlug, data) as Promise<{ ok: boolean }>,
-    onSuccess: (_data, variables) => qc.invalidateQueries({ queryKey: ['agents', variables.teamSlug] }),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['agents', variables.teamSlug] })
+      qc.invalidateQueries({ queryKey: ['specs', 'team', variables.teamSlug] })
+      qc.invalidateQueries({ queryKey: ['specs', 'dirty', variables.teamSlug] })
+    },
   })
 }
 
@@ -87,6 +100,10 @@ export function useDeleteAgent() {
   return useMutation({
     mutationFn: ({ slug, teamSlug }: { slug: string; teamSlug: string }) =>
       window.api.invoke('agents:delete', slug, teamSlug) as Promise<{ ok: boolean }>,
-    onSuccess: (_data, variables) => qc.invalidateQueries({ queryKey: ['agents', variables.teamSlug] }),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['agents', variables.teamSlug] })
+      qc.invalidateQueries({ queryKey: ['specs', 'team', variables.teamSlug] })
+      qc.invalidateQueries({ queryKey: ['specs', 'dirty', variables.teamSlug] })
+    },
   })
 }
