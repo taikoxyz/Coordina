@@ -1,5 +1,6 @@
 import { Octokit } from '@octokit/rest'
 import { getStoredGitHubToken } from './auth'
+import type { SpecFile } from '../../shared/types'
 
 async function getOctokit(): Promise<Octokit> {
   const token = await getStoredGitHubToken()
@@ -7,7 +8,7 @@ async function getOctokit(): Promise<Octokit> {
   return new Octokit({ auth: token })
 }
 
-export async function createRepo(owner: string, name: string): Promise<string> {
+export async function createRepo(_owner: string, name: string): Promise<string> {
   const octokit = await getOctokit()
   const { data } = await octokit.repos.createForAuthenticatedUser({
     name,
@@ -16,11 +17,6 @@ export async function createRepo(owner: string, name: string): Promise<string> {
     description: `Coordina team repo: ${name}`,
   })
   return data.full_name
-}
-
-export interface SpecFile {
-  path: string
-  content: string
 }
 
 export async function commitSpecFiles(fullRepoName: string, files: SpecFile[], message: string): Promise<void> {

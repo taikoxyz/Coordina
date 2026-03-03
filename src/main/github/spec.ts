@@ -59,27 +59,6 @@ export function generateOpenClawJson(config: OpenClawConfig): string {
   return JSON.stringify(config, null, 2)
 }
 
-export interface AgentSpec {
-  slug: string
-  name: string
-  role: string
-  email?: string
-  slackHandle?: string
-  githubId?: string
-  skills: string[]
-  soul: SoulInput
-  modelConfig: OpenClawConfig
-}
-
-export function generateAgentFiles(agent: AgentSpec): Record<string, string> {
-  return {
-    'IDENTITY.md': generateIdentityMd({ name: agent.name, slug: agent.slug, role: agent.role, email: agent.email, slackHandle: agent.slackHandle, githubId: agent.githubId }),
-    'SOUL.md': generateSoulMd(agent.soul),
-    'SKILLS.md': generateSkillsMd(agent.skills),
-    'openclaw.json': generateOpenClawJson(agent.modelConfig),
-  }
-}
-
 export function generateSkillsMd(skills: string[]): string {
   if (skills.length === 0) return '# Skills\n\n_No skills defined yet._\n'
   const list = skills.map(s => `- ${s}`).join('\n')
