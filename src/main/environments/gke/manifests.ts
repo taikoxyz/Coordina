@@ -4,7 +4,7 @@ export function generateNamespace(name: string): string {
   return yaml.dump({ apiVersion: 'v1', kind: 'Namespace', metadata: { name } })
 }
 
-interface ConfigMapInput {
+export interface ConfigMapInput {
   name: string
   namespace: string
   labels?: Record<string, string>
@@ -13,7 +13,8 @@ interface ConfigMapInput {
 
 function indentBlock(content: string, spaces: number): string {
   const indent = ' '.repeat(spaces)
-  return content.split('\n').map(line => (line ? indent + line : '')).join('\n')
+  const normalized = content.replace(/\n$/, '')
+  return normalized.split('\n').map(line => (line ? indent + line : '')).join('\n')
 }
 
 export function generateConfigMap(input: ConfigMapInput): string {
@@ -75,7 +76,6 @@ export interface AgentManifestInput {
   teamSlug: string
   agentSlug: string
   image?: string
-  storageGi?: number
   namespace?: string
   projectId?: string
   zone?: string
