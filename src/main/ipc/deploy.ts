@@ -96,7 +96,7 @@ export function registerDeployHandlers() {
       if (result.gatewayUrl) {
         db.prepare('UPDATE teams SET gateway_url = ?, deployed_env_id = ? WHERE slug = ?').run(result.gatewayUrl, envId, teamSlug)
       }
-      const currentHash = hashSpecs(generateTeamSpecs(team, agents, providers))
+      const currentHash = hashSpecs(teamSpecs)
       db.prepare('UPDATE teams SET deployed_spec_hash = ? WHERE slug = ?').run(currentHash, teamSlug)
     }
 
