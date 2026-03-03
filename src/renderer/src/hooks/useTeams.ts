@@ -1,32 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import type { TeamRecord, AgentRecord } from '../../../shared/types'
 
-export interface TeamRecord {
-  slug: string
-  name: string
-  githubRepo?: string
-  leadAgentSlug?: string
-  gatewayUrl?: string
-  deployedEnvId?: string
-  domain?: string
-  image?: string
-  config: Record<string, unknown>
-}
-
-export interface AgentRecord {
-  slug: string
-  teamSlug: string
-  name: string
-  role: string
-  email?: string
-  slackHandle?: string
-  githubId?: string
-  skills: string[]
-  soul: string
-  providerId?: string
-  model?: string
-  image?: string
-  isLead: boolean
-}
+export type { TeamRecord, AgentRecord }
 
 export function useTeams() {
   return useQuery<TeamRecord[]>({

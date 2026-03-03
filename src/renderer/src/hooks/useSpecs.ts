@@ -1,9 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
+import type { SpecFile } from '../../../shared/types'
 
-export interface SpecFile {
-  path: string
-  content: string
-}
+export type { SpecFile }
 
 export function useTeamSpecs(teamSlug: string) {
   return useQuery<SpecFile[]>({

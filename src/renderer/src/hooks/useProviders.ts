@@ -1,11 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import type { ProviderRecord } from '../../../shared/types'
 
-export interface ProviderRecord {
-  id: string
-  type: string
-  name: string
-  config: Record<string, unknown>
-}
+export type { ProviderRecord }
 
 export function useProviders() {
   return useQuery<ProviderRecord[]>({

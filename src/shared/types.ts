@@ -1,24 +1,30 @@
-// Shared types between main and renderer processes
-
-export interface AgentSpec {
+export interface TeamRecord {
   slug: string
+  name: string
+  githubRepo?: string
+  leadAgentSlug?: string
+  config: Record<string, unknown>
+  gatewayUrl?: string
+  deployedEnvId?: string
+  domain?: string
+  image?: string
+  deployedSpecHash?: string
+}
+
+export interface AgentRecord {
+  slug: string
+  teamSlug: string
   name: string
   role: string
   email?: string
   slackHandle?: string
   githubId?: string
   skills: string[]
-  soulUserInput: string
-  soulEnhanced?: string
-  modelProviderId: string
-}
-
-export interface TeamSpec {
-  slug: string
-  name: string
-  githubRepo?: string
-  leadAgentSlug: string
-  agents: AgentSpec[]
+  soul: string
+  providerId?: string
+  model?: string
+  image?: string
+  isLead: boolean
 }
 
 export interface ProviderRecord {
@@ -26,6 +32,7 @@ export interface ProviderRecord {
   type: string
   name: string
   config: Record<string, unknown>
+  maskedApiKey?: string
 }
 
 export interface EnvironmentRecord {
@@ -33,7 +40,23 @@ export interface EnvironmentRecord {
   type: string
   name: string
   config: Record<string, unknown>
-  used: boolean
+}
+
+export interface SpecFile {
+  path: string
+  content: string
+}
+
+export interface ModelInfo {
+  id: string
+  name: string
+  contextWindow?: number
+}
+
+export interface AgentStatus {
+  agentSlug: string
+  status: 'running' | 'pending' | 'crashed' | 'unknown'
+  message?: string
 }
 
 export interface DeployResult {

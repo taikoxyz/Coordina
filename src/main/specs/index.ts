@@ -23,11 +23,7 @@ import { toZone } from '../environments/gke/gcloud'
 import { getSecret } from '../keychain'
 import type Database from 'better-sqlite3'
 import type { GkeDeployConfig } from '../environments/gke/deploy'
-import type { TeamRecord } from '../ipc/teams'
-import type { AgentRecord } from '../ipc/agents'
-import type { ProviderRecord } from '../ipc/providers'
-
-export type { AgentRecord }
+import type { TeamRecord, AgentRecord, ProviderRecord, SpecFile } from '../../shared/types'
 
 export function mapAgentRow(r: Record<string, unknown>): AgentRecord {
   return {
@@ -77,10 +73,7 @@ export async function buildProvidersMap(db: Database.Database): Promise<Map<stri
   return map
 }
 
-export interface SpecFile {
-  path: string
-  content: string
-}
+export type { TeamRecord, AgentRecord, ProviderRecord, SpecFile }
 
 export function generateTeamSpecs(
   team: TeamRecord,

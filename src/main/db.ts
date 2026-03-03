@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3'
 
-export function openDb(path: string) {
+export function openDb(path: string): Database.Database {
   const db = new Database(path)
   db.exec(`
     CREATE TABLE IF NOT EXISTS app_settings (

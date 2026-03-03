@@ -3,6 +3,9 @@ import path from 'path'
 import { openDb } from '../db'
 import { commitSpecFiles } from '../github/repo'
 import { generateTeamSpecs, mapAgentRow, mapTeamRow, buildProvidersMap } from '../specs'
+import type { AgentRecord } from '../../shared/types'
+
+export type { AgentRecord }
 
 function getDb() {
   return openDb(path.join(app.getPath('userData'), 'coordina.db'))
@@ -20,22 +23,6 @@ async function autoCommitTeamSpec(teamSlug: string) {
   const files = generateTeamSpecs(team, agents, providers)
 
   await commitSpecFiles(teamRow.github_repo as string, files, `chore: update team spec for ${teamSlug}`)
-}
-
-export interface AgentRecord {
-  slug: string
-  teamSlug: string
-  name: string
-  role: string
-  email?: string
-  slackHandle?: string
-  githubId?: string
-  skills: string[]
-  soul: string
-  providerId?: string
-  model?: string
-  image?: string
-  isLead: boolean
 }
 
 export function registerAgentHandlers() {

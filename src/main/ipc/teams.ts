@@ -4,20 +4,12 @@ import path from 'path'
 import { openDb } from '../db'
 import { createRepo, isSpecDirty, getAuthenticatedUser } from '../github/repo'
 import { generateAgentsMd, generateIdentityMd, generateSoulMd, generateSkillsMd } from '../github/spec'
+import type { TeamRecord } from '../../shared/types'
+
+export type { TeamRecord }
 
 function getDb() {
   return openDb(path.join(app.getPath('userData'), 'coordina.db'))
-}
-
-export interface TeamRecord {
-  slug: string
-  name: string
-  githubRepo?: string
-  leadAgentSlug?: string
-  config: Record<string, unknown>
-  domain?: string
-  image?: string
-  deployedSpecHash?: string
 }
 
 export function registerTeamHandlers() {

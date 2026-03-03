@@ -1,18 +1,10 @@
+import type { DeployResult, AgentStatus } from '../../shared/types'
+
+export type { DeployResult, AgentStatus }
+
 export interface ValidationResult {
   valid: boolean
   errors?: string[]
-}
-
-export interface DeployResult {
-  ok: boolean
-  gatewayUrl?: string
-  reason?: string
-}
-
-export interface AgentStatus {
-  agentSlug: string
-  status: 'running' | 'pending' | 'crashed' | 'unknown'
-  message?: string
 }
 
 export interface DeploymentEnvironment {
