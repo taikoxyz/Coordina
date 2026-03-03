@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 
 interface BeforeAfterPreviewProps {
   before: string
@@ -62,7 +62,7 @@ export function EnhanceButton({ label = 'Enhance', onEnhance, currentValue, onAc
 
   return (
     <>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-col items-end gap-1">
         <button
           type="button"
           onClick={handleClick}
@@ -71,7 +71,7 @@ export function EnhanceButton({ label = 'Enhance', onEnhance, currentValue, onAc
         >
           {loading ? '✨ Enhancing...' : `✨ ${label}`}
         </button>
-        {error && <span className="text-xs text-red-400">{error}</span>}
+        {error && <span className="text-xs text-red-400 text-right max-w-xs">{error}</span>}
       </div>
       {preview && (
         <BeforeAfterPreview

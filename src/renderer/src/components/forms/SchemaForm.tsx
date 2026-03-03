@@ -1,5 +1,3 @@
-import React from 'react'
-
 interface SchemaProperty {
   type: string
   title?: string
@@ -77,6 +75,8 @@ export function SchemaForm({ schema, value, onChange }: SchemaFormProps) {
         }
 
         const inputType = prop.format === 'password' ? 'password' : 'text'
+        const currentVal = value[key]
+        const displayVal = currentVal !== undefined && currentVal !== null ? String(currentVal) : (prop.default !== undefined ? String(prop.default) : '')
 
         return (
           <div key={key}>
@@ -87,7 +87,7 @@ export function SchemaForm({ schema, value, onChange }: SchemaFormProps) {
             <input
               id={id}
               type={inputType}
-              value={String(value[key] ?? '')}
+              value={displayVal}
               onChange={e => handleChange(key, e.target.value)}
               placeholder={prop.description}
               className="w-full rounded bg-gray-700 border border-gray-600 text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-500"

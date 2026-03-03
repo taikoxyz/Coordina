@@ -32,7 +32,7 @@ export function FileBrowser({ teamSlug, agentSlug, agentName }: Props) {
     error?: string
   }>({
     queryKey: ['files:list', teamSlug, agentSlug],
-    queryFn: () => window.api.invoke('files:list', teamSlug, agentSlug),
+    queryFn: () => window.api.invoke('files:list', teamSlug, agentSlug) as Promise<{ files: FileEntry[]; offline: boolean; error?: string }>,
   })
 
   async function openFile(filePath: string) {
@@ -46,7 +46,7 @@ export function FileBrowser({ teamSlug, agentSlug, agentName }: Props) {
     setOpenTabs(prev => [...prev, { path: filePath, content: null, loading: true }])
     setActiveTab(filePath)
 
-    const result = await window.api.invoke('files:get', teamSlug, agentSlug, filePath)
+    const result = await window.api.invoke('files:get', teamSlug, agentSlug, filePath) as { content: string | null }
     setOpenTabs(prev => prev.map(t =>
       t.path === filePath ? { ...t, content: result.content, loading: false } : t
     ))

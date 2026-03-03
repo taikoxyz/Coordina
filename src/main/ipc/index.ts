@@ -8,6 +8,9 @@ import { registerTeamHandlers } from './teams'
 import { registerAgentHandlers } from './agents'
 import { registerDeployHandlers } from './deploy'
 import { registerFileHandlers } from './files'
+import { registerModelsHandlers } from './models'
+import { registerGcpHandlers } from './gcp'
+import { registerSpecsHandlers } from './specs'
 
 registerProviderHandlers()
 registerSettingsHandlers()
@@ -16,3 +19,6 @@ registerTeamHandlers()
 registerAgentHandlers()
 registerDeployHandlers()
 registerFileHandlers()
+registerModelsHandlers()
+registerGcpHandlers()
+registerSpecsHandlers()

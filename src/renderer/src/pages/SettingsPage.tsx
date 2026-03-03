@@ -1,34 +1,34 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
+
+type GitHubStatus = 'loading' | 'no-gh' | 'idle' | 'connecting' | 'connected' | 'error'
 
 export function SettingsPage() {
-  const [apiKey, setApiKey] = useState('')
-  const [hasKey, setHasKey] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [ghStatus, setGhStatus] = useState<GitHubStatus>('loading')
+  const [ghError, setGhError] = useState('')
 
   useEffect(() => {
-    window.api.invoke('settings:hasAnthropicKey').then(has => setHasKey(!!has))
+    (window.api.invoke('settings:githubAuth:check') as Promise<{ installed: boolean; connected: boolean }>).then(res => {
+      if (res.connected) setGhStatus('connected')
+      else if (!res.installed) setGhStatus('no-gh')
+      else setGhStatus('idle')
+    })
   }, [])
 
-  async function handleSave() {
-    if (!apiKey.startsWith('sk-ant-')) {
-      setMessage({ type: 'error', text: 'API key must start with sk-ant-' })
-      return
+  async function handleConnect() {
+    setGhError('')
+    setGhStatus('connecting')
+    const result = await window.api.invoke('settings:githubAuth:login') as { ok: boolean; error?: string }
+    if (result.ok) {
+      setGhStatus('connected')
+    } else {
+      setGhError(result.error ?? 'Authorization failed')
+      setGhStatus('error')
     }
-    setSaving(true)
-    setMessage(null)
-    try {
-      const result = await window.api.invoke('settings:setAnthropicKey', apiKey) as { ok: boolean; error?: string }
-      if (result.ok) {
-        setHasKey(true)
-        setApiKey('')
-        setMessage({ type: 'success', text: 'API key saved. AI enhancement features are now available.' })
-      } else {
-        setMessage({ type: 'error', text: result.error ?? 'Failed to save key' })
-      }
-    } finally {
-      setSaving(false)
-    }
+  }
+
+  async function handleDisconnect() {
+    await window.api.invoke('settings:githubAuth:disconnect')
+    setGhStatus('idle')
   }
 
   return (
@@ -37,41 +37,78 @@ export function SettingsPage() {
       <p className="text-sm text-gray-400 mb-8">Configure Coordina app settings.</p>
 
       <section className="bg-gray-800 border border-gray-700 rounded-xl p-6">
-        <h2 className="text-base font-medium text-gray-100 mb-1">Coordina AI</h2>
+        <h2 className="text-base font-medium text-gray-100 mb-1">GitHub</h2>
         <p className="text-sm text-gray-400 mb-4">
-          Used for AI-powered skill suggestions and soul description enhancement.
-          This key is stored securely in your macOS Keychain and never sent to any server.
+          Required to create and update team repositories.
         </p>
 
-        {hasKey && (
-          <div className="mb-4 flex items-center gap-2 text-sm text-green-400">
-            <span className="w-2 h-2 rounded-full bg-green-400 inline-block"></span>
-            API key configured
+        {ghStatus === 'loading' && (
+          <p className="text-sm text-gray-500">Checking...</p>
+        )}
+
+        {ghStatus === 'no-gh' && (
+          <div className="space-y-3">
+            <div className="p-3 bg-yellow-900/30 border border-yellow-700/50 rounded text-sm text-yellow-300">
+              <p className="font-medium mb-1">GitHub CLI required</p>
+              <p className="text-yellow-400 mb-2">Install it, then run <code className="font-mono bg-black/30 px-1 rounded">gh auth login</code> in your terminal:</p>
+              <code className="block font-mono text-xs bg-black/30 rounded px-3 py-2 text-gray-200 select-all">brew install gh && gh auth login</code>
+              <p className="text-xs text-yellow-500 mt-2">
+                Or download from{' '}
+                <button onClick={() => window.open('https://cli.github.com')} className="underline hover:text-yellow-300">
+                  cli.github.com
+                </button>
+              </p>
+            </div>
+            <button
+              onClick={() => (window.api.invoke('settings:githubAuth:check') as Promise<{ installed: boolean; connected: boolean }>).then(res => {
+                setGhStatus(res.connected ? 'connected' : res.installed ? 'idle' : 'no-gh')
+              })}
+              className="text-sm px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+            >
+              Check again
+            </button>
           </div>
         )}
 
-        <div className="flex gap-2">
-          <input
-            type="password"
-            value={apiKey}
-            onChange={e => setApiKey(e.target.value)}
-            placeholder="sk-ant-..."
-            className="flex-1 rounded bg-gray-700 border border-gray-600 text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-500"
-            onKeyDown={e => e.key === 'Enter' && handleSave()}
-          />
-          <button
-            onClick={handleSave}
-            disabled={saving || !apiKey}
-            className="px-4 py-2 rounded text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors"
-          >
-            {saving ? 'Saving...' : 'Save'}
-          </button>
-        </div>
+        {ghStatus === 'connected' && (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-green-400">
+              <span className="w-2 h-2 rounded-full bg-green-400 inline-block"></span>
+              GitHub connected
+            </div>
+            <button
+              onClick={handleDisconnect}
+              className="text-sm px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+            >
+              Disconnect
+            </button>
+          </div>
+        )}
 
-        {message && (
-          <p className={`mt-3 text-sm ${message.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
-            {message.text}
-          </p>
+        {(ghStatus === 'idle' || ghStatus === 'error') && (
+          <div className="space-y-3">
+            <div className="p-3 bg-gray-700/50 border border-gray-600 rounded text-sm text-gray-300">
+              <p className="mb-2">First, make sure you're logged in to GitHub CLI:</p>
+              <code className="block font-mono text-xs bg-black/30 rounded px-3 py-2 text-gray-200 select-all">gh auth login</code>
+              <p className="text-xs text-gray-500 mt-2">Run this in your terminal, then click Connect below.</p>
+            </div>
+            <button
+              onClick={handleConnect}
+              className="px-4 py-2 rounded text-sm bg-blue-600 hover:bg-blue-500 text-white transition-colors"
+            >
+              Connect GitHub account
+            </button>
+            {ghStatus === 'error' && (
+              <p className="text-sm text-red-400">{ghError}</p>
+            )}
+          </div>
+        )}
+
+        {ghStatus === 'connecting' && (
+          <div className="flex items-center gap-2 text-sm text-gray-400">
+            <span className="inline-block w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></span>
+            Reading GitHub credentials...
+          </div>
         )}
       </section>
     </div>

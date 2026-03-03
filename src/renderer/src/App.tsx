@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Sidebar } from './components/Sidebar'
+import { NavPanel } from './components/NavPanel'
 import { TeamsPage } from './pages/TeamsPage'
 import { TeamDetailPage } from './pages/TeamDetailPage'
 import { ProvidersPage } from './pages/ProvidersPage'
@@ -15,7 +15,7 @@ function AppContent() {
 
   return (
     <div className="flex h-screen bg-gray-900">
-      <Sidebar />
+      <NavPanel />
       <main className="flex-1 overflow-auto">
         {page === 'teams' && !teamSlug && <TeamsPage />}
         {page === 'teams' && teamSlug && <TeamDetailPage teamSlug={teamSlug} />}

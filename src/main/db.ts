@@ -1,6 +1,20 @@
 import Database from 'better-sqlite3'
+import { join } from 'path'
+import { mkdirSync } from 'fs'
+import { homedir } from 'os'
 
-export function openDb(path: string) {
+const DATA_DIR = join(homedir(), '.coordina')
+
+export function getDataDir(): string {
+  mkdirSync(DATA_DIR, { recursive: true })
+  return DATA_DIR
+}
+
+export function getDb(): Database.Database {
+  return openDb(join(getDataDir(), 'coordina.db'))
+}
+
+export function openDb(path: string): Database.Database {
   const db = new Database(path)
   db.exec(`
     CREATE TABLE IF NOT EXISTS app_settings (
@@ -45,5 +59,10 @@ export function openDb(path: string) {
       PRIMARY KEY (slug, team_slug)
     );
   `)
+  try { db.exec('ALTER TABLE teams ADD COLUMN domain TEXT') } catch { /* column already exists */ }
+  try { db.exec('ALTER TABLE teams ADD COLUMN image TEXT') } catch { /* column already exists */ }
+  try { db.exec('ALTER TABLE agents ADD COLUMN image TEXT') } catch { /* column already exists */ }
+  try { db.exec('ALTER TABLE teams ADD COLUMN deployed_spec_hash TEXT') } catch { /* column already exists */ }
+  try { db.exec('ALTER TABLE teams ADD COLUMN bootstrap_instructions TEXT') } catch { /* column already exists */ }
   return db
 }

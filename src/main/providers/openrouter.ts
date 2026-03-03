@@ -3,6 +3,7 @@ import { registerProvider, type ModelProvider } from './base'
 const openrouter: ModelProvider = {
   id: 'openrouter',
   displayName: 'OpenRouter',
+  defaultModel: 'openai/gpt-4o',
   configSchema: {
     type: 'object',
     required: ['apiKey', 'model'],

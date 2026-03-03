@@ -1,29 +1,27 @@
 import { ipcMain } from 'electron'
 import { v4 as uuidv4 } from 'uuid'
-import { openDb } from '../db'
+import { getDb } from '../db'
 import { setSecret, getSecret, deleteSecret } from '../keychain'
 import { getProvider } from '../providers/base'
 import '../providers/index'
-import { app } from 'electron'
-import path from 'path'
+import type { ProviderRecord } from '../../shared/types'
 
-function getDb() {
-  const dbPath = path.join(app.getPath('userData'), 'coordina.db')
-  return openDb(dbPath)
-}
-
-export interface ProviderRecord {
-  id: string
-  type: string
-  name: string
-  config: Record<string, unknown>
-}
+export type { ProviderRecord }
 
 export function registerProviderHandlers() {
-  ipcMain.handle('providers:list', () => {
+  ipcMain.handle('providers:list', async () => {
     const db = getDb()
     const rows = db.prepare('SELECT id, type, name, config FROM providers').all() as { id: string; type: string; name: string; config: string }[]
-    return rows.map(r => ({ id: r.id, type: r.type, name: r.name, config: JSON.parse(r.config) }))
+    return Promise.all(rows.map(async r => {
+      const apiKey = await getSecret(r.id, 'provider-api-key')
+      let maskedApiKey: string | undefined
+      if (apiKey) {
+        maskedApiKey = apiKey.length > 12
+          ? `${apiKey.slice(0, 6)}••••••${apiKey.slice(-4)}`
+          : '••••••••'
+      }
+      return { id: r.id, type: r.type, name: r.name, config: JSON.parse(r.config), maskedApiKey }
+    }))
   })
 
   ipcMain.handle('providers:create', async (_event, data: { type: string; name: string; config: Record<string, unknown> }) => {

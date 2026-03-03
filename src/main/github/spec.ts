@@ -33,51 +33,13 @@ export function generateIdentityMd(agent: AgentIdentity): string {
   return lines.join('\n') + '\n'
 }
 
-const SOUL_TEMPLATE = `## Core Values
-
-<!-- Your agent's core values go here -->
-
-## Working Style
-
-<!-- How your agent approaches work -->
-
-## Communication Style
-
-<!-- How your agent communicates -->
-
-## Decision Making
-
-<!-- How your agent makes decisions -->
-`
-
 export function generateSoulMd(soul: SoulInput): string {
   const description = soul.enhanced ?? soul.userInput
-  return `# Soul\n\n${description}\n\n${SOUL_TEMPLATE}`
+  return `# Soul\n\n${description}\n`
 }
 
 export function generateOpenClawJson(config: OpenClawConfig): string {
   return JSON.stringify(config, null, 2)
-}
-
-export interface AgentSpec {
-  slug: string
-  name: string
-  role: string
-  email?: string
-  slackHandle?: string
-  githubId?: string
-  skills: string[]
-  soul: SoulInput
-  modelConfig: OpenClawConfig
-}
-
-export function generateAgentFiles(agent: AgentSpec): Record<string, string> {
-  return {
-    'IDENTITY.md': generateIdentityMd({ name: agent.name, slug: agent.slug, role: agent.role, email: agent.email, slackHandle: agent.slackHandle, githubId: agent.githubId }),
-    'SOUL.md': generateSoulMd(agent.soul),
-    'SKILLS.md': generateSkillsMd(agent.skills),
-    'openclaw.json': generateOpenClawJson(agent.modelConfig),
-  }
 }
 
 export function generateSkillsMd(skills: string[]): string {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { SchemaForm } from '../forms/SchemaForm'
 import type { ProviderRecord } from '../../hooks/useProviders'
 
@@ -8,6 +8,12 @@ const PROVIDER_TYPES = [
   { id: 'deepseek', displayName: 'DeepSeek' },
   { id: 'ollama', displayName: 'Ollama (local)' },
   { id: 'openrouter', displayName: 'OpenRouter' },
+  { id: 'groq', displayName: 'Groq' },
+  { id: 'mistral', displayName: 'Mistral' },
+  { id: 'xai', displayName: 'xAI (Grok)' },
+  { id: 'google', displayName: 'Google Gemini' },
+  { id: 'together', displayName: 'Together AI' },
+  { id: 'openai-compatible', displayName: 'OpenAI-Compatible (custom)' },
 ]
 
 // Config schemas mirrored from main providers — used for rendering the form
@@ -17,7 +23,7 @@ const PROVIDER_SCHEMAS: Record<string, object> = {
     required: ['apiKey', 'model'],
     properties: {
       apiKey: { type: 'string', title: 'API Key', description: 'Your Anthropic API key (sk-ant-...)', format: 'password' },
-      model: { type: 'string', title: 'Model', enum: ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001'], default: 'claude-sonnet-4-6' },
+      model: { type: 'string', title: 'Model', description: 'e.g. claude-opus-4-6, claude-sonnet-4-6, claude-haiku-4-5-20251001', default: 'claude-sonnet-4-6' },
     },
   },
   openai: {
@@ -25,7 +31,7 @@ const PROVIDER_SCHEMAS: Record<string, object> = {
     required: ['apiKey', 'model'],
     properties: {
       apiKey: { type: 'string', title: 'API Key', description: 'Your OpenAI API key (sk-...)', format: 'password' },
-      model: { type: 'string', title: 'Model', enum: ['gpt-4o', 'gpt-4o-mini', 'o1', 'o1-mini', 'o3-mini'], default: 'gpt-4o' },
+      model: { type: 'string', title: 'Model', description: 'e.g. gpt-4o, gpt-4.1, o3, o4-mini', default: 'gpt-4o' },
     },
   },
   deepseek: {
@@ -33,7 +39,7 @@ const PROVIDER_SCHEMAS: Record<string, object> = {
     required: ['apiKey', 'model'],
     properties: {
       apiKey: { type: 'string', title: 'API Key', format: 'password' },
-      model: { type: 'string', title: 'Model', enum: ['deepseek-chat', 'deepseek-reasoner'], default: 'deepseek-chat' },
+      model: { type: 'string', title: 'Model', description: 'e.g. deepseek-chat, deepseek-reasoner', default: 'deepseek-chat' },
     },
   },
   ollama: {
@@ -52,6 +58,55 @@ const PROVIDER_SCHEMAS: Record<string, object> = {
       model: { type: 'string', title: 'Model', description: 'e.g. openai/gpt-4o', default: 'openai/gpt-4o' },
     },
   },
+  groq: {
+    type: 'object',
+    required: ['apiKey'],
+    properties: {
+      apiKey: { type: 'string', title: 'API Key', format: 'password' },
+      model: { type: 'string', title: 'Model (optional)', description: 'Leave blank to pick in agent form' },
+    },
+  },
+  mistral: {
+    type: 'object',
+    required: ['apiKey'],
+    properties: {
+      apiKey: { type: 'string', title: 'API Key', format: 'password' },
+      model: { type: 'string', title: 'Model (optional)' },
+    },
+  },
+  xai: {
+    type: 'object',
+    required: ['apiKey'],
+    properties: {
+      apiKey: { type: 'string', title: 'API Key', format: 'password' },
+      model: { type: 'string', title: 'Model (optional)' },
+    },
+  },
+  google: {
+    type: 'object',
+    required: ['apiKey'],
+    properties: {
+      apiKey: { type: 'string', title: 'API Key', description: 'Google AI Studio API key', format: 'password' },
+      model: { type: 'string', title: 'Model (optional)' },
+    },
+  },
+  together: {
+    type: 'object',
+    required: ['apiKey'],
+    properties: {
+      apiKey: { type: 'string', title: 'API Key', format: 'password' },
+      model: { type: 'string', title: 'Model (optional)' },
+    },
+  },
+  'openai-compatible': {
+    type: 'object',
+    required: ['baseUrl'],
+    properties: {
+      baseUrl: { type: 'string', title: 'Base URL', description: 'e.g. http://localhost:11434/v1' },
+      apiKey: { type: 'string', title: 'API Key (optional)', format: 'password' },
+      model: { type: 'string', title: 'Model', description: 'Required for custom endpoints' },
+    },
+  },
 }
 
 interface ProviderModalProps {
@@ -66,11 +121,20 @@ export function ProviderModal({ provider, onSave, onClose, errors }: ProviderMod
   const [name, setName] = useState(provider?.name ?? '')
   const [config, setConfig] = useState<Record<string, unknown>>(provider?.config ?? {})
 
-  useEffect(() => {
-    if (!provider) setConfig({})
-  }, [type])
-
   const schema = PROVIDER_SCHEMAS[type] ?? { type: 'object', properties: {} }
+
+  useEffect(() => {
+    if (!provider) {
+      // Pre-populate config with schema defaults so fields like `model` are saved even if untouched
+      const defaults: Record<string, unknown> = {}
+      const props = (schema as { properties?: Record<string, { default?: unknown }> }).properties ?? {}
+      for (const [key, prop] of Object.entries(props)) {
+        if (prop.default !== undefined) defaults[key] = prop.default
+      }
+      setConfig(defaults)
+      setName(PROVIDER_TYPES.find(p => p.id === type)?.displayName ?? '')
+    }
+  }, [type])
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={onClose}>
@@ -83,19 +147,6 @@ export function ProviderModal({ provider, onSave, onClose, errors }: ProviderMod
         </h2>
 
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">
-              Name <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="e.g. My Anthropic"
-              className="w-full rounded bg-gray-700 border border-gray-600 text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-500"
-            />
-          </div>
-
           {!provider && (
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">
@@ -112,6 +163,19 @@ export function ProviderModal({ provider, onSave, onClose, errors }: ProviderMod
               </select>
             </div>
           )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Name <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="e.g. My Anthropic"
+              className="w-full rounded bg-gray-700 border border-gray-600 text-gray-100 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 placeholder-gray-500"
+            />
+          </div>
 
           <SchemaForm schema={schema as any} value={config} onChange={setConfig} />
         </div>

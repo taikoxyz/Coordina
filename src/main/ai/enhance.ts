@@ -1,9 +1,7 @@
-import Anthropic from '@anthropic-ai/sdk'
+import { generateText } from 'ai'
+import type { LanguageModel } from 'ai'
 
-export async function enhanceSkills(input: { role: string; skills: string[]; apiKey: string | null }): Promise<string[]> {
-  if (!input.apiKey) throw new Error('Anthropic API key not configured')
-
-  const client = new Anthropic({ apiKey: input.apiKey })
+export async function enhanceSkills(input: { role: string; skills: string[]; model: LanguageModel }): Promise<string[]> {
   const prompt = `You are helping configure an AI agent with the right skills.
 The agent's role is: ${input.role}
 Current skills: ${input.skills.join(', ') || '(none)'}
@@ -11,23 +9,13 @@ Current skills: ${input.skills.join(', ') || '(none)'}
 Generate an expanded, comprehensive list of skills for this role. Return ONLY a JSON array of skill strings, no explanation.
 Example: ["TypeScript", "React", "Git", "Code review", "Testing"]`
 
-  const message = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 512,
-    messages: [{ role: 'user', content: prompt }],
-  })
-
-  const text = message.content[0].type === 'text' ? message.content[0].text : '[]'
+  const { text } = await generateText({ model: input.model, prompt, maxOutputTokens: 512 })
   const match = text.match(/\[[\s\S]*\]/)
   if (!match) return input.skills
-
   return JSON.parse(match[0]) as string[]
 }
 
-export async function enhanceSoul(input: { role: string; userInput: string; apiKey: string | null }): Promise<string> {
-  if (!input.apiKey) throw new Error('Anthropic API key not configured')
-
-  const client = new Anthropic({ apiKey: input.apiKey })
+export async function enhanceSoul(input: { role: string; userInput: string; model: LanguageModel }): Promise<string> {
   const prompt = `You are helping write an AI agent's SOUL.md personality description.
 The admin provided: "${input.userInput}"
 The agent's role is: ${input.role}
@@ -35,11 +23,6 @@ The agent's role is: ${input.role}
 Expand this into a richer, more detailed description that captures their personality, working style, and values.
 Return only the enhanced description text, no headings or extra formatting.`
 
-  const message = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 1024,
-    messages: [{ role: 'user', content: prompt }],
-  })
-
-  return message.content[0].type === 'text' ? message.content[0].text : input.userInput
+  const { text } = await generateText({ model: input.model, prompt, maxOutputTokens: 1024 })
+  return text || input.userInput
 }

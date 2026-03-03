@@ -1,15 +1,12 @@
 import { ipcMain } from 'electron'
 import { v4 as uuidv4 } from 'uuid'
-import { app } from 'electron'
-import path from 'path'
-import { openDb } from '../db'
-import { isSpecDirty } from '../github/repo'
+import { getDb } from '../db'
 import { deployTeam, undeployTeam, getTeamStatus } from '../environments/gke/deploy'
 import type { GkeDeployConfig } from '../environments/gke/deploy'
-
-function getDb() {
-  return openDb(path.join(app.getPath('userData'), 'coordina.db'))
-}
+import { generateTeamSpecs, hashSpecs, mapAgentRow, mapTeamRow, buildProvidersMap } from '../specs'
+import { DEFAULT_BOOTSTRAP_INSTRUCTIONS } from '../specs/bootstrap'
+import type { SpecFile } from '../specs'
+import { generateTeamConfigMap, generateAgentConfigMap } from '../environments/gke/manifests'
 
 export function registerDeployHandlers() {
   ipcMain.handle('environments:list', () => {
@@ -29,35 +26,84 @@ export function registerDeployHandlers() {
 
   ipcMain.handle('environments:delete', (_event, id: string) => {
     const db = getDb()
+    db.prepare('UPDATE teams SET gateway_url = NULL, deployed_env_id = NULL WHERE deployed_env_id = ?').run(id)
     db.prepare('DELETE FROM environments WHERE id = ?').run(id)
     return { ok: true }
   })
 
   ipcMain.handle('deploy:team', async (_event, { teamSlug, envId }: { teamSlug: string; envId: string }) => {
     const db = getDb()
-    const team = db.prepare('SELECT * FROM teams WHERE slug = ?').get(teamSlug) as any
-    if (!team) return { ok: false, reason: 'Team not found' }
+    const teamRow = db.prepare('SELECT * FROM teams WHERE slug = ?').get(teamSlug) as Record<string, unknown> | undefined
+    if (!teamRow) return { ok: false, reason: 'Team not found' }
 
     const env = db.prepare('SELECT * FROM environments WHERE id = ?').get(envId) as any
     if (!env) return { ok: false, reason: 'Environment not found' }
 
-    // Deploy gate: spec must be committed before deploying
-    if (team.github_repo) {
-      const agents = db.prepare('SELECT * FROM agents WHERE team_slug = ?').all(teamSlug) as any[]
-      const specFiles = agents.flatMap(a => [
-        { path: `agents/${a.slug}/IDENTITY.md`, content: `# ${a.name}\n` },
-        { path: `agents/${a.slug}/SOUL.md`, content: a.soul || '' },
-      ])
-      const dirty = await isSpecDirty(team.github_repo, specFiles)
-      if (dirty) return { ok: false, reason: 'Team has uncommitted changes. Please commit your spec to GitHub before deploying.' }
+    const agentRows = db.prepare('SELECT * FROM agents WHERE team_slug = ?').all(teamSlug) as Record<string, unknown>[]
+    const teamImage = teamRow.image as string | null
+    const missing = agentRows.filter(a => !a.image && !teamImage).map(a => a.slug as string)
+    if (missing.length > 0) {
+      return { ok: false, reason: `Container image not set for: ${missing.join(', ')}. Edit each agent or set a default team image before deploying.` }
     }
 
-    const agents = db.prepare('SELECT slug FROM agents WHERE team_slug = ?').all(teamSlug) as any[]
+    const team = mapTeamRow(teamRow)
+    const agents = agentRows.map(mapAgentRow)
     const envConfig = JSON.parse(env.config) as GkeDeployConfig
-    const result = await deployTeam(teamSlug, agents.map(a => ({ slug: a.slug })), { ...envConfig, envId })
-    if (result.ok && result.gatewayUrl) {
-      db.prepare('UPDATE teams SET gateway_url = ?, deployed_env_id = ? WHERE slug = ?').run(result.gatewayUrl, envId, teamSlug)
+    const namespace = `team-${teamSlug}`
+
+    let teamSpecs: SpecFile[]
+    let configMapManifests: string[]
+    try {
+      const providers = await buildProvidersMap(db)
+      teamSpecs = generateTeamSpecs(team, agents, providers)
+      const getContent = (p: string) => teamSpecs.find(f => f.path === p)?.content ?? ''
+      const bootstrapInstructions = team.bootstrapInstructions || DEFAULT_BOOTSTRAP_INSTRUCTIONS
+      configMapManifests = [
+        generateTeamConfigMap({
+          teamSlug,
+          namespace,
+          teamJson: getContent('team.json'),
+          agentsMd: getContent('AGENTS.md'),
+          bootstrapInstructionsMd: bootstrapInstructions,
+        }),
+        ...agents.map(agent => generateAgentConfigMap({
+          teamSlug,
+          agentSlug: agent.slug,
+          namespace,
+          agentJson: getContent(`agents/${agent.slug}/agent.json`),
+          identityMd: getContent(`agents/${agent.slug}/IDENTITY.md`),
+          soulMd: getContent(`agents/${agent.slug}/SOUL.md`),
+          skillsMd: getContent(`agents/${agent.slug}/SKILLS.md`),
+          openclawJson: getContent(`agents/${agent.slug}/openclaw.json`),
+        })),
+      ]
+    } catch (e) {
+      const msg = (e instanceof Error ? e.message : String(e)).trim()
+      return { ok: false, reason: msg || 'Failed to build provider configuration' }
     }
+
+    let result: { ok: boolean; gatewayUrl?: string; reason?: string }
+    try {
+      result = await deployTeam(
+        teamSlug,
+        agents.map(a => ({ slug: a.slug, image: a.image ?? teamImage ?? undefined })),
+        { ...envConfig, envId },
+        team.domain || undefined,
+        configMapManifests
+      )
+    } catch (e) {
+      const msg = (e instanceof Error ? e.message : String(e)).trim()
+      return { ok: false, reason: msg || 'Deploy failed' }
+    }
+
+    if (result.ok) {
+      if (result.gatewayUrl) {
+        db.prepare('UPDATE teams SET gateway_url = ?, deployed_env_id = ? WHERE slug = ?').run(result.gatewayUrl, envId, teamSlug)
+      }
+      const currentHash = hashSpecs(teamSpecs)
+      db.prepare('UPDATE teams SET deployed_spec_hash = ? WHERE slug = ?').run(currentHash, teamSlug)
+    }
+
     return result
   })
 
@@ -68,7 +114,7 @@ export function registerDeployHandlers() {
 
     const envConfig = JSON.parse(env.config) as GkeDeployConfig
     await undeployTeam(teamSlug, { ...envConfig, envId })
-    db.prepare('UPDATE teams SET gateway_url = NULL, deployed_env_id = NULL WHERE slug = ?').run(teamSlug)
+    db.prepare('UPDATE teams SET gateway_url = NULL, deployed_env_id = NULL, deployed_spec_hash = NULL WHERE slug = ?').run(teamSlug)
     return { ok: true }
   })
 
