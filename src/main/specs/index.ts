@@ -20,33 +20,18 @@ import {
 import { toZone } from '../environments/gke/gcloud'
 import type { GkeDeployConfig } from '../environments/gke/deploy'
 import type { TeamRecord } from '../ipc/teams'
+import type { AgentRecord } from '../ipc/agents'
 import type { ProviderRecord } from '../ipc/providers'
+
+export type { AgentRecord }
 
 export interface SpecFile {
   path: string
   content: string
 }
 
-export interface AgentRecord {
-  slug: string
-  teamSlug: string
-  name: string
-  role: string
-  email?: string
-  slackHandle?: string
-  githubId?: string
-  skills: string[]
-  soul: string
-  providerId?: string
-  model?: string
-  image?: string
-  isLead: boolean
-}
-
-type FullTeamRecord = TeamRecord & { domain?: string; image?: string }
-
 export function generateTeamSpecs(
-  team: FullTeamRecord,
+  team: TeamRecord,
   agents: AgentRecord[],
   providers: Map<string, ProviderRecord>
 ): SpecFile[] {
@@ -128,7 +113,7 @@ export function generateTeamSpecs(
 }
 
 export function generateDeploySpecs(
-  team: FullTeamRecord,
+  team: TeamRecord,
   agents: AgentRecord[],
   envConfig: GkeDeployConfig
 ): SpecFile[] {

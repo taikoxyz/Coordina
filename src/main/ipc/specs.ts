@@ -65,7 +65,7 @@ async function buildProvidersMap(db: ReturnType<typeof getDb>): Promise<Map<stri
 export function registerSpecsHandlers() {
   ipcMain.handle('specs:getTeamSpecs', async (_e, teamSlug: string): Promise<SpecFile[]> => {
     const db = getDb()
-    const teamRow = db.prepare('SELECT slug, name, github_repo, lead_agent_slug, config, domain, image FROM teams WHERE slug = ?').get(teamSlug) as Record<string, unknown> | undefined
+    const teamRow = db.prepare('SELECT slug, name, github_repo, lead_agent_slug, config, domain, image, deployed_spec_hash FROM teams WHERE slug = ?').get(teamSlug) as Record<string, unknown> | undefined
     if (!teamRow) return []
 
     const agentRows = db.prepare('SELECT * FROM agents WHERE team_slug = ?').all(teamSlug) as Record<string, unknown>[]
