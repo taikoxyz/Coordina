@@ -1,5 +1,8 @@
 node_modules
 dist
+.agents
+.dsquad-specs
+skills*
 out
 .cache
 *.log
