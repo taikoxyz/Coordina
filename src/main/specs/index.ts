@@ -18,12 +18,62 @@ import {
   generateIngress,
 } from '../environments/gke/manifests'
 import { toZone } from '../environments/gke/gcloud'
+import { getSecret } from '../keychain'
+import type Database from 'better-sqlite3'
 import type { GkeDeployConfig } from '../environments/gke/deploy'
 import type { TeamRecord } from '../ipc/teams'
 import type { AgentRecord } from '../ipc/agents'
 import type { ProviderRecord } from '../ipc/providers'
 
 export type { AgentRecord }
+
+export function mapAgentRow(r: Record<string, unknown>): AgentRecord {
+  return {
+    slug: r.slug as string,
+    teamSlug: r.team_slug as string,
+    name: r.name as string,
+    role: r.role as string,
+    email: r.email as string | undefined,
+    slackHandle: r.slack_handle as string | undefined,
+    githubId: r.github_id as string | undefined,
+    skills: JSON.parse((r.skills as string) || '[]') as string[],
+    soul: (r.soul as string) || '',
+    providerId: r.provider_id as string | undefined,
+    model: r.model as string | undefined,
+    image: r.image as string | undefined,
+    isLead: !!(r.is_lead as number),
+  }
+}
+
+export function mapTeamRow(r: Record<string, unknown>): TeamRecord {
+  return {
+    slug: r.slug as string,
+    name: r.name as string,
+    githubRepo: r.github_repo as string | undefined,
+    leadAgentSlug: r.lead_agent_slug as string | undefined,
+    config: JSON.parse((r.config as string) || '{}') as Record<string, unknown>,
+    domain: r.domain as string | undefined,
+    image: r.image as string | undefined,
+    deployedSpecHash: r.deployed_spec_hash as string | undefined,
+  }
+}
+
+export async function buildProvidersMap(db: Database.Database): Promise<Map<string, ProviderRecord>> {
+  const providerRows = db.prepare('SELECT id, type, name, config FROM providers').all() as Record<string, unknown>[]
+  const map = new Map<string, ProviderRecord>()
+  for (const row of providerRows) {
+    const id = row.id as string
+    const apiKey = await getSecret(id, 'provider-api-key')
+    const config = JSON.parse((row.config as string) || '{}') as Record<string, unknown>
+    map.set(id, {
+      id,
+      type: row.type as string,
+      name: row.name as string,
+      config: apiKey ? { ...config, apiKey } : config,
+    })
+  }
+  return map
+}
 
 export interface SpecFile {
   path: string
