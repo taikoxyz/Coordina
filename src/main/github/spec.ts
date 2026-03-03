@@ -33,26 +33,9 @@ export function generateIdentityMd(agent: AgentIdentity): string {
   return lines.join('\n') + '\n'
 }
 
-const SOUL_TEMPLATE = `## Core Values
-
-<!-- Your agent's core values go here -->
-
-## Working Style
-
-<!-- How your agent approaches work -->
-
-## Communication Style
-
-<!-- How your agent communicates -->
-
-## Decision Making
-
-<!-- How your agent makes decisions -->
-`
-
 export function generateSoulMd(soul: SoulInput): string {
   const description = soul.enhanced ?? soul.userInput
-  return `# Soul\n\n${description}\n\n${SOUL_TEMPLATE}`
+  return `# Soul\n\n${description}\n`
 }
 
 export function generateOpenClawJson(config: OpenClawConfig): string {

@@ -32,10 +32,11 @@ describe('generateSoulMd', () => {
     expect(md).toContain('Bob is methodical.')
   })
 
-  it('includes default template sections', () => {
+  it('outputs minimal soul markdown without scaffolding', () => {
     const md = generateSoulMd({ userInput: 'x' })
-    expect(md).toContain('## Core Values')
-    expect(md).toContain('## Working Style')
+    expect(md).toBe('# Soul\n\nx\n')
+    expect(md).not.toContain('## Core Values')
+    expect(md).not.toContain('## Working Style')
   })
 })
 
