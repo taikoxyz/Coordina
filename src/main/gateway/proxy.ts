@@ -1,10 +1,18 @@
-import { Router } from 'express'
+import { Router, type Response } from 'express'
 import { createProxyMiddleware } from 'http-proxy-middleware'
 import { getTeam } from '../store/teams'
 import { getTeamDeployment, saveTeamDeployment, type TeamDeploymentRecord } from '../store/deployments'
 import { getEnvironment, listEnvironments } from '../store/environments'
 
 export type TokenFetcher = (envId: string) => Promise<string | null>
+
+function sendProxyError(res: Response, status: number, error: string, detail?: string): void {
+  if (res.headersSent) return
+  res.status(status).json({
+    error,
+    ...(detail ? { detail } : {}),
+  })
+}
 
 function resolveUpstreamPath(pathname: string, leadAgentSlug: string, agentSlugs: Set<string>): string {
   const path = pathname || '/'
@@ -97,6 +105,12 @@ export function createGatewayRouter(getToken: TokenFetcher = async () => null) {
       ws: true,
       pathRewrite: () => rewrittenPath,
       on: {
+        error: (err, _req, res) => {
+          const e = err as NodeJS.ErrnoException
+          const code = e.code ? String(e.code) : 'UNKNOWN_PROXY_ERROR'
+          const detail = e.message ? `${code}: ${e.message}` : code
+          sendProxyError(res as Response, 502, 'Gateway upstream connection failed', detail)
+        },
         proxyReq: (proxyReq) => {
           if (token) {
             proxyReq.setHeader('Authorization', `Bearer ${token}`)
