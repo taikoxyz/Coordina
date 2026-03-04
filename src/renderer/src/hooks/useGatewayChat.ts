@@ -22,8 +22,6 @@ export interface GatewayChatError {
   hints: string[]
 }
 
-const LOCAL_PROXY_BASE = 'http://localhost:19876'
-
 function toBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -112,23 +110,6 @@ function errorFromStatus(status: number, detail?: string): GatewayChatError {
   }
 }
 
-async function readErrorDetail(res: Response): Promise<string | undefined> {
-  const raw = await res.text().catch(() => '')
-  if (!raw) return undefined
-
-  try {
-    const payload = JSON.parse(raw) as { error?: unknown; message?: unknown }
-    if (typeof payload.error === 'string') return payload.error
-    if (payload.error) return JSON.stringify(payload.error)
-    if (typeof payload.message === 'string') return payload.message
-  } catch {
-    // Non-JSON error payload.
-  }
-
-  const normalized = raw.trim().replace(/\s+/g, ' ')
-  return normalized ? normalized.slice(0, 400) : undefined
-}
-
 export function useGatewayChat(teamSlug: string, agentSlug?: string, envSlug?: string) {
   const conversationKey = `${teamSlug}::${envSlug ?? '__default_env__'}::${agentSlug ?? '__lead__'}`
   const [messagesByConversation, setMessagesByConversation] = useState<Record<string, ChatMessage[]>>({})
@@ -190,27 +171,33 @@ export function useGatewayChat(teamSlug: string, agentSlug?: string, envSlug?: s
           },
         })
       }
-      const path = agentSlug
-        ? `/proxy/${teamSlug}/agents/${agentSlug}/v1/responses`
-        : `/proxy/${teamSlug}/v1/responses`
-      const query = envSlug ? `?envSlug=${encodeURIComponent(envSlug)}` : ''
-      const res = await fetch(`${LOCAL_PROXY_BASE}${path}${query}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const result = await window.api.invoke('chat:send', {
+        teamSlug,
+        envSlug,
+        agentSlug,
+        body: {
           model: 'openclaw-gateway',
           input: [{ type: 'message', role: 'user', content: contentParts }],
-        }),
-      })
+        },
+      }) as { ok: boolean; status?: number; payload?: unknown; error?: string; detail?: string }
 
-      if (!res.ok) {
-        const detail = await readErrorDetail(res)
+      if (!result.ok) {
+        if (typeof result.status === 'number') {
+          setConnected(false)
+          setError(errorFromStatus(result.status, result.detail ?? result.error))
+          return
+        }
         setConnected(false)
-        setError(errorFromStatus(res.status, detail))
+        setError({
+          kind: 'connection',
+          message: 'Failed to reach gateway via local proxy.',
+          detail: `${result.error ?? 'Unknown IPC error'}${result.detail ? `: ${result.detail}` : ''} (${`team=${teamSlug}${envSlug ? ` env=${envSlug}` : ''}${agentSlug ? ` agent=${agentSlug}` : ''}`})`,
+          hints: getHints('connection'),
+        })
         return
       }
 
-      const payload = await res.json()
+      const payload = result.payload
       appendMessage({
         id: `${Date.now()}-${Math.random()}`,
         role: 'assistant',
