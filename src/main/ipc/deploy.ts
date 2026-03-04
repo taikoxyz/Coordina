@@ -1,130 +1,92 @@
-import { ipcMain } from 'electron'
-import { v4 as uuidv4 } from 'uuid'
-import { getDb } from '../db'
+// IPC handlers for environments and deployment using K8s API and file store
+// FEATURE: Deployment IPC layer replacing SQLite and kubectl with async APIs
+import { ipcMain, BrowserWindow } from 'electron'
+import { listEnvironments, getEnvironment, saveEnvironment, deleteEnvironment } from '../store/environments'
+import { getTeam } from '../store/teams'
+import { listProviders, getProviderApiKey } from '../store/providers'
+import { getDeriver } from '../specs/base'
+import '../specs/gke'
 import { deployTeam, undeployTeam, getTeamStatus } from '../environments/gke/deploy'
-import type { GkeDeployConfig } from '../environments/gke/deploy'
-import { generateTeamSpecs, hashSpecs, mapAgentRow, mapTeamRow, buildProvidersMap } from '../specs'
-import { DEFAULT_BOOTSTRAP_INSTRUCTIONS } from '../specs/bootstrap'
-import type { SpecFile } from '../specs'
-import { generateTeamConfigMap, generateAgentConfigMap } from '../environments/gke/manifests'
+import { authenticateGke } from '../environments/gke/auth'
+import type { EnvironmentRecord, DeployOptions } from '../../shared/types'
 
-export function registerDeployHandlers() {
-  ipcMain.handle('environments:list', () => {
-    const db = getDb()
-    const rows = db.prepare('SELECT id, type, name, config FROM environments').all() as any[]
-    return rows.map(r => ({ id: r.id, type: r.type, name: r.name, config: JSON.parse(r.config) }))
+export function registerDeployHandlers(): void {
+  ipcMain.handle('environments:list', () => listEnvironments())
+
+  ipcMain.handle('environments:get', (_e, slug: string) => getEnvironment(slug))
+
+  ipcMain.handle('environments:save', async (_e, record: EnvironmentRecord) => {
+    await saveEnvironment(record)
+    return { ok: true }
   })
 
-  ipcMain.handle('environments:create', (_event, data: { type: string; name: string; config: Record<string, unknown> }) => {
-    const db = getDb()
-    const id = uuidv4()
-    db.prepare('INSERT INTO environments (id, type, name, config) VALUES (?, ?, ?, ?)').run(
-      id, data.type, data.name, JSON.stringify(data.config)
+  ipcMain.handle('environments:delete', async (_e, slug: string) => {
+    await deleteEnvironment(slug)
+    return { ok: true }
+  })
+
+  ipcMain.handle('gke:auth', async (_e, envSlug: string) => {
+    const env = await getEnvironment(envSlug)
+    if (!env) return { ok: false, reason: 'Environment not found' }
+    const { clientId, clientSecret } = env.config as { clientId: string; clientSecret: string }
+    try {
+      await authenticateGke(envSlug, { clientId, clientSecret })
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, reason: e instanceof Error ? e.message : String(e) }
+    }
+  })
+
+  ipcMain.handle('deploy:team', async (event, { teamSlug, envSlug, options }: { teamSlug: string; envSlug: string; options: DeployOptions }) => {
+    const [spec, env] = await Promise.all([getTeam(teamSlug), getEnvironment(envSlug)])
+    if (!spec) return { ok: false, reason: 'Team not found' }
+    if (!env) return { ok: false, reason: 'Environment not found' }
+
+    const providerRecords = await listProviders()
+    const providersMap = new Map(
+      await Promise.all(providerRecords.map(async (p) => {
+        const apiKey = await getProviderApiKey(p.slug)
+        return [p.slug, { ...p, apiKey: apiKey ?? undefined }] as const
+      }))
     )
-    return { ok: true, id }
-  })
 
-  ipcMain.handle('environments:delete', (_event, id: string) => {
-    const db = getDb()
-    db.prepare('UPDATE teams SET gateway_url = NULL, deployed_env_id = NULL WHERE deployed_env_id = ?').run(id)
-    db.prepare('DELETE FROM environments WHERE id = ?').run(id)
-    return { ok: true }
-  })
+    const deriver = getDeriver(env.type)
+    const specFiles = await deriver.derive(spec, providersMap, env.config)
 
-  ipcMain.handle('deploy:team', async (_event, { teamSlug, envId }: { teamSlug: string; envId: string }) => {
-    const db = getDb()
-    const teamRow = db.prepare('SELECT * FROM teams WHERE slug = ?').get(teamSlug) as Record<string, unknown> | undefined
-    if (!teamRow) return { ok: false, reason: 'Team not found' }
+    const win = BrowserWindow.fromWebContents(event.sender)
+    const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof deployTeam>[2]
 
-    const env = db.prepare('SELECT * FROM environments WHERE id = ?').get(envId) as any
-    if (!env) return { ok: false, reason: 'Environment not found' }
-
-    const agentRows = db.prepare('SELECT * FROM agents WHERE team_slug = ?').all(teamSlug) as Record<string, unknown>[]
-    const teamImage = teamRow.image as string | null
-    const missing = agentRows.filter(a => !a.image && !teamImage).map(a => a.slug as string)
-    if (missing.length > 0) {
-      return { ok: false, reason: `Container image not set for: ${missing.join(', ')}. Edit each agent or set a default team image before deploying.` }
-    }
-
-    const team = mapTeamRow(teamRow)
-    const agents = agentRows.map(mapAgentRow)
-    const envConfig = JSON.parse(env.config) as GkeDeployConfig
-    const namespace = `team-${teamSlug}`
-
-    let teamSpecs: SpecFile[]
-    let configMapManifests: string[]
     try {
-      const providers = await buildProvidersMap(db)
-      teamSpecs = generateTeamSpecs(team, agents, providers)
-      const getContent = (p: string) => teamSpecs.find(f => f.path === p)?.content ?? ''
-      const bootstrapInstructions = team.bootstrapInstructions || DEFAULT_BOOTSTRAP_INSTRUCTIONS
-      configMapManifests = [
-        generateTeamConfigMap({
-          teamSlug,
-          namespace,
-          teamJson: getContent('team.json'),
-          agentsMd: getContent('AGENTS.md'),
-          bootstrapInstructionsMd: bootstrapInstructions,
-        }),
-        ...agents.map(agent => generateAgentConfigMap({
-          teamSlug,
-          agentSlug: agent.slug,
-          namespace,
-          agentJson: getContent(`agents/${agent.slug}/agent.json`),
-          identityMd: getContent(`agents/${agent.slug}/IDENTITY.md`),
-          soulMd: getContent(`agents/${agent.slug}/SOUL.md`),
-          skillsMd: getContent(`agents/${agent.slug}/SKILLS.md`),
-          openclawJson: getContent(`agents/${agent.slug}/openclaw.json`),
-        })),
-      ]
-    } catch (e) {
-      const msg = (e instanceof Error ? e.message : String(e)).trim()
-      return { ok: false, reason: msg || 'Failed to build provider configuration' }
-    }
-
-    let result: { ok: boolean; gatewayUrl?: string; reason?: string }
-    try {
-      result = await deployTeam(
-        teamSlug,
-        agents.map(a => ({ slug: a.slug, image: a.image ?? teamImage ?? undefined })),
-        { ...envConfig, envId },
-        team.domain || undefined,
-        configMapManifests
-      )
-    } catch (e) {
-      const msg = (e instanceof Error ? e.message : String(e)).trim()
-      return { ok: false, reason: msg || 'Deploy failed' }
-    }
-
-    if (result.ok) {
-      if (result.gatewayUrl) {
-        db.prepare('UPDATE teams SET gateway_url = ?, deployed_env_id = ? WHERE slug = ?').run(result.gatewayUrl, envId, teamSlug)
+      for await (const status of deployTeam(specFiles, teamSlug, deployConfig, options)) {
+        win?.webContents.send('deploy:status', status)
       }
-      const currentHash = hashSpecs(teamSpecs)
-      db.prepare('UPDATE teams SET deployed_spec_hash = ? WHERE slug = ?').run(currentHash, teamSlug)
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, reason: e instanceof Error ? e.message : String(e) }
     }
-
-    return result
   })
 
-  ipcMain.handle('undeploy:team', async (_event, { teamSlug, envId }: { teamSlug: string; envId: string }) => {
-    const db = getDb()
-    const env = db.prepare('SELECT * FROM environments WHERE id = ?').get(envId) as any
+  ipcMain.handle('undeploy:team', async (event, { teamSlug, envSlug }: { teamSlug: string; envSlug: string }) => {
+    const env = await getEnvironment(envSlug)
     if (!env) return { ok: false, reason: 'Environment not found' }
 
-    const envConfig = JSON.parse(env.config) as GkeDeployConfig
-    await undeployTeam(teamSlug, { ...envConfig, envId })
-    db.prepare('UPDATE teams SET gateway_url = NULL, deployed_env_id = NULL, deployed_spec_hash = NULL WHERE slug = ?').run(teamSlug)
-    return { ok: true }
+    const win = BrowserWindow.fromWebContents(event.sender)
+    const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof undeployTeam>[1]
+
+    try {
+      for await (const status of undeployTeam(teamSlug, deployConfig)) {
+        win?.webContents.send('deploy:status', status)
+      }
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, reason: e instanceof Error ? e.message : String(e) }
+    }
   })
 
-  ipcMain.handle('deploy:getStatus', async (_event, { teamSlug, envId }: { teamSlug: string; envId: string }) => {
-    const db = getDb()
-    const env = db.prepare('SELECT * FROM environments WHERE id = ?').get(envId) as any
-    if (!env) return []
-
-    const agents = db.prepare('SELECT slug FROM agents WHERE team_slug = ?').all(teamSlug) as any[]
-    const envConfig = JSON.parse(env.config) as GkeDeployConfig
-    return getTeamStatus(teamSlug, agents.map(a => a.slug), { ...envConfig, envId })
+  ipcMain.handle('deploy:getStatus', async (_e, { teamSlug, envSlug }: { teamSlug: string; envSlug: string }) => {
+    const [spec, env] = await Promise.all([getTeam(teamSlug), getEnvironment(envSlug)])
+    if (!spec || !env) return []
+    const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof getTeamStatus>[2]
+    return getTeamStatus(teamSlug, spec.agents.map(a => a.slug), deployConfig)
   })
 }

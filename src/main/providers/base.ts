@@ -1,14 +1,21 @@
+export const fetchWithTimeout = async (url: string, options: RequestInit = {}, ms = 15000): Promise<Response> => {
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), ms)
+  try {
+    return await fetch(url, { ...options, signal: controller.signal })
+  } finally {
+    clearTimeout(id)
+  }
+}
+
 export interface ValidationResult {
   valid: boolean
   errors?: string[]
 }
 
 export interface OpenClawModelConfig {
-  provider: string
-  model: string
-  apiKey?: string
-  baseUrl?: string
-  [key: string]: unknown
+  agents: { defaults: { model: { primary: string; fallbacks?: string[] } } }
+  models: { providers: { [provider: string]: { apiKey?: string; baseUrl?: string; api?: string } } }
 }
 
 export interface ModelProvider {
@@ -18,6 +25,8 @@ export interface ModelProvider {
   configSchema: object
   supportedModels: { id: string; displayName: string }[]
   validate(config: unknown): ValidationResult
+  testConnection(config: unknown): Promise<ValidationResult>
+  listModels(config: unknown): Promise<string[]>
   toOpenClawJson(config: unknown): OpenClawModelConfig
 }
 

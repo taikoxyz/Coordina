@@ -4,6 +4,7 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { createServer } from './server'
 import './ipc/index'
+import { startSpecWatcher } from './watcher'
 
 // Start local Express server
 const localServer = createServer()
@@ -61,6 +62,7 @@ app.whenReady().then(() => {
   ipcMain.on('ping', () => console.log('pong'))
 
   createWindow()
+  startSpecWatcher()
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the

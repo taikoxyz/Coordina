@@ -12,7 +12,7 @@ describe('anthropic provider', () => {
   it('toOpenClawJson maps correctly', () => {
     const p = getProvider('anthropic')
     expect(p.toOpenClawJson({ apiKey: 'sk-ant-abc', model: 'claude-sonnet-4-6' }))
-      .toEqual({ provider: 'anthropic', model: 'claude-sonnet-4-6', apiKey: 'sk-ant-abc' })
+      .toEqual({ agents: { defaults: { model: { primary: 'anthropic/claude-sonnet-4-6' } } }, models: { providers: { anthropic: { apiKey: 'sk-ant-abc' } } } })
   })
 })
 

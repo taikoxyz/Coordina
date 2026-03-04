@@ -35,16 +35,15 @@ export function generateConfigMap(input: ConfigMapInput): string {
 export function generateTeamConfigMap(input: {
   teamSlug: string
   namespace: string
-  teamJson: string
-  agentsMd: string
-  bootstrapInstructionsMd: string
+  teamMd: string
+  bootstrapMd: string
 }): string {
-  const { teamSlug, namespace, teamJson, agentsMd, bootstrapInstructionsMd } = input
+  const { teamSlug, namespace, teamMd, bootstrapMd } = input
   return generateConfigMap({
     name: `${teamSlug}-shared-config`,
     namespace,
     labels: { 'coordina.team': teamSlug },
-    data: { 'team.json': teamJson, 'AGENTS.md': agentsMd, 'BOOTSTRAP-INSTRUCTIONS.md': bootstrapInstructionsMd },
+    data: { 'TEAM.md': teamMd, 'BOOTSTRAP.md': bootstrapMd },
   })
 }
 
@@ -52,24 +51,16 @@ export function generateAgentConfigMap(input: {
   teamSlug: string
   agentSlug: string
   namespace: string
-  agentJson: string
   identityMd: string
   soulMd: string
   skillsMd: string
-  openclawJson: string
 }): string {
-  const { teamSlug, agentSlug, namespace, agentJson, identityMd, soulMd, skillsMd, openclawJson } = input
+  const { teamSlug, agentSlug, namespace, identityMd, soulMd, skillsMd } = input
   return generateConfigMap({
     name: `${teamSlug}-${agentSlug}-config`,
     namespace,
     labels: { 'coordina.team': teamSlug, 'coordina.agent': agentSlug },
-    data: {
-      'agent.json': agentJson,
-      'IDENTITY.md': identityMd,
-      'SOUL.md': soulMd,
-      'SKILLS.md': skillsMd,
-      'openclaw.json': openclawJson,
-    },
+    data: { 'IDENTITY.md': identityMd, 'SOUL.md': soulMd, 'SKILLS.md': skillsMd },
   })
 }
 
@@ -78,21 +69,22 @@ export interface AgentManifestInput {
   agentSlug: string
   image?: string
   namespace?: string
-  projectId?: string
-  zone?: string
+  credentialSecretName?: string
+  cpu?: number
 }
 
 export function generateAgentPv(input: { teamSlug: string; agentSlug: string; projectId: string; zone: string; storageGi?: number }): string {
   const { teamSlug, agentSlug, projectId, zone, storageGi = 10 } = input
-  const name = `team-${teamSlug}-${agentSlug}`
+  const name = `${teamSlug}-agent-${agentSlug}`
   const manifest = {
     apiVersion: 'v1',
     kind: 'PersistentVolume',
-    metadata: { name },
+    metadata: { name, labels: { 'coordina.team': teamSlug, 'coordina.agent': agentSlug } },
     spec: {
       capacity: { storage: `${storageGi}Gi` },
       accessModes: ['ReadWriteOnce'],
       persistentVolumeReclaimPolicy: 'Retain',
+      storageClassName: '',
       csi: {
         driver: 'pd.csi.storage.gke.io',
         volumeHandle: `projects/${projectId}/zones/${zone}/disks/${name}`,
@@ -100,13 +92,7 @@ export function generateAgentPv(input: { teamSlug: string; agentSlug: string; pr
       },
       nodeAffinity: {
         required: {
-          nodeSelectorTerms: [{
-            matchExpressions: [{
-              key: 'topology.kubernetes.io/zone',
-              operator: 'In',
-              values: [zone],
-            }],
-          }],
+          nodeSelectorTerms: [{ matchExpressions: [{ key: 'topology.kubernetes.io/zone', operator: 'In', values: [zone] }] }],
         },
       },
     },
@@ -114,13 +100,13 @@ export function generateAgentPv(input: { teamSlug: string; agentSlug: string; pr
   return yaml.dump(manifest)
 }
 
-export function generateAgentPvc(input: { teamSlug: string; agentSlug: string; namespace?: string; storageGi?: number }): string {
-  const { teamSlug, agentSlug, namespace = 'default', storageGi = 10 } = input
-  const name = `team-${teamSlug}-${agentSlug}`
+export function generateAgentPvc(input: { teamSlug: string; agentSlug: string; namespace: string; storageGi?: number }): string {
+  const { teamSlug, agentSlug, namespace, storageGi = 10 } = input
+  const name = `${teamSlug}-agent-${agentSlug}`
   const manifest = {
     apiVersion: 'v1',
     kind: 'PersistentVolumeClaim',
-    metadata: { name, namespace },
+    metadata: { name, namespace, labels: { 'coordina.team': teamSlug, 'coordina.agent': agentSlug } },
     spec: {
       accessModes: ['ReadWriteOnce'],
       storageClassName: '',
@@ -132,9 +118,35 @@ export function generateAgentPvc(input: { teamSlug: string; agentSlug: string; n
 }
 
 export function generateAgentStatefulSet(input: AgentManifestInput): string {
-  const { teamSlug, agentSlug, image = 'alpine/openclaw:latest', namespace = 'default' } = input
+  const { teamSlug, agentSlug, image = 'alpine/openclaw:latest', namespace = 'default', credentialSecretName, cpu } = input
   const resourceName = `agent-${agentSlug}`
-  const pvcName = `team-${teamSlug}-${agentSlug}`
+  const stateDir = '/openclaw-state'
+
+  const volumes: unknown[] = [
+    { name: 'workspace', persistentVolumeClaim: { claimName: `${teamSlug}-agent-${agentSlug}` } },
+    { name: 'shared-config', configMap: { name: `${teamSlug}-shared-config` } },
+    { name: 'agent-config', configMap: { name: `${teamSlug}-${agentSlug}-config` } },
+    { name: 'openclaw-state', emptyDir: {} },
+  ]
+  if (credentialSecretName) volumes.push({ name: 'agent-credentials', secret: { secretName: credentialSecretName } })
+
+  const containerVolumeMounts: unknown[] = [
+    { name: 'workspace', mountPath: '/workspace' },
+    { name: 'openclaw-state', mountPath: stateDir },
+    { name: 'shared-config', mountPath: '/config/shared', readOnly: true },
+    { name: 'agent-config', mountPath: '/config/agent', readOnly: true },
+  ]
+
+  const credSrc = '/credentials/openclaw.json'
+  const credDst = `${stateDir}/openclaw.json`
+  const initSeedCmd = [
+    'test -f /workspace/BOOTSTRAP.md || cp /config/shared/BOOTSTRAP.md /workspace/BOOTSTRAP.md',
+    'test -f /workspace/TEAM.md || cp /config/shared/TEAM.md /workspace/TEAM.md',
+    'test -f /workspace/IDENTITY.md || cp /config/agent/IDENTITY.md /workspace/IDENTITY.md',
+    'test -f /workspace/SOUL.md || cp /config/agent/SOUL.md /workspace/SOUL.md',
+    'test -f /workspace/SKILLS.md || cp /config/agent/SKILLS.md /workspace/SKILLS.md',
+    ...(credentialSecretName ? [`test -f ${credDst} || cp ${credSrc} ${credDst}`] : []),
+  ].join(' && ')
 
   const manifest = {
     apiVersion: 'apps/v1',
@@ -151,29 +163,41 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
       template: {
         metadata: { labels: { app: resourceName, 'coordina.team': teamSlug } },
         spec: {
-          volumes: [
-            { name: 'workspace', persistentVolumeClaim: { claimName: pvcName } },
-            { name: 'shared-config', configMap: { name: `${teamSlug}-shared-config` } },
-            { name: 'agent-config', configMap: { name: `${teamSlug}-${agentSlug}-config` } },
-          ],
+          volumes,
           initContainers: [{
             name: 'bootstrap-init',
             image: 'busybox:1.36',
-            command: ['sh', '-c', 'test -f /workspace/BOOTSTRAP.md || cp /config/shared/BOOTSTRAP-INSTRUCTIONS.md /workspace/BOOTSTRAP.md'],
+            command: ['sh', '-c', initSeedCmd],
             volumeMounts: [
               { name: 'workspace', mountPath: '/workspace' },
               { name: 'shared-config', mountPath: '/config/shared', readOnly: true },
+              { name: 'agent-config', mountPath: '/config/agent', readOnly: true },
+              { name: 'openclaw-state', mountPath: stateDir },
+              ...(credentialSecretName ? [{ name: 'agent-credentials', mountPath: '/credentials', readOnly: true }] : []),
             ],
           }],
           containers: [{
             name: 'openclaw',
             image,
             ports: [{ containerPort: 18789, name: 'gateway' }],
-            volumeMounts: [
-              { name: 'workspace', mountPath: '/workspace' },
-              { name: 'shared-config', mountPath: '/config/shared', readOnly: true },
-              { name: 'agent-config', mountPath: '/config/agent', readOnly: true },
+            env: [
+              { name: 'OPENCLAW_WORKSPACE_DIR', value: '/workspace' },
+              { name: 'OPENCLAW_STATE_DIR', value: stateDir },
             ],
+            volumeMounts: containerVolumeMounts,
+            resources: { requests: { cpu: `${cpu ?? 1}` }, limits: { cpu: `${cpu ?? 1}` } },
+            readinessProbe: {
+              tcpSocket: { port: 18789 },
+              initialDelaySeconds: 15,
+              periodSeconds: 10,
+              failureThreshold: 3,
+            },
+            livenessProbe: {
+              tcpSocket: { port: 18789 },
+              initialDelaySeconds: 30,
+              periodSeconds: 20,
+              failureThreshold: 3,
+            },
           }],
         },
       },

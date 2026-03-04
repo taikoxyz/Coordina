@@ -12,6 +12,8 @@ describe('provider registry', () => {
       configSchema: {},
       supportedModels: [],
       validate: () => ({ valid: true }),
+      testConnection: async () => ({ valid: true }),
+      listModels: async () => [],
       toOpenClawJson: (c: unknown) => ({ provider: 'test', model: (c as { model: string }).model }),
     })
     expect(getProvider('test').displayName).toBe('Test')

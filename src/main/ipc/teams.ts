@@ -1,78 +1,51 @@
+// IPC handlers for team spec CRUD replacing SQLite with file-based storage
+// FEATURE: Team management IPC layer using ~/.coordina/teams/{slug}.json files
 import { ipcMain } from 'electron'
-import { getDb } from '../db'
-import { createRepo, isSpecDirty, getAuthenticatedUser } from '../github/repo'
-import { generateAgentsMd, generateIdentityMd, generateSoulMd, generateSkillsMd } from '../github/spec'
-import type { TeamRecord } from '../../shared/types'
+import fs from 'fs/promises'
+import path from 'path'
+import os from 'os'
+import { listTeams, getTeam, saveTeam, deleteTeam } from '../store/teams'
+import { runPipeline } from '../watcher'
+import type { TeamSpec } from '../../shared/types'
 
-export type { TeamRecord }
-
-export function registerTeamHandlers() {
-  ipcMain.handle('teams:list', () => {
-    const db = getDb()
-    const rows = db.prepare('SELECT slug, name, github_repo, lead_agent_slug, config, gateway_url, deployed_env_id, domain, image, bootstrap_instructions FROM teams').all() as any[]
-    return rows.map(r => ({ slug: r.slug, name: r.name, githubRepo: r.github_repo, leadAgentSlug: r.lead_agent_slug, config: JSON.parse(r.config), gatewayUrl: r.gateway_url ?? undefined, deployedEnvId: r.deployed_env_id ?? undefined, domain: r.domain ?? undefined, image: r.image ?? undefined, bootstrapInstructions: r.bootstrap_instructions ?? undefined }))
-  })
-
-  ipcMain.handle('teams:create', async (_event, data: { slug: string; name: string; domain?: string; image?: string; bootstrapInstructions?: string; createRepo?: boolean }) => {
-    try {
-      const db = getDb()
-      const existing = db.prepare('SELECT slug FROM teams WHERE slug = ?').get(data.slug)
-      if (existing) return { ok: false, errors: ['Team slug already exists'] }
-
-      let githubRepo: string | undefined
-      if (data.createRepo) {
-        const user = await getAuthenticatedUser()
-        githubRepo = await createRepo(user, `coordina-team-${data.slug}`)
-      }
-
-      db.prepare('INSERT INTO teams (slug, name, github_repo, domain, image, bootstrap_instructions, config) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
-        data.slug, data.name, githubRepo ?? null, data.domain ?? null, data.image ?? null, data.bootstrapInstructions ?? null, '{}'
-      )
-      return { ok: true, slug: data.slug, githubRepo }
-    } catch (e) {
-      return { ok: false, errors: [(e as Error).message ?? 'Failed to create team'] }
+async function readDirRecursive(dir: string, base = ''): Promise<{ path: string; content: string }[]> {
+  let entries
+  try { entries = await fs.readdir(dir, { withFileTypes: true }) } catch { return [] }
+  const results: { path: string; content: string }[] = []
+  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+    const rel = base ? `${base}/${entry.name}` : entry.name
+    if (entry.isDirectory()) {
+      results.push(...await readDirRecursive(path.join(dir, entry.name), rel))
+    } else {
+      const content = await fs.readFile(path.join(dir, entry.name), 'utf-8')
+      results.push({ path: rel, content })
     }
-  })
+  }
+  return results
+}
 
-  ipcMain.handle('teams:update', (_event, slug: string, data: { name?: string; leadAgentSlug?: string; image?: string; bootstrapInstructions?: string }) => {
-    const db = getDb()
-    if (data.name) db.prepare('UPDATE teams SET name = ? WHERE slug = ?').run(data.name, slug)
-    if (data.leadAgentSlug !== undefined) db.prepare('UPDATE teams SET lead_agent_slug = ? WHERE slug = ?').run(data.leadAgentSlug, slug)
-    if (data.image !== undefined) db.prepare('UPDATE teams SET image = ? WHERE slug = ?').run(data.image || null, slug)
-    if (data.bootstrapInstructions !== undefined) db.prepare('UPDATE teams SET bootstrap_instructions = ? WHERE slug = ?').run(data.bootstrapInstructions || null, slug)
+export function registerTeamHandlers(): void {
+  ipcMain.handle('teams:list', () => listTeams())
+
+  ipcMain.handle('teams:get', (_e, slug: string) => getTeam(slug))
+
+  ipcMain.handle('teams:save', async (_e, spec: TeamSpec) => {
+    await saveTeam(spec)
     return { ok: true }
   })
 
-  ipcMain.handle('teams:delete', (_event, slug: string) => {
-    const db = getDb()
-    db.prepare('DELETE FROM teams WHERE slug = ?').run(slug)
+  ipcMain.handle('teams:delete', async (_e, slug: string) => {
+    await deleteTeam(slug)
     return { ok: true }
   })
 
-  ipcMain.handle('teams:get', (_event, slug: string) => {
-    const db = getDb()
-    const row = db.prepare('SELECT slug, name, github_repo, lead_agent_slug, config, gateway_url, deployed_env_id, domain, image, bootstrap_instructions FROM teams WHERE slug = ?').get(slug) as any
-    if (!row) return null
-    return { slug: row.slug, name: row.name, githubRepo: row.github_repo, leadAgentSlug: row.lead_agent_slug, config: JSON.parse(row.config), gatewayUrl: row.gateway_url ?? undefined, deployedEnvId: row.deployed_env_id ?? undefined, domain: row.domain ?? undefined, image: row.image ?? undefined, bootstrapInstructions: row.bootstrap_instructions ?? undefined }
+  ipcMain.handle('teams:getDeployFiles', async (_e, { teamSlug, envType }: { teamSlug: string; envType: string }) => {
+    const deployDir = path.join(os.homedir(), '.coordina', 'teams', teamSlug, '.deploy', envType)
+    return readDirRecursive(deployDir)
   })
 
-  ipcMain.handle('teams:isSpecDirty', async (_event, teamSlug: string) => {
-    const db = getDb()
-    const team = db.prepare('SELECT github_repo FROM teams WHERE slug = ?').get(teamSlug) as any
-    if (!team?.github_repo) return false
-
-    const agents = db.prepare('SELECT * FROM agents WHERE team_slug = ?').all(teamSlug) as any[]
-    const files: { path: string; content: string }[] = []
-    for (const a of agents) {
-      const skills = JSON.parse(a.skills || '[]')
-      files.push({ path: `agents/${a.slug}/IDENTITY.md`, content: generateIdentityMd({ name: a.name, slug: a.slug, role: a.role, email: a.email, slackHandle: a.slack_handle, githubId: a.github_id }) })
-      files.push({ path: `agents/${a.slug}/SOUL.md`, content: generateSoulMd({ userInput: a.soul || '' }) })
-      files.push({ path: `agents/${a.slug}/SKILLS.md`, content: generateSkillsMd(skills) })
-    }
-    files.push({
-      path: 'AGENTS.md',
-      content: generateAgentsMd(agents.map(a => ({ slug: a.slug, name: a.name, role: a.role, isLead: !!a.is_lead }))),
-    })
-    return isSpecDirty(team.github_repo, files)
+  ipcMain.handle('teams:derive', async (_e, slug: string) => {
+    try { await runPipeline(slug); return { ok: true } }
+    catch (e) { return { ok: false, reason: e instanceof Error ? e.message : String(e) } }
   })
 }

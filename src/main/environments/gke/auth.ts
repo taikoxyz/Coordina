@@ -1,40 +1,79 @@
-import { setSecret, getSecret, deleteSecret } from '../../keychain'
+// GKE OAuth2 authentication via Electron BrowserWindow replacing gcloud CLI
+// FEATURE: GCP OAuth2 auth flow storing tokens in OS keychain for GKE access
+import { BrowserWindow } from 'electron'
+import * as http from 'http'
+import * as net from 'net'
+import { OAuth2Client } from 'google-auth-library'
+import { getEnvToken, setEnvToken } from '../../store/environments'
 
-export interface GkeCredentials {
-  type: 'oauth' | 'service-account'
-  projectId: string
-  clusterName: string
-  clusterZone: string
+const SCOPES = ['https://www.googleapis.com/auth/cloud-platform']
+
+export interface GkeAuthConfig {
+  clientId: string
+  clientSecret: string
 }
 
-export async function storeGkeCredentials(envId: string, creds: GkeCredentials): Promise<void> {
-  await setSecret(envId, 'gke-credentials', JSON.stringify(creds))
+export const getOAuth2Client = async (envSlug: string, authConfig: GkeAuthConfig): Promise<OAuth2Client> => {
+  const tokenJson = await getEnvToken(envSlug)
+  if (tokenJson) {
+    const client = new OAuth2Client(authConfig.clientId, authConfig.clientSecret)
+    client.setCredentials(JSON.parse(tokenJson))
+    return client
+  }
+  throw new Error('Not authenticated. Call authenticateGke first.')
 }
 
-export async function getGkeCredentials(envId: string): Promise<GkeCredentials | null> {
-  const raw = await getSecret(envId, 'gke-credentials')
-  if (!raw) return null
-  return JSON.parse(raw) as GkeCredentials
-}
+export const authenticateGke = (envSlug: string, authConfig: GkeAuthConfig): Promise<void> =>
+  new Promise((resolve, reject) => {
+    let handled = false
+    let win: BrowserWindow | null = null
 
-export async function storeGkeAccessToken(envId: string, token: string): Promise<void> {
-  await setSecret(envId, 'gke-access-token', token)
-}
+    const server = http.createServer(async (req, res) => {
+      if (handled) return
+      handled = true
 
-export async function getGkeAccessToken(envId: string): Promise<string | null> {
-  return getSecret(envId, 'gke-access-token')
-}
+      const port = (server.address() as net.AddressInfo).port
+      const url = new URL(req.url ?? '/', `http://127.0.0.1:${port}`)
+      const code = url.searchParams.get('code')
+      const error = url.searchParams.get('error')
 
-export async function storeServiceAccountKey(envId: string, keyJson: string): Promise<void> {
-  await setSecret(envId, 'gke-sa-key', keyJson)
-}
+      res.writeHead(200, { 'Content-Type': 'text/html' })
+      res.end('<html><body><p>Authentication complete. You may close this window.</p></body></html>')
+      server.close()
+      win?.close()
 
-export async function getServiceAccountKey(envId: string): Promise<string | null> {
-  return getSecret(envId, 'gke-sa-key')
-}
+      if (error || !code) {
+        reject(new Error(error ?? 'No authorization code received'))
+        return
+      }
+      try {
+        const redirectUri = `http://127.0.0.1:${port}`
+        const client = new OAuth2Client(authConfig.clientId, authConfig.clientSecret, redirectUri)
+        const { tokens } = await client.getToken({ code, redirect_uri: redirectUri })
+        await setEnvToken(envSlug, JSON.stringify(tokens))
+        resolve()
+      } catch (err) {
+        reject(err)
+      }
+    })
 
-export async function deleteGkeSecrets(envId: string): Promise<void> {
-  await deleteSecret(envId, 'gke-credentials')
-  await deleteSecret(envId, 'gke-access-token')
-  await deleteSecret(envId, 'gke-sa-key')
-}
+    server.listen(0, '127.0.0.1', () => {
+      const port = (server.address() as net.AddressInfo).port
+      const redirectUri = `http://127.0.0.1:${port}`
+      const client = new OAuth2Client(authConfig.clientId, authConfig.clientSecret, redirectUri)
+      const authUrl = client.generateAuthUrl({ access_type: 'offline', scope: SCOPES, redirect_uri: redirectUri })
+
+      win = new BrowserWindow({
+        width: 600,
+        height: 700,
+        webPreferences: { nodeIntegration: false, contextIsolation: true },
+      })
+      win.loadURL(authUrl)
+      win.on('closed', () => {
+        server.close()
+        if (!handled) reject(new Error('Authentication cancelled'))
+      })
+    })
+
+    server.on('error', reject)
+  })

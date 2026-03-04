@@ -5,20 +5,16 @@ import { registerProviderHandlers } from './providers'
 import { registerSettingsHandlers } from './settings'
 import { registerEnhanceHandlers } from './enhance'
 import { registerTeamHandlers } from './teams'
-import { registerAgentHandlers } from './agents'
 import { registerDeployHandlers } from './deploy'
 import { registerFileHandlers } from './files'
 import { registerModelsHandlers } from './models'
-import { registerGcpHandlers } from './gcp'
-import { registerSpecsHandlers } from './specs'
+import { registerGitHandlers } from './git'
 
 registerProviderHandlers()
 registerSettingsHandlers()
 registerEnhanceHandlers()
 registerTeamHandlers()
-registerAgentHandlers()
 registerDeployHandlers()
 registerFileHandlers()
 registerModelsHandlers()
-registerGcpHandlers()
-registerSpecsHandlers()
+registerGitHandlers()

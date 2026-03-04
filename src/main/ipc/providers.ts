@@ -1,81 +1,56 @@
+// IPC handlers for provider CRUD replacing SQLite with file-based storage
+// FEATURE: Provider management IPC layer using ~/.coordina/providers/{slug}.json
 import { ipcMain } from 'electron'
-import { v4 as uuidv4 } from 'uuid'
-import { getDb } from '../db'
-import { setSecret, getSecret, deleteSecret } from '../keychain'
+import { listProviders, getProvider as getProviderFile, saveProvider, deleteProvider, getProviderApiKey, setProviderApiKey } from '../store/providers'
 import { getProvider } from '../providers/base'
 import '../providers/index'
 import type { ProviderRecord } from '../../shared/types'
 
-export type { ProviderRecord }
-
-export function registerProviderHandlers() {
+export function registerProviderHandlers(): void {
   ipcMain.handle('providers:list', async () => {
-    const db = getDb()
-    const rows = db.prepare('SELECT id, type, name, config FROM providers').all() as { id: string; type: string; name: string; config: string }[]
-    return Promise.all(rows.map(async r => {
-      const apiKey = await getSecret(r.id, 'provider-api-key')
-      let maskedApiKey: string | undefined
-      if (apiKey) {
-        maskedApiKey = apiKey.length > 12
-          ? `${apiKey.slice(0, 6)}••••••${apiKey.slice(-4)}`
-          : '••••••••'
-      }
-      return { id: r.id, type: r.type, name: r.name, config: JSON.parse(r.config), maskedApiKey }
+    const records = await listProviders()
+    return Promise.all(records.map(async (r) => {
+      const apiKey = await getProviderApiKey(r.slug)
+      const maskedApiKey = apiKey
+        ? (apiKey.length > 12 ? `${apiKey.slice(0, 6)}••••••${apiKey.slice(-4)}` : '••••••••')
+        : undefined
+      return { ...r, maskedApiKey }
     }))
   })
 
-  ipcMain.handle('providers:create', async (_event, data: { type: string; name: string; config: Record<string, unknown> }) => {
-    const provider = getProvider(data.type)
-    const validation = provider.validate(data.config)
-    if (!validation.valid) return { ok: false, errors: validation.errors }
+  ipcMain.handle('providers:get', (_e, slug: string) => getProviderFile(slug))
 
-    const id = uuidv4()
-    const { apiKey, ...nonSecretConfig } = data.config
+  ipcMain.handle('providers:testKey', async (_e, data: { type: string; apiKey?: string; baseUrl?: string }) => {
+    try {
+      const modelProvider = getProvider(data.type)
+      const config = { apiKey: data.apiKey, baseUrl: data.baseUrl }
+      const formatResult = modelProvider.validate(config)
+      if (!formatResult.valid) return { ok: false, error: formatResult.errors?.[0] }
+      const models = await modelProvider.listModels(config)
+      return { ok: true, models }
+    } catch (e) {
+      return { ok: false, error: (e as Error).message }
+    }
+  })
 
+  ipcMain.handle('providers:save', async (_e, data: ProviderRecord & { apiKey?: string }) => {
+    const { apiKey, ...record } = data
+    const modelProvider = getProvider(record.type)
     if (apiKey) {
-      await setSecret(id, 'provider-api-key', String(apiKey))
+      const formatResult = modelProvider.validate({ apiKey })
+      if (!formatResult.valid) return { ok: false, errors: formatResult.errors }
+      const testResult = await modelProvider.testConnection({ apiKey })
+      if (!testResult.valid) return { ok: false, errors: testResult.errors }
+      await setProviderApiKey(record.slug, apiKey)
     }
-
-    const db = getDb()
-    db.prepare('INSERT INTO providers (id, type, name, config) VALUES (?, ?, ?, ?)').run(
-      id, data.type, data.name, JSON.stringify(nonSecretConfig)
-    )
-    return { ok: true, id }
-  })
-
-  ipcMain.handle('providers:update', async (_event, id: string, data: { name?: string; config?: Record<string, unknown> }) => {
-    const db = getDb()
-    const row = db.prepare('SELECT type, config FROM providers WHERE id = ?').get(id) as { type: string; config: string } | undefined
-    if (!row) return { ok: false, errors: ['Provider not found'] }
-
-    if (data.config) {
-      const provider = getProvider(row.type)
-      const validation = provider.validate(data.config)
-      if (!validation.valid) return { ok: false, errors: validation.errors }
-
-      const { apiKey, ...nonSecretConfig } = data.config
-      if (apiKey) {
-        await setSecret(id, 'provider-api-key', String(apiKey))
-      }
-
-      db.prepare('UPDATE providers SET config = ? WHERE id = ?').run(JSON.stringify(nonSecretConfig), id)
-    }
-
-    if (data.name) {
-      db.prepare('UPDATE providers SET name = ? WHERE id = ?').run(data.name, id)
-    }
-
+    await saveProvider(record)
     return { ok: true }
   })
 
-  ipcMain.handle('providers:delete', async (_event, id: string) => {
-    await deleteSecret(id, 'provider-api-key')
-    const db = getDb()
-    db.prepare('DELETE FROM providers WHERE id = ?').run(id)
+  ipcMain.handle('providers:delete', async (_e, slug: string) => {
+    await deleteProvider(slug)
     return { ok: true }
   })
 
-  ipcMain.handle('providers:getApiKey', async (_event, id: string) => {
-    return getSecret(id, 'provider-api-key')
-  })
+  ipcMain.handle('providers:getApiKey', (_e, slug: string) => getProviderApiKey(slug))
 }

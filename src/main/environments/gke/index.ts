@@ -1,6 +1,10 @@
+// GKE environment registration for the DeploymentEnvironment registry
+// FEATURE: GKE deployment environment registration using async K8s API
 import { registerEnvironment } from '../base'
 import { deployTeam, undeployTeam, getTeamStatus } from './deploy'
+import { getTeam } from '../../store/teams'
 import type { GkeDeployConfig } from './deploy'
+import type { SpecFile, DeployOptions } from '../../../shared/types'
 
 registerEnvironment({
   id: 'gke',
@@ -23,15 +27,15 @@ registerEnvironment({
     if (!c.clusterZone) errors.push('Cluster Zone is required')
     return errors.length ? { valid: false, errors } : { valid: true }
   },
-  async deploy(teamSlug: string, config: unknown) {
-    const c = config as GkeDeployConfig & { agents: { slug: string }[] }
-    return deployTeam(teamSlug, c.agents ?? [], c)
+  deploy(files: SpecFile[], teamSlug: string, config: unknown, options: DeployOptions) {
+    return deployTeam(files, teamSlug, config as GkeDeployConfig, options)
   },
-  async undeploy(teamSlug: string, config: unknown) {
+  undeploy(teamSlug: string, config: unknown) {
     return undeployTeam(teamSlug, config as GkeDeployConfig)
   },
   async getStatus(teamSlug: string, config: unknown) {
-    const c = config as GkeDeployConfig & { agentSlugs: string[] }
-    return getTeamStatus(teamSlug, c.agentSlugs ?? [], c)
+    const spec = await getTeam(teamSlug)
+    const agentSlugs = spec?.agents.map(a => a.slug) ?? []
+    return getTeamStatus(teamSlug, agentSlugs, config as GkeDeployConfig)
   },
 })

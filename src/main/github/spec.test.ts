@@ -2,21 +2,16 @@ import { describe, it, expect } from 'vitest'
 import { generateIdentityMd, generateSoulMd, generateOpenClawJson, generateSkillsMd, generateAgentsMd } from './spec'
 
 describe('generateIdentityMd', () => {
-  it('generates IDENTITY.md from agent config', () => {
-    const md = generateIdentityMd({
-      name: 'Alice Chen', slug: 'alice', role: 'Engineer',
-      email: 'alice@co.com', slackHandle: '@alice', githubId: 'alice-dev',
-    })
-    expect(md).toContain('# Alice Chen')
-    expect(md).toContain('alice@co.com')
-    expect(md).toContain('@alice-dev')
+  it('references TEAM.md with agent slug', () => {
+    const md = generateIdentityMd({ name: 'Alice Chen', slug: 'alice', role: 'Engineer' })
     expect(md).toContain('`alice`')
+    expect(md).toContain('TEAM.md')
   })
 
   it('works without optional fields', () => {
     const md = generateIdentityMd({ name: 'Bob', slug: 'bob', role: 'PM' })
-    expect(md).toContain('# Bob')
-    expect(md).not.toContain('Email')
+    expect(md).toContain('`bob`')
+    expect(md).toContain('TEAM.md')
   })
 })
 
