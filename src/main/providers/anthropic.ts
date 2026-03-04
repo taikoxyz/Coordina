@@ -39,8 +39,12 @@ const anthropic: ModelProvider = {
     return body.data?.map(m => m.id).sort() ?? []
   },
   toOpenClawJson(config) {
-    const c = config as { apiKey: string; model: string }
-    return { agents: { defaults: { model: { primary: `anthropic/${c.model}` } } }, models: { providers: { anthropic: { apiKey: c.apiKey } } } }
+    const c = config as { model: string }
+    return { agents: { defaults: { model: { primary: `anthropic/${c.model}` } } }, models: { providers: { anthropic: {} } } }
+  },
+  toEnvVars(config) {
+    const c = config as { apiKey: string }
+    return { ANTHROPIC_API_KEY: c.apiKey }
   },
 }
 

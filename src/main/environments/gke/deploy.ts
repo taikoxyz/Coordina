@@ -122,6 +122,12 @@ export async function* deployTeam(
   const appsApi = kc.makeApiClient(k8s.AppsV1Api)
   const namespace = teamSlug
 
+  // Delete StatefulSets first so pods terminate and GCE disks detach before resize
+  for (const f of specFiles.filter(f => f.path.includes('/statefulset.yaml'))) {
+    const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata: k8s.V1ObjectMeta }
+    if (doc?.metadata?.name) await tryDelete(() => appsApi.deleteNamespacedStatefulSet({ name: doc.metadata.name!, namespace }))
+  }
+
   for (const f of specFiles.filter(f => f.path.endsWith('/pv.yaml'))) {
     const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata: k8s.V1ObjectMeta; spec?: { capacity?: { storage?: string } } }
     const diskName = doc?.metadata?.name
@@ -139,11 +145,6 @@ export async function* deployTeam(
   for (const f of specFiles.filter(f => f.path.endsWith('credentials.yaml'))) {
     const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata: k8s.V1ObjectMeta }
     if (doc?.metadata?.name) await tryDelete(() => coreApi.deleteNamespacedSecret({ name: doc.metadata.name!, namespace }))
-  }
-
-  for (const f of specFiles.filter(f => f.path.includes('/statefulset.yaml'))) {
-    const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata: k8s.V1ObjectMeta }
-    if (doc?.metadata?.name) await tryDelete(() => appsApi.deleteNamespacedStatefulSet({ name: doc.metadata.name!, namespace }))
   }
 
   const orderedPaths = [

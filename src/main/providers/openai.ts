@@ -43,8 +43,12 @@ const openai: ModelProvider = {
       .sort()
   },
   toOpenClawJson(config) {
-    const c = config as { apiKey: string; model: string }
-    return { agents: { defaults: { model: { primary: `openai/${c.model}` } } }, models: { providers: { openai: { apiKey: c.apiKey, baseUrl: 'https://api.openai.com/v1', api: 'openai-completions', models: [{ id: c.model, name: c.model }] } } } }
+    const c = config as { model: string }
+    return { agents: { defaults: { model: { primary: `openai/${c.model}` } } }, models: { providers: { openai: { baseUrl: 'https://api.openai.com/v1', api: 'openai-completions', models: [{ id: c.model, name: c.model }] } } } }
+  },
+  toEnvVars(config) {
+    const c = config as { apiKey: string }
+    return { OPENAI_API_KEY: c.apiKey }
   },
 }
 

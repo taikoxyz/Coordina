@@ -38,6 +38,9 @@ const ollama: ModelProvider = {
     const c = config as { baseUrl: string; model: string }
     return { agents: { defaults: { model: { primary: `ollama/${c.model}` } } }, models: { providers: { ollama: { baseUrl: c.baseUrl ?? 'http://localhost:11434' } } } }
   },
+  toEnvVars(_config) {
+    return {}
+  },
 }
 
 registerProvider(ollama)

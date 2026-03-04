@@ -28,6 +28,7 @@ export interface ModelProvider {
   testConnection(config: unknown): Promise<ValidationResult>
   listModels(config: unknown): Promise<string[]>
   toOpenClawJson(config: unknown): OpenClawModelConfig
+  toEnvVars(config: unknown): Record<string, string>
 }
 
 const registry = new Map<string, ModelProvider>()

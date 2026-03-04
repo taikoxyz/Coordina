@@ -40,8 +40,12 @@ const openrouter: ModelProvider = {
     return body.data?.map(m => m.id).sort() ?? []
   },
   toOpenClawJson(config) {
-    const c = config as { apiKey: string; model: string }
-    return { agents: { defaults: { model: { primary: `openrouter/${c.model}` } } }, models: { providers: { openrouter: { apiKey: c.apiKey, baseUrl: 'https://openrouter.ai/api/v1', api: 'openai-completions' } } } }
+    const c = config as { model: string }
+    return { agents: { defaults: { model: { primary: `openrouter/${c.model}` } } }, models: { providers: { openrouter: { baseUrl: 'https://openrouter.ai/api/v1', api: 'openai-completions' } } } }
+  },
+  toEnvVars(config) {
+    const c = config as { apiKey: string }
+    return { OPENROUTER_API_KEY: c.apiKey }
   },
 }
 

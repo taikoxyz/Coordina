@@ -31,9 +31,9 @@ function generateProviderSecret(input: {
   agentSlug: string
   providerSlug: string
   namespace: string
-  openclawJson: string
+  envVars: Record<string, string>
 }): string {
-  const { teamSlug, agentSlug, providerSlug, namespace, openclawJson } = input
+  const { teamSlug, agentSlug, providerSlug, namespace, envVars } = input
   const manifest = {
     apiVersion: 'v1',
     kind: 'Secret',
@@ -43,7 +43,7 @@ function generateProviderSecret(input: {
       namespace,
       labels: { 'coordina.team': teamSlug, 'coordina.agent': agentSlug, 'coordina.provider': providerSlug },
     },
-    stringData: { 'openclaw.json': openclawJson },
+    stringData: envVars,
   }
   return yaml.dump(manifest)
 }
@@ -81,11 +81,14 @@ const gkeDeriver: DeploymentSpecDeriver = {
       const openclawConfig = modelProvider && providerRecord
         ? modelProvider.toOpenClawJson({ apiKey: providerRecord.apiKey, model })
         : { agents: { defaults: { model: { primary: `anthropic/${model}` } } }, models: { providers: { anthropic: {} } } }
+      const envVars = modelProvider && providerRecord
+        ? modelProvider.toEnvVars({ apiKey: providerRecord.apiKey, model })
+        : {}
 
       const credentialSecretName = `${spec.slug}-${agent.slug}-credentials`
       files.push({ path: `agents/${agent.slug}/pv.yaml`, content: generateAgentPv({ teamSlug: spec.slug, agentSlug: agent.slug, projectId, zone: diskZone ?? clusterZone, storageGi: agent.storageGi }) })
       files.push({ path: `agents/${agent.slug}/pvc.yaml`, content: generateAgentPvc({ teamSlug: spec.slug, agentSlug: agent.slug, namespace, storageGi: agent.storageGi }) })
-      files.push({ path: `agents/${agent.slug}/credentials.yaml`, content: generateProviderSecret({ teamSlug: spec.slug, providerSlug: agent.providerSlug, agentSlug: agent.slug, namespace, openclawJson: generateOpenClawJson(openclawConfig) }) })
+      files.push({ path: `agents/${agent.slug}/credentials.yaml`, content: generateProviderSecret({ teamSlug: spec.slug, providerSlug: agent.providerSlug, agentSlug: agent.slug, namespace, envVars }) })
       files.push({
         path: `agents/${agent.slug}/configmap.yaml`,
         content: generateAgentConfigMap({
@@ -95,6 +98,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
           identityMd: generateIdentityMd({ name: agent.name, slug: agent.slug, role: agent.role, email: agent.email, slackHandle: agent.slackHandle, githubId: agent.githubId, providerSlug: agent.providerSlug, model }),
           soulMd: generateSoulMd({ userInput: agent.soul }),
           skillsMd: generateSkillsMd(agent.skills),
+          openclawJson: generateOpenClawJson(openclawConfig),
         }),
       })
       files.push({ path: `agents/${agent.slug}/statefulset.yaml`, content: generateAgentStatefulSet({ teamSlug: spec.slug, agentSlug: agent.slug, image: agent.image || spec.image || undefined, namespace, credentialSecretName, cpu: agent.cpu }) })

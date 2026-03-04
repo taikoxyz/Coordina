@@ -38,8 +38,12 @@ const deepseek: ModelProvider = {
     return body.data?.map(m => m.id).sort() ?? []
   },
   toOpenClawJson(config) {
-    const c = config as { apiKey: string; model: string }
-    return { agents: { defaults: { model: { primary: `deepseek/${c.model}` } } }, models: { providers: { deepseek: { apiKey: c.apiKey } } } }
+    const c = config as { model: string }
+    return { agents: { defaults: { model: { primary: `deepseek/${c.model}` } } }, models: { providers: { deepseek: {} } } }
+  },
+  toEnvVars(config) {
+    const c = config as { apiKey: string }
+    return { DEEPSEEK_API_KEY: c.apiKey }
   },
 }
 
