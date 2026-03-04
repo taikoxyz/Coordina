@@ -127,13 +127,14 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
     { name: 'workspace', persistentVolumeClaim: { claimName: `${teamSlug}-agent-${agentSlug}` } },
     { name: 'shared-config', configMap: { name: `${teamSlug}-shared-config` } },
     { name: 'agent-config', configMap: { name: `${teamSlug}-${agentSlug}-config` } },
+    { name: 'openclaw-state', emptyDir: {} },
   ]
 
   const containerVolumeMounts: unknown[] = [
     { name: 'workspace', mountPath: '/workspace' },
+    { name: 'openclaw-state', mountPath: stateDir },
     { name: 'shared-config', mountPath: '/config/shared', readOnly: true },
     { name: 'agent-config', mountPath: '/config/agent', readOnly: true },
-    { name: 'agent-config', mountPath: `${stateDir}/openclaw.json`, subPath: 'openclaw.json', readOnly: true },
   ]
 
   const initSeedCmd = [
@@ -142,6 +143,7 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
     'test -f /workspace/IDENTITY.md || cp /config/agent/IDENTITY.md /workspace/IDENTITY.md',
     'test -f /workspace/SOUL.md || cp /config/agent/SOUL.md /workspace/SOUL.md',
     'test -f /workspace/SKILLS.md || cp /config/agent/SKILLS.md /workspace/SKILLS.md',
+    `cp /config/agent/openclaw.json ${stateDir}/openclaw.json`,
   ].join(' && ')
 
   const manifest = {
@@ -166,6 +168,7 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
             command: ['sh', '-c', initSeedCmd],
             volumeMounts: [
               { name: 'workspace', mountPath: '/workspace' },
+              { name: 'openclaw-state', mountPath: stateDir },
               { name: 'shared-config', mountPath: '/config/shared', readOnly: true },
               { name: 'agent-config', mountPath: '/config/agent', readOnly: true },
             ],
