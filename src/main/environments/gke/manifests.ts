@@ -139,7 +139,7 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
 
   const initSeedCmd = [
     'test -f /workspace/BOOTSTRAP.md || cp /config/shared/BOOTSTRAP.md /workspace/BOOTSTRAP.md',
-    'test -f /workspace/TEAM.md || cp /config/shared/TEAM.md /workspace/TEAM.md',
+    'cp /config/shared/TEAM.md /workspace/TEAM.md',
     'test -f /workspace/IDENTITY.md || cp /config/agent/IDENTITY.md /workspace/IDENTITY.md',
     'test -f /workspace/SOUL.md || cp /config/agent/SOUL.md /workspace/SOUL.md',
     'test -f /workspace/SKILLS.md || cp /config/agent/SKILLS.md /workspace/SKILLS.md',
@@ -186,13 +186,13 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
             volumeMounts: containerVolumeMounts,
             resources: { requests: { cpu: `${cpu ?? 1}` }, limits: { cpu: `${cpu ?? 1}` } },
             readinessProbe: {
-              exec: { command: ['sh', '-c', 'nc -z 127.0.0.1 18789'] },
+              exec: { command: ['node', '-e', "const s=require('net').createConnection(18789,'127.0.0.1',()=>{s.destroy();process.exit(0)});s.on('error',()=>process.exit(1))"] },
               initialDelaySeconds: 15,
               periodSeconds: 10,
               failureThreshold: 3,
             },
             livenessProbe: {
-              exec: { command: ['sh', '-c', 'nc -z 127.0.0.1 18789'] },
+              exec: { command: ['node', '-e', "const s=require('net').createConnection(18789,'127.0.0.1',()=>{s.destroy();process.exit(0)});s.on('error',()=>process.exit(1))"] },
               initialDelaySeconds: 30,
               periodSeconds: 20,
               failureThreshold: 3,

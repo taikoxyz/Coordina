@@ -1,5 +1,6 @@
 // GKE deployment spec deriver generating K8s manifests from team spec files
 // FEATURE: GKE derivation layer with K8s Secrets for API key security
+import { randomBytes, createHmac } from 'crypto'
 import yaml from 'js-yaml'
 import {
   generateNamespace,
@@ -24,6 +25,11 @@ import { registerDeriver } from './base'
 import type { DeploymentSpecDeriver } from './base'
 import type { TeamSpec, ProviderRecord, SpecFile } from '../../shared/types'
 import { getProvider } from '../providers/base'
+import { saveTeam } from '../store/teams'
+
+function deriveAgentToken(seed: string, agentSlug: string): string {
+  return createHmac('sha256', seed).update(agentSlug).digest('hex').slice(0, 48)
+}
 
 
 function generateProviderSecret(input: {
@@ -61,6 +67,17 @@ const gkeDeriver: DeploymentSpecDeriver = {
     const domain = spec.domain || 'example.com'
     const files: SpecFile[] = []
 
+    if (!spec.tokenSeed) {
+      spec = { ...spec, tokenSeed: randomBytes(32).toString('hex') }
+      await saveTeam(spec)
+    }
+    const seed = spec.tokenSeed!
+    const peers = spec.agents.map(a => ({
+      slug: a.slug,
+      url: `ws://agent-${a.slug}.${namespace}.svc.cluster.local:18789`,
+      token: deriveAgentToken(seed, a.slug),
+    }))
+
     files.push({ path: 'namespace.yaml', content: generateNamespace(namespace) })
 
     files.push({
@@ -68,7 +85,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
       content: generateTeamConfigMap({
         teamSlug: spec.slug,
         namespace,
-        teamMd: generateTeamMd({ ...spec }),
+        teamMd: generateTeamMd({ ...spec, peers }),
         bootstrapMd: spec.bootstrapInstructions || DEFAULT_BOOTSTRAP_INSTRUCTIONS,
       }),
     })
@@ -85,6 +102,8 @@ const gkeDeriver: DeploymentSpecDeriver = {
         ? modelProvider.toEnvVars({ apiKey: providerRecord.apiKey, model })
         : {}
 
+      const agentToken = deriveAgentToken(seed, agent.slug)
+      const openclawConfigWithGateway = { ...openclawConfig, gateway: { auth: { token: agentToken } } }
       const credentialSecretName = `${spec.slug}-${agent.slug}-credentials`
       files.push({ path: `agents/${agent.slug}/pv.yaml`, content: generateAgentPv({ teamSlug: spec.slug, agentSlug: agent.slug, projectId, zone: diskZone ?? clusterZone, storageGi: agent.storageGi }) })
       files.push({ path: `agents/${agent.slug}/pvc.yaml`, content: generateAgentPvc({ teamSlug: spec.slug, agentSlug: agent.slug, namespace, storageGi: agent.storageGi }) })
@@ -98,7 +117,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
           identityMd: generateIdentityMd({ name: agent.name, slug: agent.slug, role: agent.role, email: agent.email, slackHandle: agent.slackHandle, githubId: agent.githubId, providerSlug: agent.providerSlug, model }),
           soulMd: generateSoulMd({ userInput: agent.soul }),
           skillsMd: generateSkillsMd(agent.skills),
-          openclawJson: generateOpenClawJson(openclawConfig),
+          openclawJson: generateOpenClawJson(openclawConfigWithGateway),
         }),
       })
       files.push({ path: `agents/${agent.slug}/statefulset.yaml`, content: generateAgentStatefulSet({ teamSlug: spec.slug, agentSlug: agent.slug, image: agent.image || spec.image || undefined, namespace, credentialSecretName, cpu: agent.cpu }) })

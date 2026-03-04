@@ -21,6 +21,7 @@ export interface TeamSpec {
   image?: string
   leadAgentSlug?: string
   bootstrapInstructions?: string
+  tokenSeed?: string
   agents: AgentSpec[]
 }
 
