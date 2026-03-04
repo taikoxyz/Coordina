@@ -1,7 +1,7 @@
 // Two-tab panel for viewing team specs and deploy specs side by side
 // FEATURE: SpecsPanel for team and deployment spec file browsing
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useTeamSpecs, useDeploySpecs, useIsDeployDirty, SpecFile } from '../../hooks/useSpecs'
 
 interface SpecsPanelProps {
@@ -13,6 +13,47 @@ interface SpecsPanelProps {
 }
 
 type Tab = 'team' | 'deploy'
+
+function highlightJson(json: string): React.ReactNode[] {
+  const regex = /("(?:\\.|[^"\\])*")(?=\s*:)|("(?:\\.|[^"\\])*")|(true|false|null)|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|([:,{}[\]])/g
+  const nodes: React.ReactNode[] = []
+  let last = 0
+  let idx = 0
+  let m: RegExpExecArray | null
+  while ((m = regex.exec(json)) !== null) {
+    if (m.index > last) nodes.push(<span key={idx++} className="text-gray-500">{json.slice(last, m.index)}</span>)
+    const [, key, str, keyword, num, punct] = m
+    if (key) nodes.push(<span key={idx++} className="text-sky-300">{key}</span>)
+    else if (str) nodes.push(<span key={idx++} className="text-emerald-300">{str}</span>)
+    else if (keyword !== undefined) nodes.push(<span key={idx++} className="text-purple-300">{keyword}</span>)
+    else if (num !== undefined) nodes.push(<span key={idx++} className="text-amber-300">{num}</span>)
+    else if (punct) nodes.push(<span key={idx++} className="text-gray-500">{punct}</span>)
+    last = regex.lastIndex
+  }
+  if (last < json.length) nodes.push(<span key={idx++} className="text-gray-500">{json.slice(last)}</span>)
+  return nodes
+}
+
+function highlightYaml(yaml: string): React.ReactNode[] {
+  const regex = /(#[^\n]*)|("(?:\\.|[^"\\])*"|'[^']*')(?=\s*:)|([\w][\w-]*)(?=\s*:)|(^---$)|("(?:\\.|[^"\\])*"|'[^']*')|\b(true|false|null|yes|no)\b|(\b-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b)/gm
+  const nodes: React.ReactNode[] = []
+  let last = 0
+  let idx = 0
+  let m: RegExpExecArray | null
+  while ((m = regex.exec(yaml)) !== null) {
+    if (m.index > last) nodes.push(<span key={idx++} className="text-gray-400">{yaml.slice(last, m.index)}</span>)
+    const [, comment, quotedKey, key, doc, str, bool, num] = m
+    if (comment) nodes.push(<span key={idx++} className="text-gray-500 italic">{comment}</span>)
+    else if (quotedKey || key) nodes.push(<span key={idx++} className="text-sky-300">{quotedKey ?? key}</span>)
+    else if (doc) nodes.push(<span key={idx++} className="text-gray-500">{doc}</span>)
+    else if (str) nodes.push(<span key={idx++} className="text-emerald-300">{str}</span>)
+    else if (bool !== undefined) nodes.push(<span key={idx++} className="text-purple-300">{bool}</span>)
+    else if (num !== undefined) nodes.push(<span key={idx++} className="text-amber-300">{num}</span>)
+    last = regex.lastIndex
+  }
+  if (last < yaml.length) nodes.push(<span key={idx++} className="text-gray-400">{yaml.slice(last)}</span>)
+  return nodes
+}
 
 function groupFiles(files: SpecFile[]): { root: SpecFile[]; folders: Record<string, SpecFile[]> } {
   const root: SpecFile[] = []
@@ -110,52 +151,54 @@ export function SpecsPanel({ teamSlug, envId, onClose, onApply, isApplying }: Sp
 
       {/* Body */}
       <div className="flex flex-1 min-h-0">
-        {/* Left pane: file tree */}
-        <div className="w-48 flex-shrink-0 border-r border-gray-700 overflow-y-auto">
-          {isLoading ? (
-            <div className="px-3 py-4 text-xs text-gray-500">Loading…</div>
-          ) : activeTab === 'deploy' && !envId ? null : files.length === 0 ? (
-            <div className="px-3 py-4 text-xs text-gray-500">No specs found</div>
-          ) : (
-            <div className="py-1">
-              {root.map(f => (
-                <button
-                  key={f.path}
-                  onClick={() => setSelectedFile(f.path)}
-                  className={`w-full text-left px-3 py-1 text-xs truncate transition-colors ${
-                    selectedFile === f.path
-                      ? 'bg-gray-700 text-gray-100'
-                      : 'text-gray-400 hover:bg-gray-700/50 hover:text-gray-200'
-                  }`}
-                >
-                  {fileName(f.path)}
-                </button>
-              ))}
-              {Object.entries(folders).map(([folder, folderFiles]) => (
-                <div key={folder}>
-                  <div className="px-3 py-1 text-xs text-gray-500 font-semibold uppercase tracking-wider mt-1">
-                    {folder}/
+        {/* Left pane: file tree (deploy tab only) */}
+        {activeTab === 'deploy' && (
+          <div className="w-48 flex-shrink-0 border-r border-gray-700 overflow-y-auto">
+            {isLoading ? (
+              <div className="px-3 py-4 text-xs text-gray-500">Loading…</div>
+            ) : !envId ? null : files.length === 0 ? (
+              <div className="px-3 py-4 text-xs text-gray-500">No specs found</div>
+            ) : (
+              <div className="py-1">
+                {root.map(f => (
+                  <button
+                    key={f.path}
+                    onClick={() => setSelectedFile(f.path)}
+                    className={`w-full text-left px-3 py-1 text-xs truncate transition-colors ${
+                      selectedFile === f.path
+                        ? 'bg-gray-700 text-gray-100'
+                        : 'text-gray-400 hover:bg-gray-700/50 hover:text-gray-200'
+                    }`}
+                  >
+                    {fileName(f.path)}
+                  </button>
+                ))}
+                {Object.entries(folders).map(([folder, folderFiles]) => (
+                  <div key={folder}>
+                    <div className="px-3 py-1 text-xs text-gray-500 font-semibold uppercase tracking-wider mt-1">
+                      {folder}/
+                    </div>
+                    {folderFiles.map(f => (
+                      <button
+                        key={f.path}
+                        onClick={() => setSelectedFile(f.path)}
+                        className={`w-full text-left pl-5 pr-3 py-1 text-xs truncate transition-colors ${
+                          selectedFile === f.path
+                            ? 'bg-gray-700 text-gray-100'
+                            : 'text-gray-400 hover:bg-gray-700/50 hover:text-gray-200'
+                        }`}
+                      >
+                        {fileName(f.path)}
+                      </button>
+                    ))}
                   </div>
-                  {folderFiles.map(f => (
-                    <button
-                      key={f.path}
-                      onClick={() => setSelectedFile(f.path)}
-                      className={`w-full text-left pl-5 pr-3 py-1 text-xs truncate transition-colors ${
-                        selectedFile === f.path
-                          ? 'bg-gray-700 text-gray-100'
-                          : 'text-gray-400 hover:bg-gray-700/50 hover:text-gray-200'
-                      }`}
-                    >
-                      {fileName(f.path)}
-                    </button>
-                  ))}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* Right pane: file content */}
+        {/* Content pane */}
         <div className="flex-1 overflow-auto min-w-0">
           {activeTab === 'deploy' && !envId ? (
             <div className="flex items-center justify-center h-full text-gray-500 text-sm px-6 text-center">
@@ -169,6 +212,14 @@ export function SpecsPanel({ teamSlug, envId, onClose, onApply, isApplying }: Sp
             <div className="flex items-center justify-center h-full text-gray-600 text-sm">
               No file selected
             </div>
+          ) : selectedFile?.endsWith('.json') ? (
+            <pre className="text-xs font-mono whitespace-pre-wrap break-words p-4">
+              {highlightJson(selectedContent)}
+            </pre>
+          ) : selectedFile?.endsWith('.yaml') ? (
+            <pre className="text-xs font-mono whitespace-pre-wrap break-words p-4">
+              {highlightYaml(selectedContent)}
+            </pre>
           ) : (
             <pre className="text-xs font-mono whitespace-pre-wrap break-words p-4 text-gray-300">
               {selectedContent}
