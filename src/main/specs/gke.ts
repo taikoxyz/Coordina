@@ -103,7 +103,13 @@ const gkeDeriver: DeploymentSpecDeriver = {
         : {}
 
       const agentToken = deriveAgentToken(seed, agent.slug)
-      const openclawConfigWithGateway = { ...openclawConfig, gateway: { auth: { token: agentToken } } }
+      const agentPeers = peers
+        .filter(p => p.slug !== agent.slug)
+        .reduce<Record<string, { url: string; token: string }>>((acc, p) => {
+          acc[p.slug] = { url: `http://agent-${p.slug}.${namespace}.svc.cluster.local:18789`, token: p.token }
+          return acc
+        }, {})
+      const openclawConfigWithGateway = { ...openclawConfig, gateway: { auth: { token: agentToken } }, peers: agentPeers }
       const credentialSecretName = `${spec.slug}-${agent.slug}-credentials`
       files.push({ path: `agents/${agent.slug}/pv.yaml`, content: generateAgentPv({ teamSlug: spec.slug, agentSlug: agent.slug, projectId, zone: diskZone ?? clusterZone, storageGi: agent.storageGi }) })
       files.push({ path: `agents/${agent.slug}/pvc.yaml`, content: generateAgentPvc({ teamSlug: spec.slug, agentSlug: agent.slug, namespace, storageGi: agent.storageGi }) })
