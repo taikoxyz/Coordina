@@ -7,6 +7,8 @@ import { getTeam } from '../store/teams'
 import { getTeamDeployment, saveTeamDeployment, type TeamDeploymentRecord } from '../store/deployments'
 import { getEnvironment, listEnvironments } from '../store/environments'
 import { getOAuth2Client } from '../environments/gke/auth'
+import { ensureAgentPortForward } from './portForward'
+import { resolveGatewayMode } from './mode'
 
 export type TokenFetcher = (envId: string) => Promise<string | null>
 
@@ -133,15 +135,21 @@ async function buildDeploymentRecord(params: {
   const env = await getEnvironment(params.envSlug)
   if (!env || !params.teamSpec) return null
 
-  const domain = (env.config as { domain?: string }).domain || 'example.com'
+  const mode = resolveGatewayMode(env.config)
+  const domain = (env.config as { domain?: string }).domain
   const leadAgentSlug = params.teamSpec.agents[0]?.slug
-  if (!domain || !leadAgentSlug) return null
+  if (!leadAgentSlug) return null
+  if (mode === 'ingress' && (!domain || domain.trim().length === 0)) return null
+
+  const gatewayBaseUrl = mode === 'ingress'
+    ? `https://${params.teamSlug}.${domain}`.replace(/\/+$/, '')
+    : 'http://127.0.0.1'
 
   return {
     teamSlug: params.teamSlug,
     envSlug: env.slug,
     leadAgentSlug,
-    gatewayBaseUrl: `https://${params.teamSlug}.${domain}`.replace(/\/+$/, ''),
+    gatewayBaseUrl,
     deployedAt: Date.now(),
   }
 }
@@ -191,10 +199,34 @@ export function createGatewayRouter(getToken: TokenFetcher = async () => null) {
       return
     }
 
-    const token = await getToken(deployment.envSlug)
+    const env = await getEnvironment(deployment.envSlug)
+    if (!env) {
+      res.status(404).json({ error: `Environment '${deployment.envSlug}' not found` })
+      return
+    }
+    const mode = resolveGatewayMode(env.config)
+    const token = mode === 'ingress' ? await getToken(deployment.envSlug) : null
     const agentSlugs = new Set(teamSpec.agents.map(a => a.slug))
     const rewrittenPath = resolveUpstreamPath(req.path, leadAgentSlug, agentSlugs)
-    const upstream = await resolveUpstreamTarget(teamSlug, deployment)
+    const upstream = await (async (): Promise<UpstreamTarget> => {
+      if (mode === 'port-forward') {
+        const targetAgentSlug = rewrittenPath.match(/^\/agents\/([^/]+)/)?.[1]
+        if (!targetAgentSlug) {
+          throw new Error(`Could not resolve target agent from path '${rewrittenPath}'`)
+        }
+        const target = await ensureAgentPortForward({
+          envSlug: deployment.envSlug,
+          teamSlug,
+          agentSlug: targetAgentSlug,
+        })
+        return { target }
+      }
+      return resolveUpstreamTarget(teamSlug, deployment)
+    })().catch((e) => {
+      sendProxyError(res as Response, 502, 'Failed to establish port-forward to agent gateway', e instanceof Error ? e.message : String(e))
+      return null
+    })
+    if (!upstream) return
 
     const proxy = createProxyMiddleware({
       target: upstream.target,

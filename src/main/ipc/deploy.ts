@@ -9,6 +9,7 @@ import { getDeriver } from '../specs/base'
 import '../specs/gke'
 import { deployTeam, undeployTeam, getTeamStatus } from '../environments/gke/deploy'
 import { authenticateGke } from '../environments/gke/auth'
+import { resolveGatewayMode } from '../gateway/mode'
 import type { EnvironmentRecord, DeployOptions } from '../../shared/types'
 
 export function registerDeployHandlers(): void {
@@ -63,13 +64,18 @@ export function registerDeployHandlers(): void {
       }
       const leadAgentSlug = spec.agents[0]?.slug
       const envDomain = (env.config as { domain?: string }).domain
-      const domain = envDomain || 'example.com'
+      const mode = resolveGatewayMode(env.config)
       if (leadAgentSlug) {
+        if (mode === 'ingress' && (!envDomain || envDomain.trim().length === 0)) {
+          return { ok: false, reason: 'Environment domain is required when gateway mode is ingress' }
+        }
         await saveTeamDeployment({
           teamSlug,
           envSlug,
           leadAgentSlug,
-          gatewayBaseUrl: `https://${teamSlug}.${domain}`.replace(/\/+$/, ''),
+          gatewayBaseUrl: mode === 'ingress'
+            ? `https://${teamSlug}.${envDomain}`.replace(/\/+$/, '')
+            : 'http://127.0.0.1',
           deployedAt: Date.now(),
         })
       }

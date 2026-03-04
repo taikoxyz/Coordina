@@ -3,6 +3,7 @@
 import { registerEnvironment } from '../base'
 import { deployTeam, undeployTeam, getTeamStatus } from './deploy'
 import { getTeam } from '../../store/teams'
+import { resolveGatewayMode } from '../../gateway/mode'
 import type { GkeDeployConfig } from './deploy'
 import type { SpecFile, DeployOptions } from '../../../shared/types'
 
@@ -16,15 +17,18 @@ registerEnvironment({
       projectId: { type: 'string', title: 'GCP Project ID' },
       clusterName: { type: 'string', title: 'Cluster Name' },
       clusterZone: { type: 'string', title: 'Cluster Zone', description: 'e.g. us-central1-a' },
-      domain: { type: 'string', title: 'Base Domain', description: 'e.g. example.com' },
+      gatewayMode: { type: 'string', title: 'Gateway Mode', enum: ['port-forward', 'ingress'] },
+      domain: { type: 'string', title: 'Base Domain', description: 'Required for ingress mode (e.g. example.com)' },
     },
   },
   validate(config: unknown) {
-    const c = config as { projectId?: string; clusterName?: string; clusterZone?: string }
+    const c = config as { projectId?: string; clusterName?: string; clusterZone?: string; domain?: string }
     const errors: string[] = []
     if (!c.projectId) errors.push('GCP Project ID is required')
     if (!c.clusterName) errors.push('Cluster Name is required')
     if (!c.clusterZone) errors.push('Cluster Zone is required')
+    const mode = resolveGatewayMode(config)
+    if (mode === 'ingress' && !c.domain) errors.push('Base domain is required when gateway mode is ingress')
     return errors.length ? { valid: false, errors } : { valid: true }
   },
   deploy(files: SpecFile[], teamSlug: string, config: unknown, options: DeployOptions) {

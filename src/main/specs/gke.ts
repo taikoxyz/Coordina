@@ -26,6 +26,7 @@ import type { DeploymentSpecDeriver } from './base'
 import type { TeamSpec, ProviderRecord, SpecFile } from '../../shared/types'
 import { getProvider } from '../providers/base'
 import { saveTeam } from '../store/teams'
+import { resolveGatewayMode } from '../gateway/mode'
 
 function deriveAgentToken(seed: string, agentSlug: string): string {
   return createHmac('sha256', seed).update(agentSlug).digest('hex').slice(0, 48)
@@ -62,9 +63,15 @@ const gkeDeriver: DeploymentSpecDeriver = {
     providers: Map<string, ProviderRecord & { apiKey?: string }>,
     envConfig: Record<string, unknown>
   ): Promise<SpecFile[]> {
-    const { projectId, clusterZone, diskZone, domain: envDomain } = envConfig as { projectId: string; clusterZone: string; diskZone?: string; domain?: string }
+    const {
+      projectId,
+      clusterZone,
+      diskZone,
+      domain: envDomain,
+    } = envConfig as { projectId: string; clusterZone: string; diskZone?: string; domain?: string; gatewayMode?: 'port-forward' | 'ingress' }
     const namespace = spec.slug
-    const domain = envDomain || 'example.com'
+    const mode = resolveGatewayMode(envConfig)
+    const ingressDomain = mode === 'ingress' ? envDomain : undefined
     const files: SpecFile[] = []
 
     if (!spec.tokenSeed) {
@@ -130,7 +137,9 @@ const gkeDeriver: DeploymentSpecDeriver = {
       files.push({ path: `agents/${agent.slug}/service.yaml`, content: generateAgentService({ teamSlug: spec.slug, agentSlug: agent.slug, namespace }) })
     }
 
-    files.push({ path: 'ingress.yaml', content: generateIngress({ teamSlug: spec.slug, agents: spec.agents.map(a => a.slug), domain, namespace }) })
+    if (ingressDomain) {
+      files.push({ path: 'ingress.yaml', content: generateIngress({ teamSlug: spec.slug, agents: spec.agents.map(a => a.slug), domain: ingressDomain, namespace }) })
+    }
 
     return files
   },
