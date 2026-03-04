@@ -22,6 +22,15 @@ export function ChatMessage({ message }: Props) {
         }`}
       >
         {message.content}
+        {message.attachments && message.attachments.length > 0 && (
+          <div className="mt-2 space-y-1">
+            {message.attachments.map((file) => (
+              <div key={`${file.name}-${file.size}`} className={`text-xs rounded px-2 py-1 ${isUser ? 'bg-blue-700/70' : 'bg-gray-800'}`}>
+                {file.name}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       {isUser && (
         <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center text-white text-xs font-bold ml-3 flex-shrink-0 mt-1">

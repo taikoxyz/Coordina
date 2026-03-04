@@ -5,6 +5,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import os from 'os'
 import { listTeams, getTeam, saveTeam, deleteTeam } from '../store/teams'
+import { deleteTeamDeployment } from '../store/deployments'
 import { runPipeline } from '../watcher'
 import type { TeamSpec } from '../../shared/types'
 
@@ -35,7 +36,10 @@ export function registerTeamHandlers(): void {
   })
 
   ipcMain.handle('teams:delete', async (_e, slug: string) => {
-    await deleteTeam(slug)
+    await Promise.all([
+      deleteTeam(slug),
+      deleteTeamDeployment(slug),
+    ])
     return { ok: true }
   })
 

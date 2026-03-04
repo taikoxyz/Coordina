@@ -4,6 +4,7 @@ import { ipcMain, BrowserWindow } from 'electron'
 import { listEnvironments, getEnvironment, saveEnvironment, deleteEnvironment } from '../store/environments'
 import { getTeam } from '../store/teams'
 import { listProviders, getProviderApiKey } from '../store/providers'
+import { saveTeamDeployment, deleteTeamDeployment } from '../store/deployments'
 import { getDeriver } from '../specs/base'
 import '../specs/gke'
 import { deployTeam, undeployTeam, getTeamStatus } from '../environments/gke/deploy'
@@ -60,6 +61,18 @@ export function registerDeployHandlers(): void {
       for await (const status of deployTeam(specFiles, teamSlug, deployConfig, options)) {
         win?.webContents.send('deploy:status', status)
       }
+      const leadAgentSlug = spec.agents[0]?.slug
+      const envDomain = (env.config as { domain?: string }).domain
+      const domain = spec.domain || envDomain || 'example.com'
+      if (leadAgentSlug) {
+        await saveTeamDeployment({
+          teamSlug,
+          envSlug,
+          leadAgentSlug,
+          gatewayBaseUrl: `https://${teamSlug}.${domain}`.replace(/\/+$/, ''),
+          deployedAt: Date.now(),
+        })
+      }
       return { ok: true }
     } catch (e) {
       return { ok: false, reason: e instanceof Error ? e.message : String(e) }
@@ -77,6 +90,7 @@ export function registerDeployHandlers(): void {
       for await (const status of undeployTeam(teamSlug, deployConfig)) {
         win?.webContents.send('deploy:status', status)
       }
+      await deleteTeamDeployment(teamSlug)
       return { ok: true }
     } catch (e) {
       return { ok: false, reason: e instanceof Error ? e.message : String(e) }

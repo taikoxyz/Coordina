@@ -122,6 +122,7 @@ describe('generateAgentConfigMap', () => {
       identityMd: '# Identity',
       soulMd: '# Soul',
       skillsMd: '# Skills',
+      openclawJson: '{ "agents": { "defaults": { "model": { "primary": "anthropic/claude-sonnet-4-6" } } }, "models": { "providers": { "anthropic": {} } } }',
     })
     expect(yaml).toContain('name: alpha-alice-config')
     expect(yaml).toContain('IDENTITY.md: |')

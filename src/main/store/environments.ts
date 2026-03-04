@@ -43,3 +43,22 @@ export const getEnvToken = (slug: string): Promise<string | null> =>
 
 export const setEnvToken = (slug: string, token: string): Promise<void> =>
   setSecret(slug, 'environments', token)
+
+export const getEnvAuthToken = async (slug: string): Promise<string | null> => {
+  const raw = await getEnvToken(slug)
+  if (!raw) return null
+
+  try {
+    const parsed = JSON.parse(raw) as { id_token?: unknown; access_token?: unknown }
+    if (typeof parsed.id_token === 'string' && parsed.id_token.length > 0) {
+      return parsed.id_token
+    }
+    if (typeof parsed.access_token === 'string' && parsed.access_token.length > 0) {
+      return parsed.access_token
+    }
+  } catch {
+    // Backward compatibility: token may already be stored as a plain bearer token string.
+  }
+
+  return raw
+}

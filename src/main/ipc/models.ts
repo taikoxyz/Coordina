@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 import { join } from 'path'
 import fs from 'fs'
-import { getDataDir } from '../db'
+import { getDataDir } from '../store/dataDir'
 
 const MODELS_URL = 'https://models.dev/api.json'
 const CACHE_TTL_MS = 60 * 60 * 1000
