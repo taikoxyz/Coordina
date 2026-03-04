@@ -186,13 +186,13 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
             volumeMounts: containerVolumeMounts,
             resources: { requests: { cpu: `${cpu ?? 1}` }, limits: { cpu: `${cpu ?? 1}` } },
             readinessProbe: {
-              tcpSocket: { port: 18789 },
+              exec: { command: ['sh', '-c', 'nc -z 127.0.0.1 18789'] },
               initialDelaySeconds: 15,
               periodSeconds: 10,
               failureThreshold: 3,
             },
             livenessProbe: {
-              tcpSocket: { port: 18789 },
+              exec: { command: ['sh', '-c', 'nc -z 127.0.0.1 18789'] },
               initialDelaySeconds: 30,
               periodSeconds: 20,
               failureThreshold: 3,
