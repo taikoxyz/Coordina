@@ -18,6 +18,7 @@ export interface OpenClawConfig {
   agents: { defaults: { model: { primary: string; fallbacks?: string[] } } }
   models: { providers: { [provider: string]: { apiKey?: string; baseUrl?: string; api?: string } } }
   gateway?: { auth?: { token?: string } }
+  peers?: { [slug: string]: { url: string; token: string } }
 }
 
 export function generateIdentityMd(agent: AgentIdentity): string {
