@@ -122,28 +122,6 @@ export function generateTeamSpecs(
     }, null, 2),
   })
 
-  for (const agent of agents) {
-    files.push({
-      path: `agents/${agent.slug}/IDENTITY.md`,
-      content: generateIdentityMd({
-        name: agent.name,
-        slug: agent.slug,
-        role: agent.role,
-        email: agent.email,
-        slackHandle: agent.slackHandle,
-        githubId: agent.githubId,
-      }),
-    })
-    files.push({
-      path: `agents/${agent.slug}/SOUL.md`,
-      content: generateSoulMd({ userInput: agent.soul }),
-    })
-    files.push({
-      path: `agents/${agent.slug}/SKILLS.md`,
-      content: generateSkillsMd(agent.skills),
-    })
-  }
-
   return files
 }
 
@@ -159,9 +137,6 @@ export function generateDeploySpecs(
   const domain = team.domain || 'example.com'
 
   files.push({ path: 'namespace.yaml', content: generateNamespace(namespace) })
-
-  const teamSpecs = generateTeamSpecs(team, agents, providers)
-  const getMdContent = (p: string) => teamSpecs.find(f => f.path === p)?.content ?? ''
 
   const bootstrapInstructions = team.bootstrapInstructions || DEFAULT_BOOTSTRAP_INSTRUCTIONS
 
@@ -205,9 +180,9 @@ export function generateDeploySpecs(
         agentSlug: agent.slug,
         namespace,
         agentJson,
-        identityMd: getMdContent(`agents/${agent.slug}/IDENTITY.md`),
-        soulMd: getMdContent(`agents/${agent.slug}/SOUL.md`),
-        skillsMd: getMdContent(`agents/${agent.slug}/SKILLS.md`),
+        identityMd: generateIdentityMd({ name: agent.name, slug: agent.slug, role: agent.role, email: agent.email, slackHandle: agent.slackHandle, githubId: agent.githubId }),
+        soulMd: generateSoulMd({ userInput: agent.soul }),
+        skillsMd: generateSkillsMd(agent.skills),
         openclawJson: generateOpenClawJson(modelConfig as Parameters<typeof generateOpenClawJson>[0]),
       }),
     })
