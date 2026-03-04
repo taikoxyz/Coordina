@@ -80,23 +80,22 @@ async function pollGceOperation(opLink: string, headers: Record<string, string>,
   throw new Error(`${label} timed out`)
 }
 
+async function deleteGceDisk(token: string, projectId: string, zone: string, diskName: string): Promise<void> {
+  const base = `https://compute.googleapis.com/compute/v1/projects/${projectId}/zones/${zone}`
+  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+  const del = await fetch(`${base}/disks/${diskName}`, { method: 'DELETE', headers })
+  if (!del.ok && del.status !== 404) throw new Error(`Failed to delete GCE disk: ${await del.text()}`)
+  if (del.ok) await pollGceOperation((await del.json() as { selfLink: string }).selfLink, headers, `GCE disk delete ${diskName}`)
+}
+
 async function ensureGceDisk(token: string, projectId: string, zone: string, diskName: string, sizeGb: number): Promise<'created' | 'updated' | 'exists'> {
   const base = `https://compute.googleapis.com/compute/v1/projects/${projectId}/zones/${zone}`
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
   const check = await fetch(`${base}/disks/${diskName}`, { headers })
   if (check.ok) {
     const existing = await check.json() as { sizeGb: string }
-    const existingGb = parseInt(existing.sizeGb)
-    if (sizeGb < existingGb) throw new Error(`Cannot shrink disk ${diskName} from ${existingGb}Gi to ${sizeGb}Gi — GCE disks cannot be reduced in size`)
-    if (sizeGb === existingGb) return 'exists'
-    const resize = await fetch(`${base}/disks/${diskName}/resize`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ sizeGb }),
-    })
-    if (!resize.ok) throw new Error(`Failed to resize GCE disk: ${await resize.text()}`)
-    await pollGceOperation((await resize.json() as { selfLink: string }).selfLink, headers, `GCE disk resize ${diskName}`)
-    return 'updated'
+    if (parseInt(existing.sizeGb) === sizeGb) return 'exists'
+    await deleteGceDisk(token, projectId, zone, diskName)
   }
   const create = await fetch(`${base}/disks`, {
     method: 'POST',
@@ -105,7 +104,7 @@ async function ensureGceDisk(token: string, projectId: string, zone: string, dis
   })
   if (!create.ok) throw new Error(`Failed to create GCE disk: ${await create.text()}`)
   await pollGceOperation((await create.json() as { selfLink: string }).selfLink, headers, `GCE disk creation ${diskName}`)
-  return 'created'
+  return check.ok ? 'updated' : 'created'
 }
 
 export async function* deployTeam(
@@ -122,30 +121,47 @@ export async function* deployTeam(
   const appsApi = kc.makeApiClient(k8s.AppsV1Api)
   const namespace = teamSlug
 
-  // Delete StatefulSets first so pods terminate and GCE disks detach before resize
+  // Always delete StatefulSets so pods terminate before any disk/config operations
   for (const f of specFiles.filter(f => f.path.includes('/statefulset.yaml'))) {
     const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata: k8s.V1ObjectMeta }
     if (doc?.metadata?.name) await tryDelete(() => appsApi.deleteNamespacedStatefulSet({ name: doc.metadata.name!, namespace }))
   }
 
-  for (const f of specFiles.filter(f => f.path.endsWith('/pv.yaml'))) {
-    const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata: k8s.V1ObjectMeta; spec?: { capacity?: { storage?: string } } }
-    const diskName = doc?.metadata?.name
-    if (!diskName) continue
-    const sizeGb = parseInt(doc.spec?.capacity?.storage ?? '10') || 10
-    try {
-      const diskStatus = await ensureGceDisk(token, config.projectId, config.diskZone ?? config.clusterZone, diskName, sizeGb)
-      yield { resource: `GCEDisk/${diskName}`, status: diskStatus }
-    } catch (e: unknown) {
-      yield { resource: `GCEDisk/${diskName}`, status: 'error', message: String(e) }
-      return
+  if (!options.keepDisks) {
+    // Delete PVCs then PVs so K8s releases disk references before GCE disk operations
+    for (const f of specFiles.filter(f => f.path.endsWith('/pvc.yaml'))) {
+      const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata: k8s.V1ObjectMeta }
+      if (doc?.metadata?.name) await tryDelete(() => coreApi.deleteNamespacedPersistentVolumeClaim({ name: doc.metadata.name!, namespace }))
+    }
+    for (const f of specFiles.filter(f => f.path.endsWith('/pv.yaml'))) {
+      const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata: k8s.V1ObjectMeta }
+      if (doc?.metadata?.name) await tryDelete(() => coreApi.deletePersistentVolume({ name: doc.metadata.name! }))
+    }
+    for (const f of specFiles.filter(f => f.path.endsWith('/pv.yaml'))) {
+      const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata: k8s.V1ObjectMeta; spec?: { capacity?: { storage?: string } } }
+      const diskName = doc?.metadata?.name
+      if (!diskName) continue
+      const sizeGb = parseInt(doc.spec?.capacity?.storage ?? '10') || 10
+      try {
+        const diskStatus = await ensureGceDisk(token, config.projectId, config.diskZone ?? config.clusterZone, diskName, sizeGb)
+        yield { resource: `GCEDisk/${diskName}`, status: diskStatus }
+      } catch (e: unknown) {
+        yield { resource: `GCEDisk/${diskName}`, status: 'error', message: String(e) }
+        return
+      }
     }
   }
 
+  // Always delete credentials secrets so API keys are refreshed
   for (const f of specFiles.filter(f => f.path.endsWith('credentials.yaml'))) {
     const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata: k8s.V1ObjectMeta }
     if (doc?.metadata?.name) await tryDelete(() => coreApi.deleteNamespacedSecret({ name: doc.metadata.name!, namespace }))
   }
+
+  const skipDiskPaths = new Set(options.keepDisks ? [
+    ...specFiles.filter(f => f.path.endsWith('/pv.yaml')).map(f => f.path),
+    ...specFiles.filter(f => f.path.endsWith('/pvc.yaml')).map(f => f.path),
+  ] : [])
 
   const orderedPaths = [
     'namespace.yaml', 'configmap-shared.yaml',
@@ -159,6 +175,7 @@ export async function* deployTeam(
   ]
 
   for (const path of orderedPaths) {
+    if (skipDiskPaths.has(path)) continue
     const file = specFiles.find(f => f.path === path)
     if (!file) continue
     for (const s of await applyManifest(client, file.content)) yield s
