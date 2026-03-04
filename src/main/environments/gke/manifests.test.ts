@@ -5,7 +5,7 @@ describe('generateAgentStatefulSet', () => {
   it('generates StatefulSet manifest with deterministic PVC name', () => {
     const manifest = generateAgentStatefulSet({ teamSlug: 'eng-alpha', agentSlug: 'alice' })
     expect(manifest).toContain('name: agent-alice')
-    expect(manifest).toContain('team-eng-alpha-alice')
+    expect(manifest).toContain('team-eng-alpha')
     expect(manifest).toContain('containerPort: 18789')
   })
 
@@ -19,7 +19,7 @@ describe('generateAgentStatefulSet', () => {
     expect(manifest).toContain('myrepo/openclaw:v2')
   })
 
-  it('includes configmap volume mounts', () => {
+  it('includes configmap volumes and mounts them in init container', () => {
     const manifest = generateAgentStatefulSet({ teamSlug: 'eng-alpha', agentSlug: 'alice' })
     expect(manifest).toContain('shared-config')
     expect(manifest).toContain('agent-config')
@@ -27,12 +27,29 @@ describe('generateAgentStatefulSet', () => {
     expect(manifest).toContain('/config/agent')
   })
 
-  it('includes bootstrap init container', () => {
+  it('sets OPENCLAW_WORKSPACE_DIR and OPENCLAW_STATE_DIR env vars', () => {
+    const manifest = generateAgentStatefulSet({ teamSlug: 'eng-alpha', agentSlug: 'alice' })
+    expect(manifest).toContain('OPENCLAW_WORKSPACE_DIR')
+    expect(manifest).toContain('/workspace')
+    expect(manifest).toContain('OPENCLAW_STATE_DIR')
+    expect(manifest).toContain('/openclaw-state')
+  })
+
+  it('includes bootstrap init container that seeds workspace files', () => {
     const manifest = generateAgentStatefulSet({ teamSlug: 'eng-alpha', agentSlug: 'alice' })
     expect(manifest).toContain('bootstrap-init')
     expect(manifest).toContain('busybox:1.36')
-    expect(manifest).toContain('BOOTSTRAP-INSTRUCTIONS.md')
     expect(manifest).toContain('BOOTSTRAP.md')
+    expect(manifest).toContain('IDENTITY.md')
+    expect(manifest).toContain('SOUL.md')
+    expect(manifest).toContain('SKILLS.md')
+    expect(manifest).toContain('TEAM.md')
+  })
+
+  it('mounts credential secret at openclaw-state/openclaw.json when provided', () => {
+    const manifest = generateAgentStatefulSet({ teamSlug: 'eng-alpha', agentSlug: 'alice', credentialSecretName: 'eng-alpha-anthropic-credentials' })
+    expect(manifest).toContain('eng-alpha-anthropic-credentials')
+    expect(manifest).toContain('openclaw.json')
   })
 })
 
@@ -83,38 +100,32 @@ describe('generateConfigMap', () => {
 })
 
 describe('generateTeamConfigMap', () => {
-  it('generates shared ConfigMap with team.json, AGENTS.md and BOOTSTRAP-INSTRUCTIONS.md', () => {
+  it('generates shared ConfigMap with TEAM.md and BOOTSTRAP.md', () => {
     const yaml = generateTeamConfigMap({
       teamSlug: 'alpha',
       namespace: 'team-alpha',
-      teamJson: '{"name":"Alpha"}',
-      agentsMd: '# Agents',
-      bootstrapInstructionsMd: '# Bootstrap',
+      teamMd: '## TEAM\n\n## About\n- name: Alpha',
+      bootstrapMd: '# Bootstrap',
     })
     expect(yaml).toContain('name: alpha-shared-config')
-    expect(yaml).toContain('team.json: |')
-    expect(yaml).toContain('AGENTS.md: |')
-    expect(yaml).toContain('BOOTSTRAP-INSTRUCTIONS.md: |')
+    expect(yaml).toContain('TEAM.md: |')
+    expect(yaml).toContain('BOOTSTRAP.md: |')
   })
 })
 
 describe('generateAgentConfigMap', () => {
-  it('generates per-agent ConfigMap with 5 files', () => {
+  it('generates per-agent ConfigMap with IDENTITY.md, SOUL.md and SKILLS.md', () => {
     const yaml = generateAgentConfigMap({
       teamSlug: 'alpha',
       agentSlug: 'alice',
       namespace: 'team-alpha',
-      agentJson: '{}',
       identityMd: '# Identity',
       soulMd: '# Soul',
       skillsMd: '# Skills',
-      openclawJson: '{}',
     })
     expect(yaml).toContain('name: alpha-alice-config')
-    expect(yaml).toContain('agent.json: |')
     expect(yaml).toContain('IDENTITY.md: |')
     expect(yaml).toContain('SOUL.md: |')
     expect(yaml).toContain('SKILLS.md: |')
-    expect(yaml).toContain('openclaw.json: |')
   })
 })

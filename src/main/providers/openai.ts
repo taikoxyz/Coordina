@@ -1,4 +1,4 @@
-import { registerProvider, type ModelProvider } from './base'
+import { registerProvider, fetchWithTimeout, type ModelProvider } from './base'
 
 const openai: ModelProvider = {
   id: 'openai',
@@ -24,9 +24,31 @@ const openai: ModelProvider = {
     if (!c.apiKey?.startsWith('sk-')) return { valid: false, errors: ['API key must start with sk-'] }
     return { valid: true }
   },
+  async testConnection(config) {
+    try { await openai.listModels(config); return { valid: true } }
+    catch (e) { return { valid: false, errors: [(e as Error).message] } }
+  },
+  async listModels(config) {
+    const c = config as { apiKey?: string }
+    const res = await fetchWithTimeout('https://api.openai.com/v1/models', {
+      headers: { Authorization: `Bearer ${c.apiKey ?? ''}` },
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({})) as { error?: { message?: string } }
+      throw new Error(body.error?.message ?? `HTTP ${res.status}`)
+    }
+    const body = await res.json() as { data?: { id: string }[] }
+    return (body.data?.map(m => m.id) ?? [])
+      .filter(id => /^(gpt-4|gpt-3\.5|o1|o3)/.test(id))
+      .sort()
+  },
   toOpenClawJson(config) {
-    const c = config as { apiKey: string; model: string }
-    return { provider: 'openai', model: c.model, apiKey: c.apiKey }
+    const c = config as { model: string }
+    return { agents: { defaults: { model: { primary: `openai/${c.model}` } } }, models: { providers: { openai: { baseUrl: 'https://api.openai.com/v1', api: 'openai-completions', models: [{ id: c.model, name: c.model }] } } } }
+  },
+  toEnvVars(config) {
+    const c = config as { apiKey: string }
+    return { OPENAI_API_KEY: c.apiKey }
   },
 }
 

@@ -1,33 +1,25 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+// Tests for GKE OAuth2 auth — token retrieval and client construction
+// FEATURE: GCP OAuth2 auth flow storing tokens in OS keychain for GKE access
+import { describe, it, expect, vi } from 'vitest'
 
-const store = vi.hoisted(() => new Map<string, string>())
-
-vi.mock('../../keychain', () => ({
-  setSecret: vi.fn(async (a: string, k: string, v: string) => store.set(`${a}:${k}`, v)),
-  getSecret: vi.fn(async (a: string, k: string) => store.get(`${a}:${k}`) ?? null),
-  deleteSecret: vi.fn(async (a: string, k: string) => store.delete(`${a}:${k}`)),
+vi.mock('../../store/environments', () => ({
+  getEnvToken: vi.fn(async () => null),
+  setEnvToken: vi.fn(async () => {}),
 }))
 
-import { storeGkeCredentials, getGkeCredentials, storeGkeAccessToken, getGkeAccessToken } from './auth'
+import { getOAuth2Client } from './auth'
 
-describe('GKE auth', () => {
-  beforeEach(() => store.clear())
-
-  it('stores and retrieves GKE credentials', async () => {
-    const creds = { type: 'oauth' as const, projectId: 'my-proj', clusterName: 'my-cluster', clusterZone: 'us-central1-a' }
-    await storeGkeCredentials('env-1', creds)
-    const retrieved = await getGkeCredentials('env-1')
-    expect(retrieved).toEqual(creds)
+describe('getOAuth2Client', () => {
+  it('throws when no token is stored', async () => {
+    await expect(
+      getOAuth2Client('env-1', { clientId: 'id', clientSecret: 'secret' })
+    ).rejects.toThrow('Not authenticated')
   })
 
-  it('returns null for missing credentials', async () => {
-    const result = await getGkeCredentials('nonexistent')
-    expect(result).toBeNull()
-  })
-
-  it('stores and retrieves access token', async () => {
-    await storeGkeAccessToken('env-1', 'ya29.test-token')
-    const token = await getGkeAccessToken('env-1')
-    expect(token).toBe('ya29.test-token')
+  it('returns a client when token exists', async () => {
+    const { getEnvToken } = await import('../../store/environments')
+    vi.mocked(getEnvToken).mockResolvedValueOnce(JSON.stringify({ access_token: 'ya29.test' }))
+    const client = await getOAuth2Client('env-1', { clientId: 'id', clientSecret: 'secret' })
+    expect(client).toBeDefined()
   })
 })

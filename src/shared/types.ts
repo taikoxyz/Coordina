@@ -1,20 +1,5 @@
-export interface TeamRecord {
+export interface AgentSpec {
   slug: string
-  name: string
-  githubRepo?: string
-  leadAgentSlug?: string
-  config: Record<string, unknown>
-  gatewayUrl?: string
-  deployedEnvId?: string
-  domain?: string
-  image?: string
-  deployedSpecHash?: string
-  bootstrapInstructions?: string
-}
-
-export interface AgentRecord {
-  slug: string
-  teamSlug: string
   name: string
   role: string
   email?: string
@@ -22,25 +7,41 @@ export interface AgentRecord {
   githubId?: string
   skills: string[]
   soul: string
-  providerId?: string
-  model?: string
+  providerSlug: string
   image?: string
   isLead: boolean
+  cpu?: number
+  storageGi?: number
+}
+
+export interface TeamSpec {
+  slug: string
+  name: string
+  domain?: string
+  image?: string
+  leadAgentSlug?: string
+  bootstrapInstructions?: string
+  tokenSeed?: string
+  agents: AgentSpec[]
 }
 
 export interface ProviderRecord {
-  id: string
+  slug: string
   type: string
   name: string
-  config: Record<string, unknown>
-  maskedApiKey?: string
+  model: string
 }
 
 export interface EnvironmentRecord {
-  id: string
+  slug: string
   type: string
   name: string
   config: Record<string, unknown>
+}
+
+export interface AppSettings {
+  gitEnabled?: boolean
+  gitRepoPath?: string
 }
 
 export interface SpecFile {
@@ -57,6 +58,26 @@ export interface ModelInfo {
 export interface AgentStatus {
   agentSlug: string
   status: 'running' | 'pending' | 'crashed' | 'unknown'
+  message?: string
+}
+
+export interface ValidationError {
+  field: string
+  message: string
+}
+
+export interface ValidationResult {
+  valid: boolean
+  errors: ValidationError[]
+}
+
+export interface DeployOptions {
+  keepDisks: boolean
+}
+
+export interface DeployStatus {
+  resource: string
+  status: 'created' | 'updated' | 'deleted' | 'exists' | 'error'
   message?: string
 }
 

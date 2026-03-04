@@ -1,6 +1,8 @@
-import type { DeployResult, AgentStatus } from '../../shared/types'
+// Base interface for deployment environments with streaming status output
+// FEATURE: Deployment environment abstraction for multi-cloud provider support
+import type { AgentStatus, DeployOptions, DeployStatus, SpecFile } from '../../shared/types'
 
-export type { DeployResult, AgentStatus }
+export type { AgentStatus, DeployOptions, DeployStatus, SpecFile }
 
 export interface ValidationResult {
   valid: boolean
@@ -12,28 +14,21 @@ export interface DeploymentEnvironment {
   displayName: string
   configSchema: object
   validate(config: unknown): ValidationResult
-  deploy(teamSlug: string, config: unknown): Promise<DeployResult>
-  undeploy(teamSlug: string, config: unknown): Promise<void>
+  deploy(files: SpecFile[], teamSlug: string, config: unknown, options: DeployOptions): AsyncIterable<DeployStatus>
+  undeploy(teamSlug: string, config: unknown): AsyncIterable<DeployStatus>
   getStatus(teamSlug: string, config: unknown): Promise<AgentStatus[]>
 }
 
 const registry = new Map<string, DeploymentEnvironment>()
 
-export function registerEnvironment(e: DeploymentEnvironment): void {
-  registry.set(e.id, e)
-}
+export const registerEnvironment = (e: DeploymentEnvironment): void => { registry.set(e.id, e) }
 
-export function getEnvironment(id: string): DeploymentEnvironment {
+export const getEnvironment = (id: string): DeploymentEnvironment => {
   const e = registry.get(id)
   if (!e) throw new Error(`Unknown deployment environment: ${id}`)
   return e
 }
 
-export function listEnvironments(): DeploymentEnvironment[] {
-  return [...registry.values()]
-}
+export const listEnvironments = (): DeploymentEnvironment[] => [...registry.values()]
 
-/** Test helper — reset registry between tests */
-export function _resetEnvRegistry(): void {
-  registry.clear()
-}
+export const _resetEnvRegistry = (): void => { registry.clear() }
