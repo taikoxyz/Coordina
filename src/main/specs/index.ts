@@ -1,5 +1,5 @@
 // Pure spec generation pipeline for team GitHub files and K8s deploy manifests
-// FEATURE: Spec generation layer — team.json, agent files, K8s YAMLs, dirty detection
+// FEATURE: Spec generation layer — spec.json, agent files, K8s YAMLs, dirty detection
 
 import { createHash } from 'crypto'
 import {
@@ -78,6 +78,20 @@ export async function buildProvidersMap(db: Database.Database): Promise<Map<stri
 
 export type { TeamRecord, AgentRecord, ProviderRecord, SpecFile }
 
+function buildModelConfig(agent: AgentRecord, providers: Map<string, ProviderRecord>): Record<string, unknown> {
+  if (!agent.providerId) return { provider: 'anthropic', model: agent.model || 'claude-sonnet-4-6' }
+  const provider = providers.get(agent.providerId)
+  if (!provider) return { provider: 'anthropic', model: agent.model || 'claude-sonnet-4-6' }
+  let registeredProvider
+  try { registeredProvider = getProvider(provider.type) } catch { /* unregistered provider type */ }
+  const fallbackModel = registeredProvider?.defaultModel ?? 'claude-sonnet-4-6'
+  return {
+    ...provider.config,
+    provider: provider.type,
+    model: agent.model || (provider.config.model as string | undefined) || fallbackModel,
+  }
+}
+
 export function generateTeamSpecs(
   team: TeamRecord,
   agents: AgentRecord[],
@@ -86,13 +100,25 @@ export function generateTeamSpecs(
   const files: SpecFile[] = []
 
   files.push({
-    path: 'team.json',
+    path: 'spec.json',
     content: JSON.stringify({
       name: team.name,
       slug: team.slug,
       domain: team.domain,
       image: team.image,
       leadAgentSlug: team.leadAgentSlug,
+      agents: agents.map(agent => ({
+        slug: agent.slug,
+        name: agent.name,
+        role: agent.role,
+        email: agent.email,
+        slackHandle: agent.slackHandle,
+        githubId: agent.githubId,
+        skills: agent.skills,
+        soul: agent.soul,
+        isLead: agent.isLead,
+        modelConfig: buildModelConfig(agent, providers),
+      })),
     }, null, 2),
   })
 
@@ -102,36 +128,6 @@ export function generateTeamSpecs(
   })
 
   for (const agent of agents) {
-    let modelConfig: Record<string, unknown> = { provider: 'anthropic', model: agent.model || 'claude-sonnet-4-6' }
-
-    if (agent.providerId) {
-      const provider = providers.get(agent.providerId)
-      if (provider) {
-        let registeredProvider
-        try { registeredProvider = getProvider(provider.type) } catch { /* unregistered provider type */ }
-        const fallbackModel = registeredProvider?.defaultModel ?? 'claude-sonnet-4-6'
-        modelConfig = {
-          ...provider.config,
-          provider: provider.type,
-          model: agent.model || (provider.config.model as string | undefined) || fallbackModel,
-        }
-      }
-    }
-
-    files.push({
-      path: `agents/${agent.slug}/agent.json`,
-      content: JSON.stringify({
-        name: agent.name,
-        role: agent.role,
-        email: agent.email,
-        slackHandle: agent.slackHandle,
-        githubId: agent.githubId,
-        skills: agent.skills,
-        soul: agent.soul,
-        modelConfig,
-      }, null, 2),
-    })
-
     files.push({
       path: `agents/${agent.slug}/IDENTITY.md`,
       content: generateIdentityMd({
@@ -143,20 +139,13 @@ export function generateTeamSpecs(
         githubId: agent.githubId,
       }),
     })
-
     files.push({
       path: `agents/${agent.slug}/SOUL.md`,
       content: generateSoulMd({ userInput: agent.soul }),
     })
-
     files.push({
       path: `agents/${agent.slug}/SKILLS.md`,
       content: generateSkillsMd(agent.skills),
-    })
-
-    files.push({
-      path: `agents/${agent.slug}/openclaw.json`,
-      content: generateOpenClawJson(modelConfig as Parameters<typeof generateOpenClawJson>[0]),
     })
   }
 
@@ -177,33 +166,54 @@ export function generateDeploySpecs(
   files.push({ path: 'namespace.yaml', content: generateNamespace(namespace) })
 
   const teamSpecs = generateTeamSpecs(team, agents, providers)
-  const getContent = (p: string) => teamSpecs.find(f => f.path === p)?.content ?? ''
+  const getMdContent = (p: string) => teamSpecs.find(f => f.path === p)?.content ?? ''
 
   const bootstrapInstructions = team.bootstrapInstructions || DEFAULT_BOOTSTRAP_INSTRUCTIONS
+
+  const teamJson = JSON.stringify({
+    name: team.name,
+    slug: team.slug,
+    domain: team.domain,
+    image: team.image,
+    leadAgentSlug: team.leadAgentSlug,
+  }, null, 2)
 
   files.push({
     path: 'configmap-shared.yaml',
     content: generateTeamConfigMap({
       teamSlug: team.slug,
       namespace,
-      teamJson: getContent('team.json'),
-      agentsMd: getContent('AGENTS.md'),
+      teamJson,
+      agentsMd: getMdContent('AGENTS.md'),
       bootstrapInstructionsMd: bootstrapInstructions,
     }),
   })
 
   for (const agent of agents) {
+    const modelConfig = buildModelConfig(agent, providers)
+
+    const agentJson = JSON.stringify({
+      name: agent.name,
+      role: agent.role,
+      email: agent.email,
+      slackHandle: agent.slackHandle,
+      githubId: agent.githubId,
+      skills: agent.skills,
+      soul: agent.soul,
+      modelConfig,
+    }, null, 2)
+
     files.push({
       path: `agents/${agent.slug}/configmap.yaml`,
       content: generateAgentConfigMap({
         teamSlug: team.slug,
         agentSlug: agent.slug,
         namespace,
-        agentJson: getContent(`agents/${agent.slug}/agent.json`),
-        identityMd: getContent(`agents/${agent.slug}/IDENTITY.md`),
-        soulMd: getContent(`agents/${agent.slug}/SOUL.md`),
-        skillsMd: getContent(`agents/${agent.slug}/SKILLS.md`),
-        openclawJson: getContent(`agents/${agent.slug}/openclaw.json`),
+        agentJson,
+        identityMd: getMdContent(`agents/${agent.slug}/IDENTITY.md`),
+        soulMd: getMdContent(`agents/${agent.slug}/SOUL.md`),
+        skillsMd: getMdContent(`agents/${agent.slug}/SKILLS.md`),
+        openclawJson: generateOpenClawJson(modelConfig as Parameters<typeof generateOpenClawJson>[0]),
       }),
     })
   }
