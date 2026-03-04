@@ -19,6 +19,7 @@ export interface TeamSpec {
   name: string
   domain?: string
   image?: string
+  storageGi?: number
   leadAgentSlug?: string
   bootstrapInstructions?: string
   tokenSeed?: string

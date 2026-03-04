@@ -1,10 +1,11 @@
 // Structured form for editing team spec fields inline without dialogs
 // FEATURE: Team spec editor left panel with agents list and inline field editing
-import { useCallback } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useSaveTeam } from '../../hooks/useTeams'
 import { useProviders } from '../../hooks/useProviders'
 import { AgentRow } from './AgentRow'
 import type { TeamSpec, AgentSpec } from '../../../../shared/types'
+import { generateAutoAgentIdentities, type AgentNameTheme } from '../../../../shared/agentNames'
 
 interface Props {
   spec: TeamSpec
@@ -13,32 +14,56 @@ interface Props {
 
 const inputCls = 'bg-gray-800 border border-gray-700 rounded px-1.5 py-0.5 text-[11px] text-gray-200 focus:outline-none focus:border-blue-600 w-full font-mono'
 const labelCls = 'text-[10px] text-gray-500 block mb-0.5'
+const nameThemeOptions: Array<{ value: AgentNameTheme; label: string }> = [
+  { value: 'sci-fi', label: 'Sci-Fi' },
+  { value: 'movies', label: 'Movies' },
+  { value: 'mixed', label: 'Mixed' }
+]
 
 export function SpecForm({ spec, onSpecChange }: Props) {
   const saveTeam = useSaveTeam()
   const { data: providers } = useProviders()
   const providerSlugs = (providers ?? []).map(p => p.slug)
+  const [nameTheme, setNameTheme] = useState<AgentNameTheme>('sci-fi')
 
   const set = useCallback((key: keyof TeamSpec) => (value: unknown) => {
     onSpecChange({ ...spec, [key]: value })
   }, [spec, onSpecChange])
 
-  const addAgent = () => {
-    const newAgent: AgentSpec = { slug: '', name: '', role: '', providerSlug: '', skills: [], soul: '', isLead: spec.agents.length === 0 }
-    onSpecChange({ ...spec, agents: [...spec.agents, newAgent] })
+  const applyAgents = (agents: AgentSpec[]) => {
+    const normalized = agents.map((agent, i) => ({ ...agent, isLead: i === 0 }))
+    onSpecChange({ ...spec, agents: normalized, leadAgentSlug: normalized[0]?.slug || undefined })
+  }
+
+  const addAutoAgents = (count: number) => {
+    const generated = generateAutoAgentIdentities(spec.agents, count, nameTheme)
+    if (!generated.length) return
+
+    const newAgents: AgentSpec[] = generated.map((identity) => ({
+      slug: identity.slug,
+      name: identity.name,
+      role: '',
+      providerSlug: '',
+      skills: [],
+      soul: '',
+      isLead: false
+    }))
+
+    applyAgents([...spec.agents, ...newAgents])
   }
 
   const updateAgent = (i: number, updated: AgentSpec) => {
     const agents = [...spec.agents]
-    agents[i] = { ...updated, isLead: i === 0 }
-    onSpecChange({ ...spec, agents, leadAgentSlug: agents[0]?.slug || spec.leadAgentSlug })
+    agents[i] = updated
+    applyAgents(agents)
   }
 
   const deleteAgent = (i: number) => {
-    onSpecChange({ ...spec, agents: spec.agents.filter((_, j) => j !== i) })
+    applyAgents(spec.agents.filter((_, j) => j !== i))
   }
 
   const handleSave = () => saveTeam.mutate(spec)
+  const [nextAutoName] = useMemo(() => generateAutoAgentIdentities(spec.agents, 1, nameTheme), [spec.agents, nameTheme])
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -100,9 +125,46 @@ export function SpecForm({ spec, onSpecChange }: Props) {
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] text-gray-500 uppercase tracking-wider">Agents ({spec.agents.length})</span>
-            <button onClick={addAgent} className="text-[10px] text-blue-500 hover:text-blue-400">+ add</button>
+          <div className="mb-1.5 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-gray-500 uppercase tracking-wider">Agents ({spec.agents.length})</span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => addAutoAgents(1)}
+                  className="text-[10px] px-1.5 py-0.5 rounded border border-blue-600/60 text-blue-300 hover:border-blue-500 hover:text-blue-200 transition-colors"
+                >
+                  +1 auto
+                </button>
+                <button
+                  onClick={() => addAutoAgents(10)}
+                  className="text-[10px] px-1.5 py-0.5 rounded border border-blue-600/60 text-blue-300 hover:border-blue-500 hover:text-blue-200 transition-colors"
+                >
+                  +10 auto
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-gray-600">name pack</span>
+              <div role="tablist" aria-label="Agent name pack" className="inline-flex rounded-md border border-gray-700 bg-gray-900/40 p-0.5">
+                {nameThemeOptions.map((option) => {
+                  const active = nameTheme === option.value
+                  return (
+                    <button
+                      key={option.value}
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setNameTheme(option.value)}
+                      className={`text-[10px] px-2 py-0.5 rounded transition-colors ${active ? 'bg-gray-700 text-gray-100' : 'text-gray-500 hover:text-gray-300'}`}
+                    >
+                      {option.label}
+                    </button>
+                  )
+                })}
+              </div>
+              {nextAutoName && (
+                <span className="text-[10px] text-gray-600 truncate">next: {nextAutoName.name}</span>
+              )}
+            </div>
           </div>
           <div className="space-y-1">
             {spec.agents.map((agent, i) => (

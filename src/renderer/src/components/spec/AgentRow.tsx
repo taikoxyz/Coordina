@@ -2,6 +2,7 @@
 // FEATURE: Agent editor component using inline expand pattern for dense layout
 import { useState } from 'react'
 import type { AgentSpec } from '../../../../shared/types'
+import { deriveSlug } from '../../../../shared/slug'
 
 interface Props {
   agent: AgentSpec
@@ -10,9 +11,6 @@ interface Props {
   onChange: (updated: AgentSpec) => void
   onDelete: () => void
 }
-
-const toAgentSlug = (name: string) =>
-  name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
 const fieldRow = (label: string, value: string, onChange: (v: string) => void, opts?: { mono?: boolean; multiline?: boolean; placeholder?: string }) => (
   <div className="flex items-start gap-2">
@@ -42,7 +40,7 @@ export function AgentRow({ agent, isFirst, providerSlugs, onChange, onDelete }: 
   const set = (key: keyof AgentSpec) => (value: unknown) => onChange({ ...agent, [key]: value })
 
   const handleNameChange = (name: string) => {
-    onChange({ ...agent, name, slug: name ? toAgentSlug(name) : '' })
+    onChange({ ...agent, name, slug: name ? deriveSlug(name) : '' })
   }
 
   return (
