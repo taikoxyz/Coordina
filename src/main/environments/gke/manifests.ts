@@ -144,6 +144,7 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
     'test -f /workspace/SOUL.md || cp /config/agent/SOUL.md /workspace/SOUL.md',
     'test -f /workspace/SKILLS.md || cp /config/agent/SKILLS.md /workspace/SKILLS.md',
     `cp /config/agent/openclaw.json ${stateDir}/openclaw.json`,
+    `chmod 777 ${stateDir}`,
   ].join(' && ')
 
   const manifest = {
