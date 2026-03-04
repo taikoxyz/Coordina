@@ -119,7 +119,19 @@ export async function* deployTeam(
   const client = k8s.KubernetesObjectApi.makeApiClient(kc)
   const coreApi = kc.makeApiClient(k8s.CoreV1Api)
   const appsApi = kc.makeApiClient(k8s.AppsV1Api)
+  const networkingApi = kc.makeApiClient(k8s.NetworkingV1Api)
   const namespace = teamSlug
+  const hasIngressManifest = specFiles.some(f => f.path === 'ingress.yaml')
+
+  // In port-forward mode ingress.yaml is omitted; delete stale ingress to avoid paying for unused LB resources.
+  if (!hasIngressManifest) {
+    try {
+      await networkingApi.deleteCollectionNamespacedIngress({ namespace })
+      yield { resource: `Ingress/${teamSlug}`, status: 'deleted', message: 'Removed stale ingress (port-forward mode)' }
+    } catch {
+      // Ignore cleanup failures and continue deploying core resources.
+    }
+  }
 
   // Always delete StatefulSets so pods terminate before any disk/config operations
   for (const f of specFiles.filter(f => f.path.includes('/statefulset.yaml'))) {
@@ -190,7 +202,7 @@ export async function* undeployTeam(teamSlug: string, config: GkeDeployConfig): 
   const namespace = teamSlug
 
   for (const [label, fn] of [
-    [`Ingress/${teamSlug}-ingress`, () => networkingApi.deleteNamespacedIngress({ name: `${teamSlug}-ingress`, namespace })],
+    [`Ingress/${teamSlug}`, () => networkingApi.deleteCollectionNamespacedIngress({ namespace })],
     ['StatefulSets', () => appsApi.deleteCollectionNamespacedStatefulSet({ namespace, labelSelector: `coordina.team=${teamSlug}` })],
     ['Services', () => coreApi.deleteCollectionNamespacedService({ namespace, labelSelector: `coordina.team=${teamSlug}` })],
   ] as [string, () => Promise<unknown>][]) {
