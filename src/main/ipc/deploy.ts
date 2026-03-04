@@ -6,8 +6,10 @@ import { getTeam } from '../store/teams'
 import { listProviders, getProviderApiKey } from '../store/providers'
 import { getDeriver } from '../specs/base'
 import '../specs/gke'
-import { deployTeam, undeployTeam, getTeamStatus } from '../environments/gke/deploy'
+import { deployTeam, undeployTeam, getTeamStatus, getMcStatus } from '../environments/gke/deploy'
 import { authenticateGke } from '../environments/gke/auth'
+import { getMcAdminPassword, setMcAdminPassword, getMcApiKey, setMcApiKey } from '../store/teams'
+import { registerAgentsWithMc } from '../mc/register'
 import type { EnvironmentRecord, DeployOptions } from '../../shared/types'
 
 export function registerDeployHandlers(): void {
@@ -88,5 +90,41 @@ export function registerDeployHandlers(): void {
     if (!spec || !env) return []
     const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof getTeamStatus>[2]
     return getTeamStatus(teamSlug, spec.agents.map(a => a.slug), deployConfig)
+  })
+
+  ipcMain.handle('mc:status', async (_e, { teamSlug, envSlug }: { teamSlug: string; envSlug: string }) => {
+    const env = await getEnvironment(envSlug)
+    if (!env) return { podStatus: 'unknown' }
+    const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof getMcStatus>[1]
+    return getMcStatus(teamSlug, deployConfig)
+  })
+
+  ipcMain.handle('mc:register-agents', async (_e, { teamSlug, envSlug }: { teamSlug: string; envSlug: string }) => {
+    const [spec, env] = await Promise.all([getTeam(teamSlug), getEnvironment(envSlug)])
+    if (!spec || !env) return { ok: false, reason: 'Team or environment not found' }
+    if (!spec.missionControl?.enabled) return { ok: false, reason: 'Mission Control not enabled' }
+
+    const apiKey = await getMcApiKey(spec.slug)
+    if (!apiKey) return { ok: false, reason: 'MC API key not configured' }
+
+    const domain = spec.missionControl.domain || `mc.${spec.domain || 'example.com'}`
+    return registerAgentsWithMc({
+      mcBaseUrl: `https://${domain}`,
+      apiKey,
+      teamSlug: spec.slug,
+      agents: spec.agents.map(a => ({ slug: a.slug, name: a.name, role: a.role, isLead: a.isLead })),
+      namespace: spec.slug,
+    })
+  })
+
+  ipcMain.handle('mc:save-credentials', async (_e, { teamSlug, adminPassword, apiKey }: { teamSlug: string; adminPassword?: string; apiKey?: string }) => {
+    if (adminPassword) await setMcAdminPassword(teamSlug, adminPassword)
+    if (apiKey) await setMcApiKey(teamSlug, apiKey)
+    return { ok: true }
+  })
+
+  ipcMain.handle('mc:get-credentials', async (_e, teamSlug: string) => {
+    const [adminPassword, apiKey] = await Promise.all([getMcAdminPassword(teamSlug), getMcApiKey(teamSlug)])
+    return { hasAdminPassword: !!adminPassword, hasApiKey: !!apiKey, hasCredentials: !!(adminPassword && apiKey) }
   })
 }

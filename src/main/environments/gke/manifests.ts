@@ -244,6 +244,157 @@ export function generateIapBackendConfig(input: IapBackendConfigInput): string {
   return yaml.dump(manifest)
 }
 
+export function generateMcSecret(input: {
+  teamSlug: string
+  namespace: string
+  adminPassword: string
+  sessionSecret: string
+  apiKey: string
+  leadAgentSlug: string
+}): string {
+  const { teamSlug, namespace, adminPassword, sessionSecret, apiKey, leadAgentSlug } = input
+  const manifest = {
+    apiVersion: 'v1',
+    kind: 'Secret',
+    type: 'Opaque',
+    metadata: {
+      name: `${teamSlug}-mc-credentials`,
+      namespace,
+      labels: { 'coordina.team': teamSlug, 'coordina.component': 'mission-control' },
+    },
+    stringData: {
+      ADMIN_PASSWORD: adminPassword,
+      SESSION_SECRET: sessionSecret,
+      MC_API_KEY: apiKey,
+      OPENCLAW_GATEWAY_HOST: `agent-${leadAgentSlug}.${namespace}.svc.cluster.local`,
+      OPENCLAW_GATEWAY_PORT: '18789',
+    },
+  }
+  return yaml.dump(manifest)
+}
+
+export function generateMcPvc(input: {
+  teamSlug: string
+  namespace: string
+  storageGi?: number
+}): string {
+  const { teamSlug, namespace, storageGi = 5 } = input
+  const manifest = {
+    apiVersion: 'v1',
+    kind: 'PersistentVolumeClaim',
+    metadata: {
+      name: `${teamSlug}-mc-data`,
+      namespace,
+      labels: { 'coordina.team': teamSlug, 'coordina.component': 'mission-control' },
+    },
+    spec: {
+      accessModes: ['ReadWriteOnce'],
+      resources: { requests: { storage: `${storageGi}Gi` } },
+    },
+  }
+  return yaml.dump(manifest)
+}
+
+export function generateMcDeployment(input: {
+  teamSlug: string
+  image: string
+  namespace: string
+}): string {
+  const { teamSlug, image, namespace } = input
+  const manifest = {
+    apiVersion: 'apps/v1',
+    kind: 'Deployment',
+    metadata: {
+      name: 'mission-control',
+      namespace,
+      labels: { 'coordina.team': teamSlug, 'coordina.component': 'mission-control' },
+    },
+    spec: {
+      replicas: 1,
+      selector: { matchLabels: { app: 'mission-control' } },
+      template: {
+        metadata: { labels: { app: 'mission-control', 'coordina.team': teamSlug } },
+        spec: {
+          containers: [{
+            name: 'mission-control',
+            image,
+            ports: [{ containerPort: 3000, name: 'http' }],
+            envFrom: [{ secretRef: { name: `${teamSlug}-mc-credentials` } }],
+            volumeMounts: [{ name: 'data', mountPath: '/app/.data' }],
+            resources: { requests: { cpu: '0.5', memory: '512Mi' }, limits: { cpu: '1', memory: '1Gi' } },
+            readinessProbe: {
+              httpGet: { path: '/api/health', port: 3000 },
+              initialDelaySeconds: 10,
+              periodSeconds: 10,
+              failureThreshold: 3,
+            },
+            livenessProbe: {
+              httpGet: { path: '/api/health', port: 3000 },
+              initialDelaySeconds: 20,
+              periodSeconds: 30,
+              failureThreshold: 3,
+            },
+          }],
+          volumes: [{ name: 'data', persistentVolumeClaim: { claimName: `${teamSlug}-mc-data` } }],
+        },
+      },
+    },
+  }
+  return yaml.dump(manifest)
+}
+
+export function generateMcService(input: {
+  teamSlug: string
+  namespace: string
+}): string {
+  const { teamSlug, namespace } = input
+  const manifest = {
+    apiVersion: 'v1',
+    kind: 'Service',
+    metadata: {
+      name: 'mission-control',
+      namespace,
+      labels: { 'coordina.team': teamSlug, 'coordina.component': 'mission-control' },
+    },
+    spec: {
+      selector: { app: 'mission-control' },
+      ports: [{ port: 3000, targetPort: 3000, name: 'http' }],
+      type: 'ClusterIP',
+    },
+  }
+  return yaml.dump(manifest)
+}
+
+export function generateMcIngress(input: {
+  teamSlug: string
+  domain: string
+  namespace: string
+}): string {
+  const { teamSlug, domain, namespace } = input
+  const manifest = {
+    apiVersion: 'networking.k8s.io/v1',
+    kind: 'Ingress',
+    metadata: {
+      name: `${teamSlug}-mc-ingress`,
+      namespace,
+      annotations: { 'kubernetes.io/ingress.class': 'gce' },
+    },
+    spec: {
+      rules: [{
+        host: domain,
+        http: {
+          paths: [{
+            path: '/',
+            pathType: 'Prefix',
+            backend: { service: { name: 'mission-control', port: { number: 3000 } } },
+          }],
+        },
+      }],
+    },
+  }
+  return yaml.dump(manifest)
+}
+
 export function generateIngress(input: {
   teamSlug: string
   agents: string[]

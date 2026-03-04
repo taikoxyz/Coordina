@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { useSaveTeam } from '../../hooks/useTeams'
 import { useProviders } from '../../hooks/useProviders'
 import { AgentRow } from './AgentRow'
+import { McPanel } from './McPanel'
 import type { TeamSpec, AgentSpec } from '../../../../shared/types'
 import { generateAutoAgentIdentities, type AgentNameTheme } from '../../../../shared/agentNames'
 
@@ -123,6 +124,8 @@ export function SpecForm({ spec, onSpecChange }: Props) {
             placeholder="Custom startup instructions..."
           />
         </div>
+
+        <McPanel spec={spec} onSpecChange={onSpecChange} />
 
         <div>
           <div className="mb-1.5 space-y-1.5">

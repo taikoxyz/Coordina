@@ -255,8 +255,38 @@ export function StatusPanel({ spec, onSave, isSaving }: Props) {
         {deployLogs.length > 0 && (
           <div className="bg-gray-950 rounded p-2 space-y-0.5 max-h-28 overflow-y-auto">
             {deployLogs.map((line, i) => (
-              <div key={i} className={`text-[10px] font-mono ${line.startsWith('ERROR') ? 'text-red-400' : line.startsWith('CREATED') ? 'text-green-400' : line.startsWith('EXISTS') ? 'text-yellow-500' : 'text-gray-400'}`}>{line}</div>
+              <div key={i} className={`text-[10px] font-mono ${line.startsWith('ERROR') ? 'text-red-400' : line.startsWith('CREATED') ? 'text-green-400' : line.startsWith('EXISTS') ? 'text-yellow-500' : line.startsWith('MC') ? 'text-purple-400' : 'text-gray-400'}`}>{line}</div>
             ))}
+          </div>
+        )}
+
+        {spec.missionControl?.enabled && deployState === 'done' && (
+          <div className="flex items-center gap-2 pt-1 border-t border-gray-700/40">
+            <span className="text-[10px] text-gray-500">MC</span>
+            <button
+              onClick={async () => {
+                const result = await window.api.invoke('mc:register-agents', { teamSlug: spec.slug, envSlug: selectedEnvSlug }) as { ok: boolean; registered?: string[]; errors?: Array<{ slug: string; error: string }> }
+                if (result.ok) {
+                  setDeployLogs(prev => [...prev, `MC: Registered ${result.registered?.length ?? 0} agents`])
+                } else {
+                  for (const err of result.errors ?? []) {
+                    setDeployLogs(prev => [...prev, `MC ERROR: ${err.slug} — ${err.error}`])
+                  }
+                }
+              }}
+              className="text-[10px] px-2 py-0.5 bg-purple-800 hover:bg-purple-700 text-purple-200 rounded"
+            >
+              Register Agents
+            </button>
+            <button
+              onClick={() => {
+                const domain = spec.missionControl?.domain || `mc.${spec.domain || 'example.com'}`
+                window.open(`https://${domain}`, '_blank')
+              }}
+              className="text-[10px] px-2 py-0.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded"
+            >
+              Open MC
+            </button>
           </div>
         )}
       </div>

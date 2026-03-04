@@ -4,7 +4,7 @@ import * as k8s from '@kubernetes/client-node'
 import { ClusterManagerClient } from '@google-cloud/container'
 import yaml from 'js-yaml'
 import { getOAuth2Client } from './auth'
-import type { DeployOptions, DeployStatus, AgentStatus, SpecFile } from '../../../shared/types'
+import type { DeployOptions, DeployStatus, AgentStatus, McStatus, SpecFile } from '../../../shared/types'
 
 export interface GkeDeployConfig {
   slug: string
@@ -167,11 +167,14 @@ export async function* deployTeam(
     'namespace.yaml', 'configmap-shared.yaml',
     ...specFiles.filter(f => f.path.includes('/configmap.yaml')).map(f => f.path),
     ...specFiles.filter(f => f.path.endsWith('/credentials.yaml')).map(f => f.path),
+    ...specFiles.filter(f => f.path.startsWith('mc/secret')).map(f => f.path),
     ...specFiles.filter(f => f.path.endsWith('/pv.yaml')).map(f => f.path),
     ...specFiles.filter(f => f.path.endsWith('/pvc.yaml')).map(f => f.path),
     ...specFiles.filter(f => f.path.includes('/statefulset.yaml')).map(f => f.path),
+    ...specFiles.filter(f => f.path.includes('/deployment.yaml')).map(f => f.path),
     ...specFiles.filter(f => f.path.includes('/service.yaml')).map(f => f.path),
     'ingress.yaml',
+    ...specFiles.filter(f => f.path.startsWith('mc/ingress')).map(f => f.path),
   ]
 
   for (const path of orderedPaths) {
@@ -190,12 +193,26 @@ export async function* undeployTeam(teamSlug: string, config: GkeDeployConfig): 
   const namespace = teamSlug
 
   for (const [label, fn] of [
+    [`Ingress/${teamSlug}-mc-ingress`, () => networkingApi.deleteNamespacedIngress({ name: `${teamSlug}-mc-ingress`, namespace })],
     [`Ingress/${teamSlug}-ingress`, () => networkingApi.deleteNamespacedIngress({ name: `${teamSlug}-ingress`, namespace })],
+    ['Deployment/mission-control', () => appsApi.deleteNamespacedDeployment({ name: 'mission-control', namespace })],
     ['StatefulSets', () => appsApi.deleteCollectionNamespacedStatefulSet({ namespace, labelSelector: `coordina.team=${teamSlug}` })],
     ['Services', () => coreApi.deleteCollectionNamespacedService({ namespace, labelSelector: `coordina.team=${teamSlug}` })],
   ] as [string, () => Promise<unknown>][]) {
     try { await fn(); yield { resource: label, status: 'deleted' } }
     catch { yield { resource: label, status: 'error' } }
+  }
+}
+
+export async function getMcStatus(teamSlug: string, config: GkeDeployConfig): Promise<McStatus> {
+  try {
+    const kc = await buildKubeConfig(config)
+    const appsApi = kc.makeApiClient(k8s.AppsV1Api)
+    const deployment = await appsApi.readNamespacedDeployment({ name: 'mission-control', namespace: teamSlug })
+    const available = deployment.status?.availableReplicas ?? 0
+    return { podStatus: available > 0 ? 'running' : 'pending' }
+  } catch {
+    return { podStatus: 'not-deployed' }
   }
 }
 

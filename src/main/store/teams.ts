@@ -4,6 +4,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import os from 'os'
 import { TeamSpec } from '../../shared/types'
+import { getSecret, setSecret } from '../keychain'
 
 const teamsDir = (): string => path.join(os.homedir(), '.coordina', 'teams')
 
@@ -35,3 +36,15 @@ export const saveTeam = async (spec: TeamSpec): Promise<void> => {
 export const deleteTeam = async (slug: string): Promise<void> => {
   await fs.unlink(teamPath(slug)).catch(() => undefined)
 }
+
+export const getMcAdminPassword = (teamSlug: string): Promise<string | null> =>
+  getSecret(teamSlug, 'mc-admin-password')
+
+export const setMcAdminPassword = (teamSlug: string, value: string): Promise<void> =>
+  setSecret(teamSlug, 'mc-admin-password', value)
+
+export const getMcApiKey = (teamSlug: string): Promise<string | null> =>
+  getSecret(teamSlug, 'mc-api-key')
+
+export const setMcApiKey = (teamSlug: string, value: string): Promise<void> =>
+  setSecret(teamSlug, 'mc-api-key', value)

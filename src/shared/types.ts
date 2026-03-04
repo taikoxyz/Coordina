@@ -14,6 +14,12 @@ export interface AgentSpec {
   storageGi?: number
 }
 
+export interface MissionControlConfig {
+  enabled: boolean
+  image: string
+  domain?: string
+}
+
 export interface TeamSpec {
   slug: string
   name: string
@@ -24,6 +30,12 @@ export interface TeamSpec {
   bootstrapInstructions?: string
   tokenSeed?: string
   agents: AgentSpec[]
+  missionControl?: MissionControlConfig
+}
+
+export interface McStatus {
+  podStatus: 'running' | 'pending' | 'crashed' | 'unknown' | 'not-deployed'
+  url?: string
 }
 
 export interface ProviderRecord {
