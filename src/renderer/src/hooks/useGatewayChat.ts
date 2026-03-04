@@ -130,14 +130,23 @@ async function readErrorDetail(res: Response): Promise<string | undefined> {
 }
 
 export function useGatewayChat(teamSlug: string, agentSlug?: string, envSlug?: string) {
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const conversationKey = `${teamSlug}::${envSlug ?? '__default_env__'}::${agentSlug ?? '__lead__'}`
+  const [messagesByConversation, setMessagesByConversation] = useState<Record<string, ChatMessage[]>>({})
   const [connected, setConnected] = useState(true)
   const [error, setError] = useState<GatewayChatError | null>(null)
+  const messages = messagesByConversation[conversationKey] ?? []
+
+  const appendMessage = useCallback((message: ChatMessage) => {
+    setMessagesByConversation(prev => ({
+      ...prev,
+      [conversationKey]: [...(prev[conversationKey] ?? []), message],
+    }))
+  }, [conversationKey])
 
   useEffect(() => {
     setConnected(true)
     setError(null)
-  }, [teamSlug, agentSlug, envSlug])
+  }, [conversationKey])
 
   const sendMessage = useCallback(async (content: string, files: File[] = []) => {
     const text = content.trim()
@@ -152,7 +161,7 @@ export function useGatewayChat(teamSlug: string, agentSlug?: string, envSlug?: s
       timestamp: Date.now(),
       attachments: attachments.length > 0 ? attachments : undefined,
     }
-    setMessages(prev => [...prev, msg])
+    appendMessage(msg)
 
     try {
       const contentParts: Array<Record<string, unknown>> = []
@@ -202,12 +211,12 @@ export function useGatewayChat(teamSlug: string, agentSlug?: string, envSlug?: s
       }
 
       const payload = await res.json()
-      setMessages(prev => [...prev, {
+      appendMessage({
         id: `${Date.now()}-${Math.random()}`,
         role: 'assistant',
         content: extractAssistantText(payload),
         timestamp: Date.now(),
-      }])
+      })
       setConnected(true)
       setError(null)
     } catch (e) {
@@ -219,7 +228,7 @@ export function useGatewayChat(teamSlug: string, agentSlug?: string, envSlug?: s
         hints: getHints('connection'),
       })
     }
-  }, [agentSlug, teamSlug, envSlug])
+  }, [agentSlug, appendMessage, envSlug, teamSlug])
 
   return { messages, connected, error, sendMessage }
 }
