@@ -43,7 +43,6 @@ export function generateSkillsMd(skills: string[]): string {
 export function generateTeamMd(team: {
   name: string
   slug: string
-  domain?: string
   image?: string
   leadAgentSlug?: string
   storageGi?: number
@@ -53,7 +52,6 @@ export function generateTeamMd(team: {
   const lines: string[] = ['## TEAM', '', '## About']
   lines.push(`- name: ${team.name}`)
   lines.push(`- slug: ${team.slug}`)
-  if (team.domain) lines.push(`- domain: ${team.domain}`)
   if (team.image) lines.push(`- image: ${team.image}`)
   if (team.leadAgentSlug) lines.push(`- lead: ${team.leadAgentSlug}`)
   if (team.storageGi) lines.push(`- storage: ${team.storageGi}Gi`)

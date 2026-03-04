@@ -63,7 +63,7 @@ export function registerDeployHandlers(): void {
       }
       const leadAgentSlug = spec.agents[0]?.slug
       const envDomain = (env.config as { domain?: string }).domain
-      const domain = spec.domain || envDomain || 'example.com'
+      const domain = envDomain || 'example.com'
       if (leadAgentSlug) {
         await saveTeamDeployment({
           teamSlug,

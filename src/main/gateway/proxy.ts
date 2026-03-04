@@ -1,10 +1,27 @@
 import { Router, type Response } from 'express'
+import { lookup as dnsLookup } from 'node:dns/promises'
 import { createProxyMiddleware } from 'http-proxy-middleware'
+import * as k8s from '@kubernetes/client-node'
+import { ClusterManagerClient } from '@google-cloud/container'
 import { getTeam } from '../store/teams'
 import { getTeamDeployment, saveTeamDeployment, type TeamDeploymentRecord } from '../store/deployments'
 import { getEnvironment, listEnvironments } from '../store/environments'
+import { getOAuth2Client } from '../environments/gke/auth'
 
 export type TokenFetcher = (envId: string) => Promise<string | null>
+
+interface UpstreamTarget {
+  target: string
+  hostHeader?: string
+}
+
+interface GkeGatewayConfig {
+  projectId: string
+  clusterName: string
+  clusterZone: string
+  clientId: string
+  clientSecret: string
+}
 
 function sendProxyError(res: Response, status: number, error: string, detail?: string): void {
   if (res.headersSent) return
@@ -12,6 +29,85 @@ function sendProxyError(res: Response, status: number, error: string, detail?: s
     error,
     ...(detail ? { detail } : {}),
   })
+}
+
+function parseGkeGatewayConfig(config: unknown): GkeGatewayConfig | null {
+  const c = config as Partial<GkeGatewayConfig>
+  if (
+    typeof c.projectId === 'string' &&
+    typeof c.clusterName === 'string' &&
+    typeof c.clusterZone === 'string' &&
+    typeof c.clientId === 'string' &&
+    typeof c.clientSecret === 'string'
+  ) {
+    return {
+      projectId: c.projectId,
+      clusterName: c.clusterName,
+      clusterZone: c.clusterZone,
+      clientId: c.clientId,
+      clientSecret: c.clientSecret,
+    }
+  }
+  return null
+}
+
+async function readGkeIngressAddress(envSlug: string, teamSlug: string): Promise<string | null> {
+  const env = await getEnvironment(envSlug)
+  if (!env || env.type !== 'gke') return null
+
+  const cfg = parseGkeGatewayConfig(env.config)
+  if (!cfg) return null
+
+  const auth = await getOAuth2Client(env.slug, { clientId: cfg.clientId, clientSecret: cfg.clientSecret })
+  const containerClient = new ClusterManagerClient({ authClient: auth })
+  const [cluster] = await containerClient.getCluster({
+    name: `projects/${cfg.projectId}/locations/${cfg.clusterZone}/clusters/${cfg.clusterName}`,
+  })
+
+  if (!cluster.endpoint || !cluster.masterAuth?.clusterCaCertificate) return null
+
+  const kc = new k8s.KubeConfig()
+  kc.loadFromOptions({
+    clusters: [{ name: cfg.clusterName, server: `https://${cluster.endpoint}`, caData: cluster.masterAuth.clusterCaCertificate }],
+    users: [{ name: 'gke-user', token: (await auth.getAccessToken()).token ?? '' }],
+    contexts: [{ name: 'gke', cluster: cfg.clusterName, user: 'gke-user' }],
+    currentContext: 'gke',
+  })
+
+  const networkingApi = kc.makeApiClient(k8s.NetworkingV1Api)
+  const ingress = await networkingApi.readNamespacedIngress({ name: `${teamSlug}-ingress`, namespace: teamSlug }).catch(() => null)
+  const ingressStatus = ingress?.status?.loadBalancer?.ingress?.[0]
+  if (typeof ingressStatus?.ip === 'string' && ingressStatus.ip.length > 0) return ingressStatus.ip
+  if (typeof ingressStatus?.hostname === 'string' && ingressStatus.hostname.length > 0) return ingressStatus.hostname
+  return null
+}
+
+async function resolveUpstreamTarget(teamSlug: string, deployment: TeamDeploymentRecord): Promise<UpstreamTarget> {
+  const target = deployment.gatewayBaseUrl
+  let parsed: URL
+  try {
+    parsed = new URL(target)
+  } catch {
+    return { target }
+  }
+
+  try {
+    await dnsLookup(parsed.hostname)
+    return { target }
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code
+    if (code !== 'ENOTFOUND' && code !== 'EAI_AGAIN') {
+      return { target }
+    }
+  }
+
+  const ingressAddress = await readGkeIngressAddress(deployment.envSlug, teamSlug).catch(() => null)
+  if (!ingressAddress) return { target }
+
+  return {
+    target: `http://${ingressAddress}`,
+    hostHeader: parsed.host,
+  }
 }
 
 function resolveUpstreamPath(pathname: string, leadAgentSlug: string, agentSlugs: Set<string>): string {
@@ -37,7 +133,7 @@ async function buildDeploymentRecord(params: {
   const env = await getEnvironment(params.envSlug)
   if (!env || !params.teamSpec) return null
 
-  const domain = params.teamSpec.domain || (env.config as { domain?: string }).domain
+  const domain = (env.config as { domain?: string }).domain || 'example.com'
   const leadAgentSlug = params.teamSpec.agents[0]?.slug
   if (!domain || !leadAgentSlug) return null
 
@@ -98,9 +194,10 @@ export function createGatewayRouter(getToken: TokenFetcher = async () => null) {
     const token = await getToken(deployment.envSlug)
     const agentSlugs = new Set(teamSpec.agents.map(a => a.slug))
     const rewrittenPath = resolveUpstreamPath(req.path, leadAgentSlug, agentSlugs)
+    const upstream = await resolveUpstreamTarget(teamSlug, deployment)
 
     const proxy = createProxyMiddleware({
-      target: deployment.gatewayBaseUrl,
+      target: upstream.target,
       changeOrigin: true,
       ws: true,
       pathRewrite: () => rewrittenPath,
@@ -115,10 +212,16 @@ export function createGatewayRouter(getToken: TokenFetcher = async () => null) {
           if (token) {
             proxyReq.setHeader('Authorization', `Bearer ${token}`)
           }
+          if (upstream.hostHeader) {
+            proxyReq.setHeader('Host', upstream.hostHeader)
+          }
         },
         proxyReqWs: (proxyReq) => {
           if (token) {
             proxyReq.setHeader('Authorization', `Bearer ${token}`)
+          }
+          if (upstream.hostHeader) {
+            proxyReq.setHeader('Host', upstream.hostHeader)
           }
         },
       },

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { generateAgentStatefulSet, generateIapBackendConfig, generateIngress, generateConfigMap, generateTeamConfigMap, generateAgentConfigMap } from './manifests'
+import { generateAgentStatefulSet, generateAgentService, generateIapBackendConfig, generateIngress, generateConfigMap, generateTeamConfigMap, generateAgentConfigMap } from './manifests'
 
 describe('generateAgentStatefulSet', () => {
   it('generates StatefulSet manifest with deterministic PVC name', () => {
@@ -70,6 +70,16 @@ describe('generateIngress', () => {
     expect(manifest).toContain('eng-alpha-ingress')
     expect(manifest).toContain('alice')
     expect(manifest).toContain('bob')
+  })
+})
+
+describe('generateAgentService', () => {
+  it('adds NEG annotation required by GCE ingress for ClusterIP backends', () => {
+    const manifest = generateAgentService({ teamSlug: 'eng-alpha', agentSlug: 'alice' })
+    expect(manifest).toContain('kind: Service')
+    expect(manifest).toContain('cloud.google.com/neg')
+    expect(manifest).toContain('{"ingress": true}')
+    expect(manifest).toContain('type: ClusterIP')
   })
 })
 

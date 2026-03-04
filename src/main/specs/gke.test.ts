@@ -19,7 +19,6 @@ vi.mock('../providers/base', () => ({
 const teamSpec: TeamSpec = {
   slug: 'my-team',
   name: 'My Team',
-  domain: 'example.com',
   tokenSeed: 'fixed-seed-for-testing-1234567890abcdef',
   agents: [
     { slug: 'alpha', name: 'Alpha', role: 'Lead', skills: [], soul: 'Alpha soul', providerSlug: 'anthropic', isLead: true },

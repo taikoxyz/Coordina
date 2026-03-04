@@ -72,7 +72,7 @@ function getHints(kind: GatewayChatError['kind']): string[] {
   }
   if (kind === 'gateway') {
     return [
-      'Check the selected environment and team domain settings.',
+      'Check the selected environment domain settings.',
       'Confirm lead agent gateway is reachable from this machine.',
     ]
   }

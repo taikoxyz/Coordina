@@ -212,7 +212,14 @@ export function generateAgentService(input: { teamSlug: string; agentSlug: strin
   const manifest = {
     apiVersion: 'v1',
     kind: 'Service',
-    metadata: { name: resourceName, namespace },
+    metadata: {
+      name: resourceName,
+      namespace,
+      annotations: {
+        // Required by GCE Ingress for ClusterIP backends.
+        'cloud.google.com/neg': '{"ingress": true}',
+      },
+    },
     spec: {
       selector: { app: resourceName },
       ports: [{ port: 18789, targetPort: 18789, name: 'gateway' }],

@@ -90,11 +90,6 @@ export function SpecForm({ spec, onSpecChange }: Props) {
           </div>
         </div>
 
-        <div>
-          <label className={labelCls}>domain</label>
-          <input className={inputCls} value={spec.domain ?? ''} onChange={e => set('domain')(e.target.value || undefined)} placeholder="team.example.com" />
-        </div>
-
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className={labelCls}>default image</label>

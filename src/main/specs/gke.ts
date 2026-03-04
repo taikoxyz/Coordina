@@ -62,9 +62,9 @@ const gkeDeriver: DeploymentSpecDeriver = {
     providers: Map<string, ProviderRecord & { apiKey?: string }>,
     envConfig: Record<string, unknown>
   ): Promise<SpecFile[]> {
-    const { projectId, clusterZone, diskZone } = envConfig as { projectId: string; clusterZone: string; diskZone?: string }
+    const { projectId, clusterZone, diskZone, domain: envDomain } = envConfig as { projectId: string; clusterZone: string; diskZone?: string; domain?: string }
     const namespace = spec.slug
-    const domain = spec.domain || 'example.com'
+    const domain = envDomain || 'example.com'
     const files: SpecFile[] = []
 
     if (!spec.tokenSeed) {
