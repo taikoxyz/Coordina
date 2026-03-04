@@ -1,4 +1,4 @@
-import { spawn, type ChildProcessByStdio } from 'node:child_process'
+import { execFileSync, spawn, type ChildProcessByStdio } from 'node:child_process'
 import net from 'node:net'
 import readline from 'node:readline'
 import type { Readable } from 'node:stream'
@@ -11,9 +11,43 @@ interface Tunnel {
 
 const tunnels = new Map<string, Tunnel>()
 const inFlight = new Map<string, Promise<Tunnel>>()
+const readyContexts = new Set<string>()
 
 function tunnelKey(envSlug: string, teamSlug: string, agentSlug: string): string {
   return `${envSlug}:${teamSlug}:${agentSlug}`
+}
+
+export interface ClusterRef {
+  projectId: string
+  clusterName: string
+  clusterZone: string
+}
+
+function contextKey(ref: ClusterRef): string {
+  return `${ref.projectId}:${ref.clusterName}:${ref.clusterZone}`
+}
+
+function ensureKubectlContext(ref: ClusterRef): void {
+  const key = contextKey(ref)
+  if (readyContexts.has(key)) return
+  try {
+    execFileSync(
+      'gcloud',
+      [
+        'container',
+        'clusters',
+        'get-credentials',
+        ref.clusterName,
+        `--location=${ref.clusterZone}`,
+        `--project=${ref.projectId}`,
+      ],
+      { stdio: 'pipe', encoding: 'utf-8' }
+    )
+    readyContexts.add(key)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    throw new Error(`Failed to prepare kubectl context for ${ref.clusterName}: ${msg}`)
+  }
 }
 
 function allocateLocalPort(): Promise<number> {
@@ -93,8 +127,10 @@ export async function ensureAgentPortForward(params: {
   envSlug: string
   teamSlug: string
   agentSlug: string
+  cluster: ClusterRef
 }): Promise<string> {
-  const { envSlug, teamSlug, agentSlug } = params
+  const { envSlug, teamSlug, agentSlug, cluster } = params
+  ensureKubectlContext(cluster)
   const key = tunnelKey(envSlug, teamSlug, agentSlug)
   const existing = tunnels.get(key)
   if (existing && existing.process.exitCode === null && !existing.process.killed) {

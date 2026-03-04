@@ -7,7 +7,7 @@ import { getTeam } from '../store/teams'
 import { getTeamDeployment, saveTeamDeployment, type TeamDeploymentRecord } from '../store/deployments'
 import { getEnvironment, listEnvironments } from '../store/environments'
 import { getOAuth2Client } from '../environments/gke/auth'
-import { ensureAgentPortForward } from './portForward'
+import { ensureAgentPortForward, type ClusterRef } from './portForward'
 import { resolveGatewayMode } from './mode'
 
 export type TokenFetcher = (envId: string) => Promise<string | null>
@@ -81,6 +81,25 @@ async function readGkeIngressAddress(envSlug: string, teamSlug: string): Promise
   const ingressStatus = ingress?.status?.loadBalancer?.ingress?.[0]
   if (typeof ingressStatus?.ip === 'string' && ingressStatus.ip.length > 0) return ingressStatus.ip
   if (typeof ingressStatus?.hostname === 'string' && ingressStatus.hostname.length > 0) return ingressStatus.hostname
+  return null
+}
+
+function parseGkeClusterRef(config: unknown): ClusterRef | null {
+  const c = config as Partial<ClusterRef>
+  if (
+    typeof c.projectId === 'string' &&
+    typeof c.clusterName === 'string' &&
+    typeof c.clusterZone === 'string' &&
+    c.projectId.length > 0 &&
+    c.clusterName.length > 0 &&
+    c.clusterZone.length > 0
+  ) {
+    return {
+      projectId: c.projectId,
+      clusterName: c.clusterName,
+      clusterZone: c.clusterZone,
+    }
+  }
   return null
 }
 
@@ -214,10 +233,15 @@ export function createGatewayRouter(getToken: TokenFetcher = async () => null) {
         if (!targetAgentSlug) {
           throw new Error(`Could not resolve target agent from path '${rewrittenPath}'`)
         }
+        const cluster = parseGkeClusterRef(env.config)
+        if (!cluster) {
+          throw new Error(`Environment '${env.slug}' is missing GKE cluster settings (projectId, clusterName, clusterZone)`)
+        }
         const target = await ensureAgentPortForward({
           envSlug: deployment.envSlug,
           teamSlug,
           agentSlug: targetAgentSlug,
+          cluster,
         })
         return { target }
       }
