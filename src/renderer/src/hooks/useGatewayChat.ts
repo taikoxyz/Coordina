@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 export interface ChatAttachment {
   name: string
@@ -112,65 +112,31 @@ function errorFromStatus(status: number, detail?: string): GatewayChatError {
   }
 }
 
+async function readErrorDetail(res: Response): Promise<string | undefined> {
+  const raw = await res.text().catch(() => '')
+  if (!raw) return undefined
+
+  try {
+    const payload = JSON.parse(raw) as { error?: unknown; message?: unknown }
+    if (typeof payload.error === 'string') return payload.error
+    if (payload.error) return JSON.stringify(payload.error)
+    if (typeof payload.message === 'string') return payload.message
+  } catch {
+    // Non-JSON error payload.
+  }
+
+  const normalized = raw.trim().replace(/\s+/g, ' ')
+  return normalized ? normalized.slice(0, 400) : undefined
+}
+
 export function useGatewayChat(teamSlug: string, agentSlug?: string, envSlug?: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [connected, setConnected] = useState(false)
+  const [connected, setConnected] = useState(true)
   const [error, setError] = useState<GatewayChatError | null>(null)
-  const wsRef = useRef<WebSocket | null>(null)
 
   useEffect(() => {
-    const path = agentSlug
-      ? `/proxy/${teamSlug}/agents/${agentSlug}/ws`
-      : `/proxy/${teamSlug}/ws`
-    const query = envSlug ? `?envSlug=${encodeURIComponent(envSlug)}` : ''
-    const wsUrl = `ws://localhost:19876${path}${query}`
-
-    const ws = new WebSocket(wsUrl)
-    wsRef.current = ws
-
-    ws.onopen = () => {
-      setConnected(true)
-      setError(null)
-    }
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        const msg: ChatMessage = {
-          id: `${Date.now()}-${Math.random()}`,
-          role: data.role ?? 'assistant',
-          content: data.content ?? String(data),
-          timestamp: Date.now(),
-        }
-        setMessages(prev => [...prev, msg])
-      } catch {
-        setMessages(prev => [...prev, {
-          id: `${Date.now()}-${Math.random()}`,
-          role: 'assistant',
-          content: event.data,
-          timestamp: Date.now(),
-        }])
-      }
-    }
-
-    ws.onerror = () => {
-      setError({
-        kind: 'connection',
-        message: 'Connection failed.',
-        detail: `team=${teamSlug}${envSlug ? ` env=${envSlug}` : ''}${agentSlug ? ` agent=${agentSlug}` : ''}`,
-        hints: getHints('connection'),
-      })
-      setConnected(false)
-    }
-
-    ws.onclose = () => {
-      setConnected(false)
-    }
-
-    return () => {
-      ws.close()
-      wsRef.current = null
-    }
+    setConnected(true)
+    setError(null)
   }, [teamSlug, agentSlug, envSlug])
 
   const sendMessage = useCallback(async (content: string, files: File[] = []) => {
@@ -179,104 +145,80 @@ export function useGatewayChat(teamSlug: string, agentSlug?: string, envSlug?: s
 
     if (!text && attachments.length === 0) return
 
-    if (attachments.length > 0) {
-      const userMsg: ChatMessage = {
-        id: `${Date.now()}-${Math.random()}`,
-        role: 'user',
-        content: text || '(sent attachments)',
-        timestamp: Date.now(),
-        attachments,
-      }
-      setMessages(prev => [...prev, userMsg])
+    const msg: ChatMessage = {
+      id: `${Date.now()}-${Math.random()}`,
+      role: 'user',
+      content: text || '(sent attachments)',
+      timestamp: Date.now(),
+      attachments: attachments.length > 0 ? attachments : undefined,
+    }
+    setMessages(prev => [...prev, msg])
 
-      try {
-        const contentParts: Array<Record<string, unknown>> = []
-        if (text) contentParts.push({ type: 'input_text', text })
-        for (const file of files) {
-          const base64 = await toBase64(file)
-          const mimeType = file.type || 'application/octet-stream'
-          if (mimeType.startsWith('image/')) {
-            contentParts.push({
-              type: 'input_image',
-              source: {
-                type: 'base64',
-                media_type: mimeType,
-                data: base64,
-              },
-            })
-            continue
-          }
+    try {
+      const contentParts: Array<Record<string, unknown>> = []
+      if (text) contentParts.push({ type: 'input_text', text })
+      for (const file of files) {
+        const base64 = await toBase64(file)
+        const mimeType = file.type || 'application/octet-stream'
+        if (mimeType.startsWith('image/')) {
           contentParts.push({
-            type: 'input_file',
+            type: 'input_image',
             source: {
               type: 'base64',
               media_type: mimeType,
               data: base64,
-              filename: file.name,
             },
           })
+          continue
         }
-        const path = agentSlug
-          ? `/proxy/${teamSlug}/agents/${agentSlug}/v1/responses`
-          : `/proxy/${teamSlug}/v1/responses`
-        const query = envSlug ? `?envSlug=${encodeURIComponent(envSlug)}` : ''
-        const res = await fetch(`${LOCAL_PROXY_BASE}${path}${query}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'openclaw-gateway',
-            input: [{ type: 'message', role: 'user', content: contentParts }],
-          }),
-        })
-        if (!res.ok) {
-          let detail: string | undefined
-          try {
-            const payload = await res.json() as { error?: unknown }
-            detail = typeof payload.error === 'string'
-              ? payload.error
-              : (payload.error ? JSON.stringify(payload.error) : undefined)
-          } catch {
-            // ignore parse errors
-          }
-          setError(errorFromStatus(res.status, detail))
-          return
-        }
-        const payload = await res.json()
-        setMessages(prev => [...prev, {
-          id: `${Date.now()}-${Math.random()}`,
-          role: 'assistant',
-          content: extractAssistantText(payload),
-          timestamp: Date.now(),
-        }])
-        setError(null)
-      } catch (e) {
-        setError({
-          kind: 'gateway',
-          message: 'Failed to send message with attachments.',
-          detail: e instanceof Error ? e.message : String(e),
-          hints: getHints('gateway'),
+        contentParts.push({
+          type: 'input_file',
+          source: {
+            type: 'base64',
+            media_type: mimeType,
+            data: base64,
+            filename: file.name,
+          },
         })
       }
-      return
-    }
+      const path = agentSlug
+        ? `/proxy/${teamSlug}/agents/${agentSlug}/v1/responses`
+        : `/proxy/${teamSlug}/v1/responses`
+      const query = envSlug ? `?envSlug=${encodeURIComponent(envSlug)}` : ''
+      const res = await fetch(`${LOCAL_PROXY_BASE}${path}${query}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'openclaw-gateway',
+          input: [{ type: 'message', role: 'user', content: contentParts }],
+        }),
+      })
 
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      if (!res.ok) {
+        const detail = await readErrorDetail(res)
+        setConnected(false)
+        setError(errorFromStatus(res.status, detail))
+        return
+      }
+
+      const payload = await res.json()
+      setMessages(prev => [...prev, {
+        id: `${Date.now()}-${Math.random()}`,
+        role: 'assistant',
+        content: extractAssistantText(payload),
+        timestamp: Date.now(),
+      }])
+      setConnected(true)
+      setError(null)
+    } catch (e) {
+      setConnected(false)
       setError({
         kind: 'connection',
-        message: 'Not connected to agent.',
+        message: 'Failed to reach gateway via local proxy.',
+        detail: `${e instanceof Error ? e.message : String(e)} (${`team=${teamSlug}${envSlug ? ` env=${envSlug}` : ''}${agentSlug ? ` agent=${agentSlug}` : ''}`})`,
         hints: getHints('connection'),
       })
-      return
     }
-
-    const msg: ChatMessage = {
-      id: `${Date.now()}-${Math.random()}`,
-      role: 'user',
-      content: text,
-      timestamp: Date.now(),
-    }
-    setMessages(prev => [...prev, msg])
-    wsRef.current.send(JSON.stringify({ role: 'user', content: text }))
   }, [agentSlug, teamSlug, envSlug])
 
   return { messages, connected, error, sendMessage }

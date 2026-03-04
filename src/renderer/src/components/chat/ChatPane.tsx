@@ -87,7 +87,7 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
         )}
         {messages.length === 0 && !error && (
           <div className="text-center text-gray-500 py-12 text-sm">
-            {connected ? 'Connected. Say something to get started.' : 'Connecting to agent…'}
+            {connected ? 'Connected. Say something to get started.' : 'Last request failed. You can retry now.'}
           </div>
         )}
         {messages.map(msg => (
@@ -128,16 +128,16 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
         <div className="flex gap-2">
           <textarea
             className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm resize-none focus:outline-none focus:border-blue-500"
-            placeholder={connected || selectedFiles.length > 0 ? 'Message the agent… (Enter to send)' : 'Not connected'}
+            placeholder="Message the agent… (Enter to send)"
             rows={2}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            disabled={!connected && selectedFiles.length === 0}
+            disabled={sending}
           />
           <button
             onClick={() => void handleSend()}
-            disabled={sending || (!connected && selectedFiles.length === 0) || (!input.trim() && selectedFiles.length === 0)}
+            disabled={sending || (!input.trim() && selectedFiles.length === 0)}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed self-end"
           >
             {sending ? 'Sending…' : 'Send'}
