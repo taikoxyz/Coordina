@@ -1,7 +1,7 @@
 // Two-tab panel for viewing team specs and deploy specs side by side
 // FEATURE: SpecsPanel for team and deployment spec file browsing
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useTeamSpecs, useDeploySpecs, useIsDeployDirty, SpecFile } from '../../hooks/useSpecs'
 
 interface SpecsPanelProps {
@@ -13,6 +13,26 @@ interface SpecsPanelProps {
 }
 
 type Tab = 'team' | 'deploy'
+
+function highlightJson(json: string): React.ReactNode[] {
+  const regex = /("(?:\\.|[^"\\])*")(?=\s*:)|("(?:\\.|[^"\\])*")|(true|false|null)|(-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)|([:,{}[\]])/g
+  const nodes: React.ReactNode[] = []
+  let last = 0
+  let idx = 0
+  let m: RegExpExecArray | null
+  while ((m = regex.exec(json)) !== null) {
+    if (m.index > last) nodes.push(<span key={idx++} className="text-gray-500">{json.slice(last, m.index)}</span>)
+    const [, key, str, keyword, num, punct] = m
+    if (key) nodes.push(<span key={idx++} className="text-sky-300">{key}</span>)
+    else if (str) nodes.push(<span key={idx++} className="text-emerald-300">{str}</span>)
+    else if (keyword !== undefined) nodes.push(<span key={idx++} className="text-purple-300">{keyword}</span>)
+    else if (num !== undefined) nodes.push(<span key={idx++} className="text-amber-300">{num}</span>)
+    else if (punct) nodes.push(<span key={idx++} className="text-gray-500">{punct}</span>)
+    last = regex.lastIndex
+  }
+  if (last < json.length) nodes.push(<span key={idx++} className="text-gray-500">{json.slice(last)}</span>)
+  return nodes
+}
 
 function groupFiles(files: SpecFile[]): { root: SpecFile[]; folders: Record<string, SpecFile[]> } {
   const root: SpecFile[] = []
@@ -169,6 +189,10 @@ export function SpecsPanel({ teamSlug, envId, onClose, onApply, isApplying }: Sp
             <div className="flex items-center justify-center h-full text-gray-600 text-sm">
               No file selected
             </div>
+          ) : selectedFile?.endsWith('.json') ? (
+            <pre className="text-xs font-mono whitespace-pre-wrap break-words p-4">
+              {highlightJson(selectedContent)}
+            </pre>
           ) : (
             <pre className="text-xs font-mono whitespace-pre-wrap break-words p-4 text-gray-300">
               {selectedContent}
