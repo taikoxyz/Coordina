@@ -130,52 +130,54 @@ export function SpecsPanel({ teamSlug, envId, onClose, onApply, isApplying }: Sp
 
       {/* Body */}
       <div className="flex flex-1 min-h-0">
-        {/* Left pane: file tree */}
-        <div className="w-48 flex-shrink-0 border-r border-gray-700 overflow-y-auto">
-          {isLoading ? (
-            <div className="px-3 py-4 text-xs text-gray-500">Loading…</div>
-          ) : activeTab === 'deploy' && !envId ? null : files.length === 0 ? (
-            <div className="px-3 py-4 text-xs text-gray-500">No specs found</div>
-          ) : (
-            <div className="py-1">
-              {root.map(f => (
-                <button
-                  key={f.path}
-                  onClick={() => setSelectedFile(f.path)}
-                  className={`w-full text-left px-3 py-1 text-xs truncate transition-colors ${
-                    selectedFile === f.path
-                      ? 'bg-gray-700 text-gray-100'
-                      : 'text-gray-400 hover:bg-gray-700/50 hover:text-gray-200'
-                  }`}
-                >
-                  {fileName(f.path)}
-                </button>
-              ))}
-              {Object.entries(folders).map(([folder, folderFiles]) => (
-                <div key={folder}>
-                  <div className="px-3 py-1 text-xs text-gray-500 font-semibold uppercase tracking-wider mt-1">
-                    {folder}/
+        {/* Left pane: file tree (deploy tab only) */}
+        {activeTab === 'deploy' && (
+          <div className="w-48 flex-shrink-0 border-r border-gray-700 overflow-y-auto">
+            {isLoading ? (
+              <div className="px-3 py-4 text-xs text-gray-500">Loading…</div>
+            ) : !envId ? null : files.length === 0 ? (
+              <div className="px-3 py-4 text-xs text-gray-500">No specs found</div>
+            ) : (
+              <div className="py-1">
+                {root.map(f => (
+                  <button
+                    key={f.path}
+                    onClick={() => setSelectedFile(f.path)}
+                    className={`w-full text-left px-3 py-1 text-xs truncate transition-colors ${
+                      selectedFile === f.path
+                        ? 'bg-gray-700 text-gray-100'
+                        : 'text-gray-400 hover:bg-gray-700/50 hover:text-gray-200'
+                    }`}
+                  >
+                    {fileName(f.path)}
+                  </button>
+                ))}
+                {Object.entries(folders).map(([folder, folderFiles]) => (
+                  <div key={folder}>
+                    <div className="px-3 py-1 text-xs text-gray-500 font-semibold uppercase tracking-wider mt-1">
+                      {folder}/
+                    </div>
+                    {folderFiles.map(f => (
+                      <button
+                        key={f.path}
+                        onClick={() => setSelectedFile(f.path)}
+                        className={`w-full text-left pl-5 pr-3 py-1 text-xs truncate transition-colors ${
+                          selectedFile === f.path
+                            ? 'bg-gray-700 text-gray-100'
+                            : 'text-gray-400 hover:bg-gray-700/50 hover:text-gray-200'
+                        }`}
+                      >
+                        {fileName(f.path)}
+                      </button>
+                    ))}
                   </div>
-                  {folderFiles.map(f => (
-                    <button
-                      key={f.path}
-                      onClick={() => setSelectedFile(f.path)}
-                      className={`w-full text-left pl-5 pr-3 py-1 text-xs truncate transition-colors ${
-                        selectedFile === f.path
-                          ? 'bg-gray-700 text-gray-100'
-                          : 'text-gray-400 hover:bg-gray-700/50 hover:text-gray-200'
-                      }`}
-                    >
-                      {fileName(f.path)}
-                    </button>
-                  ))}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* Right pane: file content */}
+        {/* Content pane */}
         <div className="flex-1 overflow-auto min-w-0">
           {activeTab === 'deploy' && !envId ? (
             <div className="flex items-center justify-center h-full text-gray-500 text-sm px-6 text-center">
