@@ -122,11 +122,6 @@ export function generateTeamSpecs(
     }, null, 2),
   })
 
-  files.push({
-    path: 'AGENTS.md',
-    content: generateAgentsMd(agents.map(a => ({ slug: a.slug, name: a.name, role: a.role, isLead: a.isLead }))),
-  })
-
   for (const agent of agents) {
     files.push({
       path: `agents/${agent.slug}/IDENTITY.md`,
@@ -184,7 +179,7 @@ export function generateDeploySpecs(
       teamSlug: team.slug,
       namespace,
       teamJson,
-      agentsMd: getMdContent('AGENTS.md'),
+      agentsMd: generateAgentsMd(agents.map(a => ({ slug: a.slug, name: a.name, role: a.role, isLead: a.isLead }))),
       bootstrapInstructionsMd: bootstrapInstructions,
     }),
   })
