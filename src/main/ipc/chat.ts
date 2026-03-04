@@ -22,8 +22,8 @@ async function readErrorDetail(res: Response): Promise<string | undefined> {
   if (!raw) return undefined
   try {
     const parsed = JSON.parse(raw) as { error?: unknown; detail?: unknown; message?: unknown }
-    if (typeof parsed.error === 'string' && parsed.error.length > 0) return parsed.error
     if (typeof parsed.detail === 'string' && parsed.detail.length > 0) return parsed.detail
+    if (typeof parsed.error === 'string' && parsed.error.length > 0) return parsed.error
     if (typeof parsed.message === 'string' && parsed.message.length > 0) return parsed.message
   } catch {
     // Non-JSON payload.
