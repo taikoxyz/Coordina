@@ -34,6 +34,27 @@ function highlightJson(json: string): React.ReactNode[] {
   return nodes
 }
 
+function highlightYaml(yaml: string): React.ReactNode[] {
+  const regex = /(#[^\n]*)|("(?:\\.|[^"\\])*"|'[^']*')(?=\s*:)|([\w][\w-]*)(?=\s*:)|(^---$)|("(?:\\.|[^"\\])*"|'[^']*')|\b(true|false|null|yes|no)\b|(\b-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b)/gm
+  const nodes: React.ReactNode[] = []
+  let last = 0
+  let idx = 0
+  let m: RegExpExecArray | null
+  while ((m = regex.exec(yaml)) !== null) {
+    if (m.index > last) nodes.push(<span key={idx++} className="text-gray-400">{yaml.slice(last, m.index)}</span>)
+    const [, comment, quotedKey, key, doc, str, bool, num] = m
+    if (comment) nodes.push(<span key={idx++} className="text-gray-500 italic">{comment}</span>)
+    else if (quotedKey || key) nodes.push(<span key={idx++} className="text-sky-300">{quotedKey ?? key}</span>)
+    else if (doc) nodes.push(<span key={idx++} className="text-gray-500">{doc}</span>)
+    else if (str) nodes.push(<span key={idx++} className="text-emerald-300">{str}</span>)
+    else if (bool !== undefined) nodes.push(<span key={idx++} className="text-purple-300">{bool}</span>)
+    else if (num !== undefined) nodes.push(<span key={idx++} className="text-amber-300">{num}</span>)
+    last = regex.lastIndex
+  }
+  if (last < yaml.length) nodes.push(<span key={idx++} className="text-gray-400">{yaml.slice(last)}</span>)
+  return nodes
+}
+
 function groupFiles(files: SpecFile[]): { root: SpecFile[]; folders: Record<string, SpecFile[]> } {
   const root: SpecFile[] = []
   const folders: Record<string, SpecFile[]> = {}
@@ -194,6 +215,10 @@ export function SpecsPanel({ teamSlug, envId, onClose, onApply, isApplying }: Sp
           ) : selectedFile?.endsWith('.json') ? (
             <pre className="text-xs font-mono whitespace-pre-wrap break-words p-4">
               {highlightJson(selectedContent)}
+            </pre>
+          ) : selectedFile?.endsWith('.yaml') ? (
+            <pre className="text-xs font-mono whitespace-pre-wrap break-words p-4">
+              {highlightYaml(selectedContent)}
             </pre>
           ) : (
             <pre className="text-xs font-mono whitespace-pre-wrap break-words p-4 text-gray-300">
