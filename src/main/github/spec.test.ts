@@ -2,35 +2,33 @@ import { describe, it, expect } from 'vitest'
 import { generateIdentityMd, generateMemoryMd, generateSoulMd, generateOpenClawJson, generateSkillsMd, generateAgentsMd, generateTeamMd } from './spec'
 
 describe('generateIdentityMd', () => {
-  it('outputs OpenClaw format with Name, Creature, Vibe, Emoji, Avatar sections', () => {
+  it('outputs concise key-value format with Name and Creature', () => {
     const md = generateIdentityMd({ name: 'Alice Chen', role: 'Engineer' })
-    expect(md).toContain('Name:\nAlice Chen')
-    expect(md).toContain('Creature:\nEngineer')
-    expect(md).toContain('Vibe:')
-    expect(md).toContain('Emoji:')
-    expect(md).toContain('Avatar:')
+    expect(md).toContain('Name: Alice Chen')
+    expect(md).toContain('Creature: Engineer')
   })
 
-  it('includes soul as Vibe and optional emoji and avatar', () => {
+  it('includes soul, emoji, avatar on single lines when present', () => {
     const md = generateIdentityMd({ name: 'Alice', role: 'Engineer', soul: 'Sharp and curious.', emoji: '🤖', avatar: '/avatar.png' })
-    expect(md).toContain('Vibe:\nSharp and curious.')
-    expect(md).toContain('Emoji:\n🤖')
-    expect(md).toContain('Avatar:\n/avatar.png')
+    expect(md).toContain('Vibe: Sharp and curious.')
+    expect(md).toContain('Emoji: 🤖')
+    expect(md).toContain('Avatar: /avatar.png')
   })
 
-  it('leaves optional sections blank when absent', () => {
+  it('omits optional fields when absent', () => {
     const md = generateIdentityMd({ name: 'Bob', role: 'PM' })
-    expect(md).toContain('Vibe:\n')
-    expect(md).toContain('Emoji:\n')
-    expect(md).toContain('Avatar:\n')
+    expect(md).not.toContain('Vibe:')
+    expect(md).not.toContain('Emoji:')
+    expect(md).not.toContain('Avatar:')
   })
 
-  it('includes workspace-team path in lookup instruction', () => {
+  it('includes team lookup instruction', () => {
     const md = generateIdentityMd({ name: 'Alice', role: 'Engineer' })
-    expect(md).toContain('read `$OPENCLAW_WORKSPACE_DIR/TEAM.md` first.')
+    expect(md).toContain('Team lookup:')
+    expect(md).toContain('TEAM.md')
   })
 
-  it('adds team context when provided', () => {
+  it('adds team context as inline key-values when provided', () => {
     const md = generateIdentityMd({
       name: 'Alice',
       role: 'Engineer',
@@ -39,11 +37,10 @@ describe('generateIdentityMd', () => {
       leadAgentSlug: 'lead-agent',
       teamSize: 5,
     })
-    expect(md).toContain('Team:')
-    expect(md).toContain('- name: Team Phoenix')
-    expect(md).toContain('- slug: team-phoenix')
-    expect(md).toContain('- lead: lead-agent')
-    expect(md).toContain('- members: 5')
+    expect(md).toContain('Team: Team Phoenix')
+    expect(md).toContain('Team slug: team-phoenix')
+    expect(md).toContain('Team lead: lead-agent')
+    expect(md).toContain('Team members: 5')
   })
 })
 

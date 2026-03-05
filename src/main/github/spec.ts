@@ -36,37 +36,19 @@ export interface OpenClawConfig {
 }
 
 export function generateIdentityMd(agent: AgentIdentity): string {
-  const teamLines: string[] = []
-  if (agent.teamName || agent.teamSlug || agent.leadAgentSlug || typeof agent.teamSize === 'number') {
-    teamLines.push('Team:')
-    if (agent.teamName) teamLines.push(`- name: ${agent.teamName}`)
-    if (agent.teamSlug) teamLines.push(`- slug: ${agent.teamSlug}`)
-    if (agent.leadAgentSlug) teamLines.push(`- lead: ${agent.leadAgentSlug}`)
-    if (typeof agent.teamSize === 'number') teamLines.push(`- members: ${agent.teamSize}`)
-  }
-
-  return [
-    `Name:`,
-    agent.name,
-    ``,
-    `Creature:`,
-    agent.role,
-    ``,
-    `Vibe:`,
-    agent.soul ?? '',
-    ``,
-    `Emoji:`,
-    agent.emoji ?? '',
-    ``,
-    `Avatar:`,
-    agent.avatar ?? '',
-    ``,
-    `Team lookup policy:`,
-    'If the conversation touches the team, a teammate, or another agent, read `$OPENCLAW_WORKSPACE_DIR/TEAM.md` first.',
-    ``,
-    ...teamLines,
-    ``,
-  ].join('\n')
+  const lines: string[] = [
+    `Name: ${agent.name}`,
+    `Creature: ${agent.role}`,
+  ]
+  if (agent.soul) lines.push(`Vibe: ${agent.soul}`)
+  if (agent.emoji) lines.push(`Emoji: ${agent.emoji}`)
+  if (agent.avatar) lines.push(`Avatar: ${agent.avatar}`)
+  if (agent.teamName) lines.push(`Team: ${agent.teamName}`)
+  if (agent.teamSlug) lines.push(`Team slug: ${agent.teamSlug}`)
+  if (agent.leadAgentSlug) lines.push(`Team lead: ${agent.leadAgentSlug}`)
+  if (typeof agent.teamSize === 'number') lines.push(`Team members: ${agent.teamSize}`)
+  lines.push('Team lookup: read `$OPENCLAW_WORKSPACE_DIR/TEAM.md` for team/agent queries')
+  return lines.join('\n') + '\n'
 }
 
 export function generateMemoryMd(): string {
