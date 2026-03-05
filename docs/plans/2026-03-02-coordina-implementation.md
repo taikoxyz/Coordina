@@ -596,7 +596,7 @@ it('generates openclaw.json for anthropic provider', () => {
 **Step 5:** Commit
 ```bash
 git add .
-git commit -m "feat: add team spec file generators (IDENTITY.md, SOUL.md, AGENTS.md, openclaw.json)"
+git commit -m "feat: add team spec file generators (IDENTITY.md, SOUL.md, openclaw.json)"
 ```
 
 ---

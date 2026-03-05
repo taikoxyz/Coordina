@@ -152,6 +152,7 @@ describe('generateAgentConfigMap', () => {
       memoryMd: '# Memory',
       soulMd: '# Soul',
       skillsMd: '# Skills',
+      agentsMd: '# Agents',
       openclawJson: '{ "agents": { "defaults": { "model": { "primary": "anthropic/claude-sonnet-4-6" } } }, "models": { "providers": { "anthropic": {} } } }',
     })
     expect(yaml).toContain('name: alpha-alice-config')
@@ -159,5 +160,6 @@ describe('generateAgentConfigMap', () => {
     expect(yaml).toContain('MEMORY.md: |')
     expect(yaml).toContain('SOUL.md: |')
     expect(yaml).toContain('SKILLS.md: |')
+    expect(yaml).toContain('AGENTS.md: |')
   })
 })

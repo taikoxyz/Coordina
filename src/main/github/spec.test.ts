@@ -2,35 +2,33 @@ import { describe, it, expect } from 'vitest'
 import { generateIdentityMd, generateMemoryMd, generateSoulMd, generateOpenClawJson, generateSkillsMd, generateAgentsMd, generateTeamMd } from './spec'
 
 describe('generateIdentityMd', () => {
-  it('outputs OpenClaw format with Name, Creature, Vibe, Emoji, Avatar sections', () => {
+  it('outputs concise key-value format with Name and Creature', () => {
     const md = generateIdentityMd({ name: 'Alice Chen', role: 'Engineer' })
-    expect(md).toContain('Name:\nAlice Chen')
-    expect(md).toContain('Creature:\nEngineer')
-    expect(md).toContain('Vibe:')
-    expect(md).toContain('Emoji:')
-    expect(md).toContain('Avatar:')
+    expect(md).toContain('Name: Alice Chen')
+    expect(md).toContain('Creature: Engineer')
   })
 
-  it('includes soul as Vibe and optional emoji and avatar', () => {
+  it('includes soul, emoji, avatar on single lines when present', () => {
     const md = generateIdentityMd({ name: 'Alice', role: 'Engineer', soul: 'Sharp and curious.', emoji: '🤖', avatar: '/avatar.png' })
-    expect(md).toContain('Vibe:\nSharp and curious.')
-    expect(md).toContain('Emoji:\n🤖')
-    expect(md).toContain('Avatar:\n/avatar.png')
+    expect(md).toContain('Vibe: Sharp and curious.')
+    expect(md).toContain('Emoji: 🤖')
+    expect(md).toContain('Avatar: /avatar.png')
   })
 
-  it('leaves optional sections blank when absent', () => {
+  it('omits optional fields when absent', () => {
     const md = generateIdentityMd({ name: 'Bob', role: 'PM' })
-    expect(md).toContain('Vibe:\n')
-    expect(md).toContain('Emoji:\n')
-    expect(md).toContain('Avatar:\n')
+    expect(md).not.toContain('Vibe:')
+    expect(md).not.toContain('Emoji:')
+    expect(md).not.toContain('Avatar:')
   })
 
-  it('includes workspace-team path in lookup instruction', () => {
+  it('includes team lookup instruction', () => {
     const md = generateIdentityMd({ name: 'Alice', role: 'Engineer' })
-    expect(md).toContain('read `$OPENCLAW_WORKSPACE_DIR/TEAM.md` first.')
+    expect(md).toContain('Team lookup:')
+    expect(md).toContain('TEAM.md')
   })
 
-  it('adds team context when provided', () => {
+  it('adds team context as inline key-values when provided', () => {
     const md = generateIdentityMd({
       name: 'Alice',
       role: 'Engineer',
@@ -39,11 +37,10 @@ describe('generateIdentityMd', () => {
       leadAgentSlug: 'lead-agent',
       teamSize: 5,
     })
-    expect(md).toContain('Team:')
-    expect(md).toContain('- name: Team Phoenix')
-    expect(md).toContain('- slug: team-phoenix')
-    expect(md).toContain('- lead: lead-agent')
-    expect(md).toContain('- members: 5')
+    expect(md).toContain('Team: Team Phoenix')
+    expect(md).toContain('Team slug: team-phoenix')
+    expect(md).toContain('Team lead: lead-agent')
+    expect(md).toContain('Team members: 5')
   })
 })
 
@@ -67,13 +64,13 @@ describe('generateSoulMd', () => {
     expect(md).toContain('Bob is methodical.')
   })
 
-  it('outputs minimal soul markdown without scaffolding', () => {
+  it('outputs minimal soul markdown without directives', () => {
     const md = generateSoulMd({ userInput: 'x' })
     expect(md).toBe('# Soul\n\nx\n')
-    expect(md).not.toContain('## Core Values')
-    expect(md).not.toContain('## Working Style')
+    expect(md).not.toContain('## Telegram')
   })
 })
+
 
 describe('generateOpenClawJson', () => {
   it('generates openclaw.json for anthropic provider', () => {
@@ -123,14 +120,11 @@ describe('generateOpenClawJson gateway', () => {
 })
 
 describe('generateAgentsMd', () => {
-  it('marks lead agent', () => {
-    const md = generateAgentsMd([
-      { slug: 'alice', name: 'Alice', role: 'Engineer', isLead: true },
-      { slug: 'bob', name: 'Bob', role: 'PM' },
-    ])
-    expect(md).toContain('Alice')
-    expect(md).toContain('_(lead)_')
-    expect(md).toContain('Bob')
+  it('includes telegram @all response rule', () => {
+    const md = generateAgentsMd()
+    expect(md).toContain('# Agents')
+    expect(md).toContain('## Telegram')
+    expect(md).toContain('When `@all` is part of a telegram message, I MUST respond.')
   })
 })
 
@@ -187,14 +181,44 @@ describe('generateTeamMd', () => {
       name: 'Team',
       slug: 'team',
       agents: [
-        { slug: 'alice', name: 'Alice', role: 'Lead', gatewayUrl: 'ws://agent-alice.team.svc.cluster.local:18789', isLead: true },
-        { slug: 'bob', name: 'Bob', role: 'Engineer', gatewayUrl: 'ws://agent-bob.team.svc.cluster.local:18789' },
+        { slug: 'alice', name: 'Alice', role: 'Lead', gatewayUrl: 'http://agent-alice.team.svc.cluster.local:18789', gatewayToken: 'alice-token-abc', isLead: true },
+        { slug: 'bob', name: 'Bob', role: 'Engineer', gatewayUrl: 'http://agent-bob.team.svc.cluster.local:18789', gatewayToken: 'bob-token-xyz' },
       ],
     })
 
     expect(md).toContain('### alice')
-    expect(md).toContain('- gateway: ws://agent-alice.team.svc.cluster.local:18789')
+    expect(md).toContain('- gateway: http://agent-alice.team.svc.cluster.local:18789')
+    expect(md).toContain('- gateway_token: alice-token-abc')
     expect(md).toContain('### bob')
-    expect(md).toContain('- gateway: ws://agent-bob.team.svc.cluster.local:18789')
+    expect(md).toContain('- gateway: http://agent-bob.team.svc.cluster.local:18789')
+    expect(md).toContain('- gateway_token: bob-token-xyz')
+  })
+
+  it('includes Communication Protocol section when gateways are present', () => {
+    const md = generateTeamMd({
+      name: 'Team',
+      slug: 'team',
+      agents: [
+        { slug: 'alice', name: 'Alice', role: 'Lead', gatewayUrl: 'http://agent-alice.team.svc.cluster.local:18789', gatewayToken: 'tok' },
+      ],
+    })
+
+    expect(md).toContain('## Communication Protocol')
+    expect(md).toContain('use the `exec` tool')
+    expect(md).toContain('POST <gateway>/v1/responses')
+    expect(md).toContain('Authorization: Bearer <gateway_token>')
+    expect(md).toContain('Do NOT use OpenClaw node/tailnet commands')
+  })
+
+  it('omits Communication Protocol section when no gateways', () => {
+    const md = generateTeamMd({
+      name: 'Team',
+      slug: 'team',
+      agents: [
+        { slug: 'alice', name: 'Alice', role: 'Lead' },
+      ],
+    })
+
+    expect(md).not.toContain('## Communication Protocol')
   })
 })

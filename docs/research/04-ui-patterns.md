@@ -129,7 +129,6 @@ The merge preview shows only the **user-provided portion**. The OpenClaw default
 | Email / Slack / GitHub ID | No | Identity data, taken as-is |
 | Skills list | Yes | AI can suggest additional skills based on role |
 | Soul description | Yes | AI expands/refines user's intent |
-| AGENTS.md additions | Yes (future) | Custom operational rules |
 
 ---
 
@@ -232,7 +231,7 @@ MiniMax's chat UI exposes a file browser panel for viewing the agent's full work
 **What MiniMax shows:**
 - Two-tab panel: "Current Process" (tool use log) | "Files" (workspace browser)
 - Left sidebar: file tree with file names and sizes (`MEMORY.md 449 B`, `SOUL.md 1.9 KB`)
-- Tab bar: multiple files open simultaneously (`AGENTS.md × HEARTBEAT.md × MEMORY.md`)
+- Tab bar: multiple files open simultaneously (`HEARTBEAT.md × MEMORY.md`)
 - Right pane: rendered markdown (Preview) or raw source toggle
 - Search box: "Search Files..."
 - Panel presented as a closeable drawer (× button top right)
@@ -247,7 +246,6 @@ MiniMax's chat UI exposes a file browser panel for viewing the agent's full work
 │ │ Search Files...      │  │              [Edit][Preview]│  │
 │ │                      │  │                             │  │
 │ │ ▸ .openclaw/         │  │  # MEMORY.md — Long-Term   │  │
-│ │   AGENTS.md   12.1KB │  │  Memory                    │  │
 │ │   HEARTBEAT.md  168B │  │                             │  │
 │ │   IDENTITY.md   167B │  │  ## About Alice             │  │
 │ │ ● MEMORY.md    449B  │  │  - Role: Senior Engineer    │  │

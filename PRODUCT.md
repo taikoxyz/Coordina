@@ -112,7 +112,7 @@ See [Agent Configuration Model](#agent-configuration-model) below.
 7. Refresh button to pull latest from the running pod
 8. All files are **read-only** in Coordina — users configure agents through forms, not file edits
 
-Files visible (all OpenClaw workspace files): `SOUL.md`, `IDENTITY.md`, `MEMORY.md`, `AGENTS.md`, `HEARTBEAT.md`, `TOOLS.md`, `USER.md`, `skills/`, `memory/YYYY-MM-DD.md` daily logs, and any other files the agent has created in its workspace.
+Files visible (all OpenClaw workspace files): `SOUL.md`, `IDENTITY.md`, `MEMORY.md`, `HEARTBEAT.md`, `TOOLS.md`, `USER.md`, `skills/`, `memory/YYYY-MM-DD.md` daily logs, and any other files the agent has created in its workspace.
 
 ---
 
@@ -153,7 +153,7 @@ Files visible (all OpenClaw workspace files): `SOUL.md`, `IDENTITY.md`, `MEMORY.
 | Name, role, slug | `IDENTITY.md` | Core identity section |
 | Soul description | `SOUL.md` | Merged with default template |
 | Email, Slack, GitHub ID | `IDENTITY.md` | Contact/identity fields |
-| Skills | Skill installation + `AGENTS.md` | Skill list |
+| Skills | Skill installation | Skill list |
 | Model provider | `openclaw.json` | `model` and `apiKey` fields |
 
 ---
@@ -171,7 +171,6 @@ team-spec-repo/
 │   ├── alice/
 │   │   ├── SOUL.md              Generated from form (AI-enhanced + template)
 │   │   ├── IDENTITY.md          Generated from form fields
-│   │   ├── AGENTS.md            Generated operational rules
 │   │   └── openclaw.json        Model provider config
 │   └── bob/
 │       └── ...

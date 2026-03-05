@@ -28,40 +28,27 @@ export interface OpenClawConfig {
       }
     }
   }
+  tools?: {
+    profile?: string
+    allow?: string[]
+    deny?: string[]
+  }
 }
 
 export function generateIdentityMd(agent: AgentIdentity): string {
-  const teamLines: string[] = []
-  if (agent.teamName || agent.teamSlug || agent.leadAgentSlug || typeof agent.teamSize === 'number') {
-    teamLines.push('Team:')
-    if (agent.teamName) teamLines.push(`- name: ${agent.teamName}`)
-    if (agent.teamSlug) teamLines.push(`- slug: ${agent.teamSlug}`)
-    if (agent.leadAgentSlug) teamLines.push(`- lead: ${agent.leadAgentSlug}`)
-    if (typeof agent.teamSize === 'number') teamLines.push(`- members: ${agent.teamSize}`)
-  }
-
-  return [
-    `Name:`,
-    agent.name,
-    ``,
-    `Creature:`,
-    agent.role,
-    ``,
-    `Vibe:`,
-    agent.soul ?? '',
-    ``,
-    `Emoji:`,
-    agent.emoji ?? '',
-    ``,
-    `Avatar:`,
-    agent.avatar ?? '',
-    ``,
-    `Team lookup policy:`,
-    'If the conversation touches the team, a teammate, or another agent, read `$OPENCLAW_WORKSPACE_DIR/TEAM.md` first.',
-    ``,
-    ...teamLines,
-    ``,
-  ].join('\n')
+  const lines: string[] = [
+    `Name: ${agent.name}`,
+    `Creature: ${agent.role}`,
+  ]
+  if (agent.soul) lines.push(`Vibe: ${agent.soul}`)
+  if (agent.emoji) lines.push(`Emoji: ${agent.emoji}`)
+  if (agent.avatar) lines.push(`Avatar: ${agent.avatar}`)
+  if (agent.teamName) lines.push(`Team: ${agent.teamName}`)
+  if (agent.teamSlug) lines.push(`Team slug: ${agent.teamSlug}`)
+  if (agent.leadAgentSlug) lines.push(`Team lead: ${agent.leadAgentSlug}`)
+  if (typeof agent.teamSize === 'number') lines.push(`Team members: ${agent.teamSize}`)
+  lines.push('Team lookup: read `$OPENCLAW_WORKSPACE_DIR/TEAM.md` for team/agent queries')
+  return lines.join('\n') + '\n'
 }
 
 export function generateMemoryMd(): string {
@@ -97,8 +84,9 @@ export function generateTeamMd(team: {
   image?: string
   leadAgentSlug?: string
   storageGi?: number
-  agents: { slug: string; name: string; role: string; telegramBotId?: string; email?: string; slackHandle?: string; githubId?: string; cpu?: number; isLead?: boolean; gatewayUrl?: string }[]
+  agents: { slug: string; name: string; role: string; telegramBotId?: string; email?: string; slackHandle?: string; githubId?: string; cpu?: number; isLead?: boolean; gatewayUrl?: string; gatewayToken?: string }[]
 }): string {
+  const hasGateways = team.agents.some(a => a.gatewayUrl)
   const lines: string[] = ['## TEAM', '', '## About']
   lines.push(`- name: ${team.name}`)
   lines.push(`- slug: ${team.slug}`)
@@ -118,20 +106,39 @@ export function generateTeamMd(team: {
     if (a.githubId) lines.push(`- github: @${a.githubId}`)
     if (a.cpu) lines.push(`- cpu: ${a.cpu}`)
     if (a.gatewayUrl) lines.push(`- gateway: ${a.gatewayUrl}`)
+    if (a.gatewayToken) lines.push(`- gateway_token: ${a.gatewayToken}`)
     if (a.isLead) lines.push(`- lead: true`)
     lines.push('')
   }
+  if (hasGateways) {
+    lines.push('## Communication Protocol')
+    lines.push('')
+    lines.push('To message a teammate, use the `exec` tool to call their gateway HTTP API.')
+    lines.push('Do NOT use OpenClaw node/tailnet commands.')
+    lines.push('')
+    lines.push('Example — send a message to a teammate:')
+    lines.push('```')
+    lines.push('exec: curl -s -m 300 -X POST <gateway>/v1/responses \\')
+    lines.push('  -H "Authorization: Bearer <gateway_token>" \\')
+    lines.push('  -H "Content-Type: application/json" \\')
+    lines.push('  -d \'{"model": "anthropic/claude-sonnet-4-6", "input": "Your message here"}\'')
+    lines.push('```')
+    lines.push('')
+    lines.push('The `-m 300` flag sets a 5-minute timeout. For longer tasks, omit it and let `exec` background the request.')
+    lines.push('')
+    lines.push('Replace `<gateway>` and `<gateway_token>` with the values from the member entry above.')
+    lines.push('')
+  }
+
   return lines.join('\n')
 }
 
-export function generateAgentsMd(agents: { slug: string; name: string; role: string; isLead?: boolean }[]): string {
-  const lines = ['# Agents', '']
-  for (const a of agents) {
-    const tag = a.isLead ? ' _(lead)_' : ''
-    lines.push(`## ${a.name}${tag}`)
-    lines.push(`- **Slug:** \`${a.slug}\``)
-    lines.push(`- **Role:** ${a.role}`)
-    lines.push('')
-  }
-  return lines.join('\n')
+export function generateAgentsMd(): string {
+  return [
+    '# Agents',
+    '',
+    '## Telegram',
+    'When `@all` is part of a telegram message, I MUST respond.',
+    '',
+  ].join('\n')
 }
