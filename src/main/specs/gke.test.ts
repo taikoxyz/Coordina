@@ -1,4 +1,4 @@
-// GKE deriver tests verifying peer gateway injection into agent openclaw.json
+// GKE deriver tests verifying generated openclaw.json and secret env wiring
 // FEATURE: GKE derivation layer with K8s Secrets for API key security
 import { describe, it, expect, vi } from 'vitest'
 import yaml from 'js-yaml'
@@ -19,7 +19,6 @@ vi.mock('../providers/base', () => ({
 const teamSpec: TeamSpec = {
   slug: 'my-team',
   name: 'My Team',
-  domain: 'example.com',
   tokenSeed: 'fixed-seed-for-testing-1234567890abcdef',
   agents: [
     { slug: 'alpha', name: 'Alpha', role: 'Lead', skills: [], soul: 'Alpha soul', providerSlug: 'anthropic', isLead: true },
@@ -40,39 +39,55 @@ function getOpenClawConfig(files: { path: string; content: string }[], agentSlug
   return JSON.parse(configmap.data['openclaw.json'])
 }
 
-describe('gkeDeriver peer injection', () => {
-  it('includes all teammates as peers in each agent openclaw.json', async () => {
+describe('gkeDeriver openclaw config', () => {
+  it('includes gateway auth token', async () => {
     const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
     const alphaConfig = getOpenClawConfig(files, 'alpha')
 
-    expect(alphaConfig.peers).toBeDefined()
-    expect(alphaConfig.peers.beta).toBeDefined()
-    expect(alphaConfig.peers.gamma).toBeDefined()
+    expect(typeof alphaConfig.gateway.auth.token).toBe('string')
+    expect(alphaConfig.gateway.auth.token.length).toBeGreaterThan(0)
   })
 
-  it('excludes the agent itself from its own peers', async () => {
-    const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
-    const alphaConfig = getOpenClawConfig(files, 'alpha')
-    const betaConfig = getOpenClawConfig(files, 'beta')
+  it('does not include unsupported peers or telegram top-level config', async () => {
+    const withTelegram: TeamSpec = {
+      ...teamSpec,
+      telegramGroupChatId: '-1001234567890',
+      telegramOwnerUserId: '222222222',
+      agents: teamSpec.agents.map((agent) => (
+        agent.slug === 'alpha' ? { ...agent, telegramBotId: '111111111' } : agent
+      )),
+    }
 
-    expect(alphaConfig.peers.alpha).toBeUndefined()
-    expect(betaConfig.peers.beta).toBeUndefined()
+    const files = await gkeDeriver.derive(withTelegram, providers, envConfig)
+    const alphaConfig = getOpenClawConfig(files, 'alpha')
+
+    expect(alphaConfig.peers).toBeUndefined()
+    expect(alphaConfig.telegram).toBeUndefined()
   })
 
-  it('uses http:// URLs for peer gateways', async () => {
-    const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
+  it('injects TELEGRAM_BOT_TOKEN into credentials secret when telegram is fully configured', async () => {
+    const withTelegram: TeamSpec = {
+      ...teamSpec,
+      telegramGroupChatId: '-1001234567890',
+      telegramOwnerUserId: '222222222',
+      agents: teamSpec.agents.map((agent) => (
+        agent.slug === 'alpha' ? { ...agent, telegramBotId: '111111111' } : agent
+      )),
+    }
+    const files = await gkeDeriver.derive(withTelegram, providers, envConfig, {
+      agentTelegramTokens: { 'alpha': '123:abc-token' },
+    })
+    const alphaCreds = files.find(f => f.path === 'agents/alpha/credentials.yaml')
+    const betaCreds = files.find(f => f.path === 'agents/beta/credentials.yaml')
     const alphaConfig = getOpenClawConfig(files, 'alpha')
-
-    expect(alphaConfig.peers.beta.url).toBe('http://agent-beta.my-team.svc.cluster.local:18789')
-    expect(alphaConfig.peers.gamma.url).toBe('http://agent-gamma.my-team.svc.cluster.local:18789')
-  })
-
-  it('includes auth token for each peer', async () => {
-    const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
-    const alphaConfig = getOpenClawConfig(files, 'alpha')
-
-    expect(typeof alphaConfig.peers.beta.token).toBe('string')
-    expect(alphaConfig.peers.beta.token.length).toBeGreaterThan(0)
-    expect(alphaConfig.peers.beta.token).not.toBe(alphaConfig.peers.gamma.token)
+    expect(alphaCreds?.content).toContain('TELEGRAM_BOT_TOKEN')
+    expect(alphaCreds?.content).toContain('123:abc-token')
+    expect(betaCreds?.content).not.toContain('TELEGRAM_BOT_TOKEN')
+    expect(alphaConfig.channels.telegram.dmPolicy).toBe('allowlist')
+    expect(alphaConfig.channels.telegram.allowFrom).toEqual(['222222222'])
+    expect(alphaConfig.channels.telegram.groupPolicy).toBe('allowlist')
+    expect(alphaConfig.channels.telegram.groupAllowFrom).toEqual(['222222222'])
+    expect(alphaConfig.channels.telegram.groups['-1001234567890']).toEqual({ requireMention: true })
+    expect(alphaConfig.channels.telegram.enabled).toBe(true)
   })
 })

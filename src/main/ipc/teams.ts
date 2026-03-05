@@ -7,6 +7,13 @@ import os from 'os'
 import { listTeams, getTeam, saveTeam, deleteTeam } from '../store/teams'
 import { runPipeline } from '../watcher'
 import type { TeamSpec } from '../../shared/types'
+import { getSecret, setSecret, deleteSecret } from '../keychain'
+import { normalizeTeamSpec, validateTelegramPair } from '../validation/teamSpecNormalize'
+
+function isSkippableFsError(error: unknown): boolean {
+  const code = (error as NodeJS.ErrnoException | undefined)?.code
+  return code === 'ENOENT' || code === 'ENOTDIR' || code === 'EISDIR'
+}
 
 async function readDirRecursive(dir: string, base = ''): Promise<{ path: string; content: string }[]> {
   let entries
@@ -15,28 +22,63 @@ async function readDirRecursive(dir: string, base = ''): Promise<{ path: string;
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     const rel = base ? `${base}/${entry.name}` : entry.name
     if (entry.isDirectory()) {
-      results.push(...await readDirRecursive(path.join(dir, entry.name), rel))
+      try {
+        results.push(...await readDirRecursive(path.join(dir, entry.name), rel))
+      } catch (error) {
+        if (isSkippableFsError(error)) continue
+        throw error
+      }
     } else {
-      const content = await fs.readFile(path.join(dir, entry.name), 'utf-8')
-      results.push({ path: rel, content })
+      try {
+        const content = await fs.readFile(path.join(dir, entry.name), 'utf-8')
+        results.push({ path: rel, content })
+      } catch (error) {
+        if (isSkippableFsError(error)) continue
+        throw error
+      }
     }
   }
   return results
 }
 
 export function registerTeamHandlers(): void {
+  const telegramAccount = (teamSlug: string, agentSlug: string) => `team:${teamSlug}:agent:${agentSlug}`
+
   ipcMain.handle('teams:list', () => listTeams())
 
   ipcMain.handle('teams:get', (_e, slug: string) => getTeam(slug))
 
   ipcMain.handle('teams:save', async (_e, spec: TeamSpec) => {
-    await saveTeam(spec)
+    const normalized = normalizeTeamSpec(spec)
+    validateTelegramPair(normalized)
+    await saveTeam(normalized)
+    await runPipeline(normalized.slug)
     return { ok: true }
   })
 
   ipcMain.handle('teams:delete', async (_e, slug: string) => {
+    const spec = await getTeam(slug)
+    for (const agent of spec?.agents ?? []) {
+      await deleteSecret(telegramAccount(slug, agent.slug), 'agent-telegram-token')
+    }
     await deleteTeam(slug)
     return { ok: true }
+  })
+
+  ipcMain.handle('teams:getAgentTelegramTokenMasked', async (_e, data: { teamSlug: string; agentSlug: string }) => {
+    const token = await getSecret(telegramAccount(data.teamSlug, data.agentSlug), 'agent-telegram-token')
+    if (!token) return null
+    return token.length > 10 ? `${token.slice(0, 4)}••••${token.slice(-4)}` : '••••••••'
+  })
+
+  ipcMain.handle('teams:setAgentTelegramToken', async (_e, data: { teamSlug: string; agentSlug: string; token?: string }) => {
+    const token = data.token?.trim()
+    if (!token) {
+      await deleteSecret(telegramAccount(data.teamSlug, data.agentSlug), 'agent-telegram-token')
+      return { ok: true, cleared: true }
+    }
+    await setSecret(telegramAccount(data.teamSlug, data.agentSlug), 'agent-telegram-token', token)
+    return { ok: true, cleared: false }
   })
 
   ipcMain.handle('teams:getDeployFiles', async (_e, { teamSlug, envType }: { teamSlug: string; envType: string }) => {

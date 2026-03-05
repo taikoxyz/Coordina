@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { generateIdentityMd, generateSoulMd, generateOpenClawJson, generateSkillsMd, generateAgentsMd } from './spec'
+import { generateIdentityMd, generateSoulMd, generateOpenClawJson, generateSkillsMd, generateAgentsMd, generateTeamMd } from './spec'
 
 describe('generateIdentityMd', () => {
   it('references TEAM.md with agent slug', () => {
@@ -37,14 +37,20 @@ describe('generateSoulMd', () => {
 
 describe('generateOpenClawJson', () => {
   it('generates openclaw.json for anthropic provider', () => {
-    const json = generateOpenClawJson({ provider: 'anthropic', model: 'claude-sonnet-4-6', apiKey: 'sk-ant-xxx' })
-    expect(JSON.parse(json)).toMatchObject({ provider: 'anthropic', model: 'claude-sonnet-4-6' })
+    const json = generateOpenClawJson({
+      agents: { defaults: { model: { primary: 'anthropic/claude-sonnet-4-6' } } },
+      models: { providers: { anthropic: {} } },
+    })
+    expect(JSON.parse(json)).toMatchObject({ agents: { defaults: { model: { primary: 'anthropic/claude-sonnet-4-6' } } } })
   })
 
   it('excludes API key from JSON when not set', () => {
-    const json = generateOpenClawJson({ provider: 'ollama', model: 'llama3', baseUrl: 'http://localhost:11434' })
+    const json = generateOpenClawJson({
+      agents: { defaults: { model: { primary: 'ollama/llama3' } } },
+      models: { providers: { ollama: { baseUrl: 'http://localhost:11434' } } },
+    })
     const parsed = JSON.parse(json)
-    expect(parsed.baseUrl).toBe('http://localhost:11434')
+    expect(parsed.models.providers.ollama.baseUrl).toBe('http://localhost:11434')
   })
 })
 
@@ -61,20 +67,15 @@ describe('generateSkillsMd', () => {
   })
 })
 
-describe('generateOpenClawJson peers', () => {
-  it('serializes peers into openclaw.json when provided', () => {
+describe('generateOpenClawJson gateway', () => {
+  it('serializes gateway auth into openclaw.json when provided', () => {
     const config: import('./spec').OpenClawConfig = {
       agents: { defaults: { model: { primary: 'anthropic/claude-sonnet-4-6' } } },
       models: { providers: { anthropic: {} } },
-      peers: {
-        beta: { url: 'http://agent-beta.my-team.svc.cluster.local:18789', token: 'tok-beta' },
-        gamma: { url: 'http://agent-gamma.my-team.svc.cluster.local:18789', token: 'tok-gamma' },
-      },
+      gateway: { auth: { token: 'tok-gateway' } },
     }
     const parsed = JSON.parse(generateOpenClawJson(config))
-    expect(parsed.peers.beta.url).toBe('http://agent-beta.my-team.svc.cluster.local:18789')
-    expect(parsed.peers.beta.token).toBe('tok-beta')
-    expect(parsed.peers.gamma.url).toBe('http://agent-gamma.my-team.svc.cluster.local:18789')
+    expect(parsed.gateway.auth.token).toBe('tok-gateway')
   })
 })
 
@@ -87,5 +88,52 @@ describe('generateAgentsMd', () => {
     expect(md).toContain('Alice')
     expect(md).toContain('_(lead)_')
     expect(md).toContain('Bob')
+  })
+})
+
+describe('generateTeamMd telegram', () => {
+  it('includes telegram group and bot ids when team chat id is set', () => {
+    const md = generateTeamMd({
+      name: 'My Team',
+      slug: 'my-team',
+      telegramGroupChatId: '-1001234567890',
+      telegramOwnerUserId: '222222222',
+      agents: [
+        { slug: 'alpha', name: 'Alpha', role: 'Lead', telegramBotId: '111111111' },
+        { slug: 'beta', name: 'Beta', role: 'Engineer' },
+      ],
+    })
+
+    expect(md).toContain('- telegram_group_chat_id: -1001234567890')
+    expect(md).toContain('- telegram_owner_user_id: 222222222')
+    expect(md).toContain('- telegram_bot_id: 111111111')
+    expect(md).not.toContain('### beta\n- name: Beta\n- role: Engineer\n- telegram_bot_id:')
+  })
+
+  it('omits per-agent telegram ids when team chat id is not set', () => {
+    const md = generateTeamMd({
+      name: 'My Team',
+      slug: 'my-team',
+      agents: [
+        { slug: 'alpha', name: 'Alpha', role: 'Lead', telegramBotId: '111111111' },
+      ],
+    })
+
+    expect(md).not.toContain('telegram_group_chat_id')
+    expect(md).not.toContain('telegram_bot_id')
+  })
+
+  it('omits per-agent telegram ids when owner user id is not set', () => {
+    const md = generateTeamMd({
+      name: 'My Team',
+      slug: 'my-team',
+      telegramGroupChatId: '-1001234567890',
+      agents: [
+        { slug: 'alpha', name: 'Alpha', role: 'Lead', telegramBotId: '111111111' },
+      ],
+    })
+
+    expect(md).toContain('telegram_group_chat_id')
+    expect(md).not.toContain('telegram_bot_id')
   })
 })

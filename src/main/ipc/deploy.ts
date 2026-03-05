@@ -4,6 +4,7 @@ import { ipcMain, BrowserWindow } from 'electron'
 import { listEnvironments, getEnvironment, saveEnvironment, deleteEnvironment } from '../store/environments'
 import { getTeam } from '../store/teams'
 import { listProviders, getProviderApiKey } from '../store/providers'
+import { getSecret } from '../keychain'
 import { getDeriver } from '../specs/base'
 import '../specs/gke'
 import { deployTeam, undeployTeam, getTeamStatus } from '../environments/gke/deploy'
@@ -11,6 +12,8 @@ import { authenticateGke } from '../environments/gke/auth'
 import type { EnvironmentRecord, DeployOptions } from '../../shared/types'
 
 export function registerDeployHandlers(): void {
+  const telegramAccount = (teamSlug: string, agentSlug: string) => `team:${teamSlug}:agent:${agentSlug}`
+
   ipcMain.handle('environments:list', () => listEnvironments())
 
   ipcMain.handle('environments:get', (_e, slug: string) => getEnvironment(slug))
@@ -50,8 +53,15 @@ export function registerDeployHandlers(): void {
       }))
     )
 
+    const telegramTokens = Object.fromEntries(await Promise.all(
+      spec.agents.map(async (agent) => {
+        const token = await getSecret(telegramAccount(spec.slug, agent.slug), 'agent-telegram-token')
+        return [agent.slug, token ?? undefined] as const
+      })
+    ))
+
     const deriver = getDeriver(env.type)
-    const specFiles = await deriver.derive(spec, providersMap, env.config)
+    const specFiles = await deriver.derive(spec, providersMap, env.config, { agentTelegramTokens: telegramTokens })
 
     const win = BrowserWindow.fromWebContents(event.sender)
     const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof deployTeam>[2]

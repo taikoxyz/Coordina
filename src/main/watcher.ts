@@ -21,6 +21,8 @@ const sendToAllWindows = (channel: string, data: unknown): void => {
 export const runPipeline = async (slug: string): Promise<void> => {
   const spec = await getTeam(slug)
   if (!spec) return
+  const teamDeployDir = path.join(teamsDir, slug, '.deploy')
+  await fs.rm(teamDeployDir, { recursive: true, force: true })
 
   const providerRecords = await listProviders()
   const validationResult = validateTeamSpec(spec, providerRecords)
@@ -46,8 +48,7 @@ export const runPipeline = async (slug: string): Promise<void> => {
       let deriver
       try { deriver = getDeriver(env.type) } catch { continue }
       const files = await deriver.derive(spec, providersMap, env.config)
-      const deployDir = path.join(teamsDir, slug, '.deploy', env.type)
-      await fs.rm(deployDir, { recursive: true, force: true })
+      const deployDir = path.join(teamDeployDir, env.type)
       await fs.mkdir(deployDir, { recursive: true })
       await Promise.all(files.map(async (f) => {
         const filePath = path.join(deployDir, f.path)
