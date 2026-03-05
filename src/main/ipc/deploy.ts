@@ -69,14 +69,14 @@ export function registerDeployHandlers(): void {
   })
 
   ipcMain.handle('undeploy:team', async (event, { teamSlug, envSlug }: { teamSlug: string; envSlug: string }) => {
-    const env = await getEnvironment(envSlug)
+    const [spec, env] = await Promise.all([getTeam(teamSlug), getEnvironment(envSlug)])
     if (!env) return { ok: false, reason: 'Environment not found' }
 
     const win = BrowserWindow.fromWebContents(event.sender)
     const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof undeployTeam>[1]
 
     try {
-      for await (const status of undeployTeam(teamSlug, deployConfig)) {
+      for await (const status of undeployTeam(teamSlug, deployConfig, { mcEnabled: !!spec?.missionControl?.enabled })) {
         win?.webContents.send('deploy:status', status)
       }
       return { ok: true }
@@ -93,8 +93,9 @@ export function registerDeployHandlers(): void {
   })
 
   ipcMain.handle('mc:status', async (_e, { teamSlug, envSlug }: { teamSlug: string; envSlug: string }) => {
-    const env = await getEnvironment(envSlug)
-    if (!env) return { podStatus: 'unknown' }
+    const [spec, env] = await Promise.all([getTeam(teamSlug), getEnvironment(envSlug)])
+    if (!spec?.missionControl?.enabled) return { podStatus: 'not-deployed' as const }
+    if (!env) return { podStatus: 'unknown' as const }
     const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof getMcStatus>[1]
     return getMcStatus(teamSlug, deployConfig)
   })

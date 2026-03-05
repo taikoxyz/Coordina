@@ -185,20 +185,26 @@ export async function* deployTeam(
   }
 }
 
-export async function* undeployTeam(teamSlug: string, config: GkeDeployConfig): AsyncGenerator<DeployStatus> {
+export async function* undeployTeam(teamSlug: string, config: GkeDeployConfig, options?: { mcEnabled?: boolean }): AsyncGenerator<DeployStatus> {
   const kc = await buildKubeConfig(config)
   const appsApi = kc.makeApiClient(k8s.AppsV1Api)
   const coreApi = kc.makeApiClient(k8s.CoreV1Api)
   const networkingApi = kc.makeApiClient(k8s.NetworkingV1Api)
   const namespace = teamSlug
 
-  for (const [label, fn] of [
-    [`Ingress/${teamSlug}-mc-ingress`, () => networkingApi.deleteNamespacedIngress({ name: `${teamSlug}-mc-ingress`, namespace })],
+  const deletions: [string, () => Promise<unknown>][] = [
     [`Ingress/${teamSlug}-ingress`, () => networkingApi.deleteNamespacedIngress({ name: `${teamSlug}-ingress`, namespace })],
-    ['Deployment/mission-control', () => appsApi.deleteNamespacedDeployment({ name: 'mission-control', namespace })],
     ['StatefulSets', () => appsApi.deleteCollectionNamespacedStatefulSet({ namespace, labelSelector: `coordina.team=${teamSlug}` })],
     ['Services', () => coreApi.deleteCollectionNamespacedService({ namespace, labelSelector: `coordina.team=${teamSlug}` })],
-  ] as [string, () => Promise<unknown>][]) {
+  ]
+  if (options?.mcEnabled) {
+    deletions.unshift(
+      [`Ingress/${teamSlug}-mc-ingress`, () => networkingApi.deleteNamespacedIngress({ name: `${teamSlug}-mc-ingress`, namespace })],
+      ['Deployment/mission-control', () => appsApi.deleteNamespacedDeployment({ name: 'mission-control', namespace })],
+    )
+  }
+
+  for (const [label, fn] of deletions) {
     try { await fn(); yield { resource: label, status: 'deleted' } }
     catch { yield { resource: label, status: 'error' } }
   }
