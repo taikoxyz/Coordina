@@ -27,22 +27,22 @@ describe('generateAgentStatefulSet', () => {
     expect(manifest).toContain('/config/agent')
   })
 
-  it('sets OPENCLAW_WORKSPACE_DIR and OPENCLAW_STATE_DIR env vars', () => {
+  it('sets OPENCLAW_WORKSPACE_DIR and OPENCLAW_STATE_DIR env vars pointing to PVC subdirectories', () => {
     const manifest = generateAgentStatefulSet({ teamSlug: 'eng-alpha', agentSlug: 'alice' })
     expect(manifest).toContain('OPENCLAW_WORKSPACE_DIR')
-    expect(manifest).toContain('/workspace')
+    expect(manifest).toContain('/agent-data/openclaw/workspace')
     expect(manifest).toContain('OPENCLAW_STATE_DIR')
-    expect(manifest).toContain('/openclaw-state')
+    expect(manifest).toContain('/agent-data/openclaw/state')
   })
 
-  it('includes bootstrap init container that seeds workspace files', () => {
+  it('includes bootstrap init container that seeds workspace files into /agent-data', () => {
     const manifest = generateAgentStatefulSet({ teamSlug: 'eng-alpha', agentSlug: 'alice' })
     expect(manifest).toContain('bootstrap-init')
     expect(manifest).toContain('busybox:1.36')
-    expect(manifest).toContain('BOOTSTRAP.md')
-    expect(manifest).toContain('IDENTITY.md')
-    expect(manifest).toContain('SOUL.md')
-    expect(manifest).toContain('SKILLS.md')
+    expect(manifest).toContain('/agent-data/openclaw/workspace/BOOTSTRAP.md')
+    expect(manifest).toContain('/agent-data/openclaw/workspace/IDENTITY.md')
+    expect(manifest).toContain('/agent-data/openclaw/workspace/SOUL.md')
+    expect(manifest).toContain('/agent-data/openclaw/workspace/SKILLS.md')
     expect(manifest).toContain('TEAM.md')
   })
 
@@ -50,6 +50,17 @@ describe('generateAgentStatefulSet', () => {
     const manifest = generateAgentStatefulSet({ teamSlug: 'eng-alpha', agentSlug: 'alice', credentialSecretName: 'eng-alpha-anthropic-credentials' })
     expect(manifest).toContain('eng-alpha-anthropic-credentials')
     expect(manifest).toContain('openclaw.json')
+  })
+
+  it('mounts PVC at /agent-data with no emptyDir volumes', () => {
+    const manifest = generateAgentStatefulSet({ teamSlug: 'eng-alpha', agentSlug: 'alice' })
+    expect(manifest).toContain('mountPath: /agent-data')
+    expect(manifest).not.toContain('emptyDir')
+  })
+
+  it('init container creates state and workspace directories', () => {
+    const manifest = generateAgentStatefulSet({ teamSlug: 'eng-alpha', agentSlug: 'alice' })
+    expect(manifest).toContain('mkdir -p /agent-data/openclaw/state /agent-data/openclaw/workspace')
   })
 })
 
