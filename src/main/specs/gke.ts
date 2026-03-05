@@ -27,6 +27,7 @@ import type { DeriveSecrets } from './base'
 import type { TeamSpec, ProviderRecord, SpecFile } from '../../shared/types'
 import { getProvider } from '../providers/base'
 import { saveTeam } from '../store/teams'
+import { resolveGatewayMode } from '../gateway/mode'
 
 function deriveAgentToken(seed: string, agentSlug: string): string {
   return createHmac('sha256', seed).update(agentSlug).digest('hex').slice(0, 48)
@@ -64,9 +65,15 @@ const gkeDeriver: DeploymentSpecDeriver = {
     envConfig: Record<string, unknown>,
     secrets?: DeriveSecrets
   ): Promise<SpecFile[]> {
-    const { projectId, clusterZone, diskZone, domain: envDomain } = envConfig as { projectId: string; clusterZone: string; diskZone?: string; domain?: string }
+    const {
+      projectId,
+      clusterZone,
+      diskZone,
+      domain: envDomain,
+    } = envConfig as { projectId: string; clusterZone: string; diskZone?: string; domain?: string; gatewayMode?: 'port-forward' | 'ingress' }
     const namespace = spec.slug
-    const domain = envDomain || 'example.com'
+    const mode = resolveGatewayMode(envConfig)
+    const ingressDomain = mode === 'ingress' ? envDomain : undefined
     const telegramGroupChatId = spec.telegramGroupChatId?.trim()
     const telegramOwnerUserId = spec.telegramOwnerUserId?.trim()
     const files: SpecFile[] = []
@@ -84,7 +91,15 @@ const gkeDeriver: DeploymentSpecDeriver = {
       content: generateTeamConfigMap({
         teamSlug: spec.slug,
         namespace,
-        teamMd: generateTeamMd({ ...spec, telegramGroupChatId, telegramOwnerUserId }),
+        teamMd: generateTeamMd({
+          ...spec,
+          telegramGroupChatId,
+          telegramOwnerUserId,
+          agents: spec.agents.map(a => ({
+            ...a,
+            gatewayUrl: `ws://agent-${a.slug}.${namespace}.svc.cluster.local:18789`,
+          })),
+        }),
         bootstrapMd: spec.bootstrapInstructions || DEFAULT_BOOTSTRAP_INSTRUCTIONS,
       }),
     })
@@ -123,12 +138,32 @@ const gkeDeriver: DeploymentSpecDeriver = {
             },
           }
         : undefined
+      const baseGateway = (openclawConfig as { gateway?: Record<string, unknown> }).gateway ?? {}
+      const baseHttp = (baseGateway.http as { endpoints?: Record<string, unknown> } | undefined) ?? {}
+      const baseEndpoints = baseHttp.endpoints ?? {}
+      const baseResponses = (baseEndpoints.responses as Record<string, unknown> | undefined) ?? {}
       const openclawConfigWithGateway = {
         ...openclawConfig,
         ...((baseChannels || telegramChannelsConfig)
           ? { channels: { ...(baseChannels ?? {}), ...(telegramChannelsConfig ?? {}) } }
           : {}),
-        gateway: { auth: { token: agentToken } },
+        gateway: {
+          ...baseGateway,
+          auth: {
+            ...((baseGateway.auth as Record<string, unknown> | undefined) ?? {}),
+            token: agentToken,
+          },
+          http: {
+            ...baseHttp,
+            endpoints: {
+              ...baseEndpoints,
+              responses: {
+                ...baseResponses,
+                enabled: true,
+              },
+            },
+          },
+        },
       }
       const envVarsWithTelegram = {
         ...envVars,
@@ -156,7 +191,9 @@ const gkeDeriver: DeploymentSpecDeriver = {
       files.push({ path: `agents/${agent.slug}/service.yaml`, content: generateAgentService({ teamSlug: spec.slug, agentSlug: agent.slug, namespace }) })
     }
 
-    files.push({ path: 'ingress.yaml', content: generateIngress({ teamSlug: spec.slug, agents: spec.agents.map(a => a.slug), domain, namespace }) })
+    if (ingressDomain) {
+      files.push({ path: 'ingress.yaml', content: generateIngress({ teamSlug: spec.slug, agents: spec.agents.map(a => a.slug), domain: ingressDomain, namespace }) })
+    }
 
     return files
   },

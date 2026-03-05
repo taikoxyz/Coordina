@@ -39,9 +39,11 @@ describe('generateOpenClawJson', () => {
   it('generates openclaw.json for anthropic provider', () => {
     const json = generateOpenClawJson({
       agents: { defaults: { model: { primary: 'anthropic/claude-sonnet-4-6' } } },
-      models: { providers: { anthropic: {} } },
+      models: { providers: { anthropic: { apiKey: 'sk-ant-xxx' } } },
     })
-    expect(JSON.parse(json)).toMatchObject({ agents: { defaults: { model: { primary: 'anthropic/claude-sonnet-4-6' } } } })
+    const parsed = JSON.parse(json)
+    expect(parsed.agents.defaults.model.primary).toBe('anthropic/claude-sonnet-4-6')
+    expect(parsed.models.providers.anthropic.apiKey).toBe('sk-ant-xxx')
   })
 
   it('excludes API key from JSON when not set', () => {
@@ -51,6 +53,7 @@ describe('generateOpenClawJson', () => {
     })
     const parsed = JSON.parse(json)
     expect(parsed.models.providers.ollama.baseUrl).toBe('http://localhost:11434')
+    expect(parsed.models.providers.ollama.apiKey).toBeUndefined()
   })
 })
 
@@ -135,5 +138,23 @@ describe('generateTeamMd telegram', () => {
 
     expect(md).toContain('telegram_group_chat_id')
     expect(md).not.toContain('telegram_bot_id')
+  })
+})
+
+describe('generateTeamMd', () => {
+  it('includes per-agent gateway URL in Members section', () => {
+    const md = generateTeamMd({
+      name: 'Team',
+      slug: 'team',
+      agents: [
+        { slug: 'alice', name: 'Alice', role: 'Lead', gatewayUrl: 'ws://agent-alice.team.svc.cluster.local:18789', isLead: true },
+        { slug: 'bob', name: 'Bob', role: 'Engineer', gatewayUrl: 'ws://agent-bob.team.svc.cluster.local:18789' },
+      ],
+    })
+
+    expect(md).toContain('### alice')
+    expect(md).toContain('- gateway: ws://agent-alice.team.svc.cluster.local:18789')
+    expect(md).toContain('### bob')
+    expect(md).toContain('- gateway: ws://agent-bob.team.svc.cluster.local:18789')
   })
 })

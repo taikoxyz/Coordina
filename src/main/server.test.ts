@@ -9,14 +9,16 @@ vi.mock('./environments/gke/auth', () => ({
   getGkeAccessToken: vi.fn().mockResolvedValue(null),
 }))
 
-const mockDb = {
-  prepare: vi.fn(() => ({ get: vi.fn().mockReturnValue(null), all: vi.fn().mockReturnValue([]), run: vi.fn() })),
-}
+vi.mock('./store/teams', () => ({
+  getTeam: vi.fn().mockResolvedValue(null),
+}))
 
-vi.mock('./db', () => ({
-  openDb: vi.fn(() => mockDb),
-  getDb: vi.fn(() => mockDb),
-  getDataDir: vi.fn(() => ':memory:'),
+vi.mock('./store/deployments', () => ({
+  getTeamDeployment: vi.fn().mockResolvedValue(null),
+}))
+
+vi.mock('./store/environments', () => ({
+  getEnvAuthToken: vi.fn().mockResolvedValue(null),
 }))
 
 import { createServer } from './server'
@@ -32,5 +34,18 @@ describe('local server', () => {
     const res = await request(app).get('/health')
     expect(res.status).toBe(200)
     expect(res.body.ok).toBe(true)
+    expect(res.headers['access-control-allow-origin']).toBe('*')
+  })
+
+  it('OPTIONS preflight returns 204', async () => {
+    const res = await request(app)
+      .options('/proxy/team-d-squad/v1/responses?envSlug=goog-gke')
+      .set('Origin', 'file://')
+      .set('Access-Control-Request-Method', 'POST')
+      .set('Access-Control-Request-Headers', 'content-type')
+
+    expect(res.status).toBe(204)
+    expect(res.headers['access-control-allow-origin']).toBe('*')
+    expect(res.headers['access-control-allow-methods']).toContain('POST')
   })
 })

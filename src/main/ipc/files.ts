@@ -1,10 +1,11 @@
 import { ipcMain } from 'electron'
-import { getDb } from '../db'
+import { getTeam } from '../store/teams'
+import { getTeamDeployment } from '../store/deployments'
 
 const LOCAL_PORT = 19876
 
 async function fetchFromGateway(teamSlug: string, agentSlug: string, endpoint: string): Promise<unknown> {
-  const url = `http://localhost:${LOCAL_PORT}/proxy/${teamSlug}/${agentSlug}${endpoint}`
+  const url = `http://localhost:${LOCAL_PORT}/proxy/${teamSlug}/agents/${agentSlug}${endpoint}`
   const response = await fetch(url)
   if (!response.ok) throw new Error(`Gateway returned ${response.status}`)
   return response.json()
@@ -12,12 +13,11 @@ async function fetchFromGateway(teamSlug: string, agentSlug: string, endpoint: s
 
 export function registerFileHandlers() {
   ipcMain.handle('files:list', async (_event, teamSlug: string, agentSlug: string) => {
-    const db = getDb()
-    const team = db.prepare('SELECT gateway_url FROM teams WHERE slug = ?').get(teamSlug) as any
+    const [team, deployment] = await Promise.all([getTeam(teamSlug), getTeamDeployment(teamSlug)])
 
-    if (!team?.gateway_url) {
-      // Team not deployed — return files from DB (spec files only)
-      const agent = db.prepare('SELECT * FROM agents WHERE slug = ? AND team_slug = ?').get(agentSlug, teamSlug) as any
+    if (!deployment) {
+      // Team not deployed — return files from local spec
+      const agent = team?.agents.find(a => a.slug === agentSlug)
       if (!agent) return { files: [], offline: true }
       return {
         offline: true,
@@ -37,12 +37,11 @@ export function registerFileHandlers() {
   })
 
   ipcMain.handle('files:get', async (_event, teamSlug: string, agentSlug: string, filePath: string) => {
-    const db = getDb()
-    const team = db.prepare('SELECT gateway_url FROM teams WHERE slug = ?').get(teamSlug) as any
+    const [team, deployment] = await Promise.all([getTeam(teamSlug), getTeamDeployment(teamSlug)])
 
-    if (!team?.gateway_url) {
-      // Offline mode — return spec files from DB
-      const agent = db.prepare('SELECT * FROM agents WHERE slug = ? AND team_slug = ?').get(agentSlug, teamSlug) as any
+    if (!deployment) {
+      // Offline mode — return spec files from local spec
+      const agent = team?.agents.find(a => a.slug === agentSlug)
       if (!agent) return { content: null, offline: true }
 
       if (filePath === 'IDENTITY.md') {

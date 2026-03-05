@@ -6,7 +6,12 @@ import * as net from 'net'
 import { OAuth2Client } from 'google-auth-library'
 import { getEnvToken, setEnvToken } from '../../store/environments'
 
-const SCOPES = ['https://www.googleapis.com/auth/cloud-platform']
+const SCOPES = [
+  'openid',
+  'email',
+  'profile',
+  'https://www.googleapis.com/auth/cloud-platform',
+]
 
 export interface GkeAuthConfig {
   clientId: string

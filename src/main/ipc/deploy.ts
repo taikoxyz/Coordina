@@ -5,10 +5,12 @@ import { listEnvironments, getEnvironment, saveEnvironment, deleteEnvironment } 
 import { getTeam } from '../store/teams'
 import { listProviders, getProviderApiKey } from '../store/providers'
 import { getSecret } from '../keychain'
+import { saveTeamDeployment, deleteTeamDeployment } from '../store/deployments'
 import { getDeriver } from '../specs/base'
 import '../specs/gke'
 import { deployTeam, undeployTeam, getTeamStatus } from '../environments/gke/deploy'
 import { authenticateGke } from '../environments/gke/auth'
+import { resolveGatewayMode } from '../gateway/mode'
 import type { EnvironmentRecord, DeployOptions } from '../../shared/types'
 
 export function registerDeployHandlers(): void {
@@ -70,6 +72,23 @@ export function registerDeployHandlers(): void {
       for await (const status of deployTeam(specFiles, teamSlug, deployConfig, options)) {
         win?.webContents.send('deploy:status', status)
       }
+      const leadAgentSlug = spec.agents[0]?.slug
+      const envDomain = (env.config as { domain?: string }).domain
+      const mode = resolveGatewayMode(env.config)
+      if (leadAgentSlug) {
+        if (mode === 'ingress' && (!envDomain || envDomain.trim().length === 0)) {
+          return { ok: false, reason: 'Environment domain is required when gateway mode is ingress' }
+        }
+        await saveTeamDeployment({
+          teamSlug,
+          envSlug,
+          leadAgentSlug,
+          gatewayBaseUrl: mode === 'ingress'
+            ? `https://${teamSlug}.${envDomain}`.replace(/\/+$/, '')
+            : 'http://127.0.0.1',
+          deployedAt: Date.now(),
+        })
+      }
       return { ok: true }
     } catch (e) {
       return { ok: false, reason: e instanceof Error ? e.message : String(e) }
@@ -87,6 +106,7 @@ export function registerDeployHandlers(): void {
       for await (const status of undeployTeam(teamSlug, deployConfig)) {
         win?.webContents.send('deploy:status', status)
       }
+      await deleteTeamDeployment(teamSlug)
       return { ok: true }
     } catch (e) {
       return { ok: false, reason: e instanceof Error ? e.message : String(e) }

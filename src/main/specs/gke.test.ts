@@ -1,4 +1,4 @@
-// GKE deriver tests verifying generated openclaw.json and secret env wiring
+// GKE deriver tests verifying openclaw.json gateway auth and telegram wiring
 // FEATURE: GKE derivation layer with K8s Secrets for API key security
 import { describe, it, expect, vi } from 'vitest'
 import yaml from 'js-yaml'
@@ -39,16 +39,48 @@ function getOpenClawConfig(files: { path: string; content: string }[], agentSlug
   return JSON.parse(configmap.data['openclaw.json'])
 }
 
-describe('gkeDeriver openclaw config', () => {
-  it('includes gateway auth token', async () => {
+function getTeamMd(files: { path: string; content: string }[]): string {
+  const file = files.find(f => f.path === 'configmap-shared.yaml')!
+  const configmap = yaml.load(file.content) as { data: Record<string, string> }
+  return configmap.data['TEAM.md']
+}
+
+describe('gkeDeriver gateway injection', () => {
+  it('includes per-agent gateway auth token in openclaw.json', async () => {
     const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
     const alphaConfig = getOpenClawConfig(files, 'alpha')
+    const betaConfig = getOpenClawConfig(files, 'beta')
 
-    expect(typeof alphaConfig.gateway.auth.token).toBe('string')
+    expect(typeof alphaConfig.gateway?.auth?.token).toBe('string')
     expect(alphaConfig.gateway.auth.token.length).toBeGreaterThan(0)
+    expect(alphaConfig.gateway.auth.token).not.toBe(betaConfig.gateway.auth.token)
   })
 
-  it('does not include unsupported peers or telegram top-level config', async () => {
+  it('does not include unsupported peers key in openclaw.json', async () => {
+    const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
+    const alphaConfig = getOpenClawConfig(files, 'alpha')
+    expect(alphaConfig.peers).toBeUndefined()
+  })
+
+  it('enables OpenClaw HTTP responses endpoint for chat UI', async () => {
+    const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
+    const alphaConfig = getOpenClawConfig(files, 'alpha')
+    expect(alphaConfig.gateway?.http?.endpoints?.responses?.enabled).toBe(true)
+  })
+
+  it('includes gateway URLs in each TEAM.md member entry', async () => {
+    const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
+    const teamMd = getTeamMd(files)
+
+    expect(teamMd).toContain('### alpha')
+    expect(teamMd).toContain('- gateway: ws://agent-alpha.my-team.svc.cluster.local:18789')
+    expect(teamMd).toContain('### beta')
+    expect(teamMd).toContain('- gateway: ws://agent-beta.my-team.svc.cluster.local:18789')
+  })
+})
+
+describe('gkeDeriver telegram config', () => {
+  it('does not include telegram top-level config', async () => {
     const withTelegram: TeamSpec = {
       ...teamSpec,
       telegramGroupChatId: '-1001234567890',

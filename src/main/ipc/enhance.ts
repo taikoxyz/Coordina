@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import { getSecret } from '../keychain'
-import { getDb } from '../db'
+import { listProviders, getProviderApiKey } from '../store/providers'
 import { createModel } from '../ai/provider'
 import { enhanceSkills, enhanceSoul } from '../ai/enhance'
 
@@ -10,14 +10,13 @@ async function getBestModel() {
     return createModel('anthropic', {}, anthropicKey)
   }
 
-  const db = getDb()
-  const providers = db.prepare('SELECT id, type, config FROM providers').all() as { id: string; type: string; config: string }[]
+  const providers = await listProviders()
   for (const p of providers) {
-    const config = JSON.parse(p.config) as Record<string, unknown>
+    const config = { model: p.model } as Record<string, unknown>
     if (p.type === 'ollama') {
       return createModel(p.type, config, null)
     }
-    const apiKey = await getSecret(p.id, 'provider-api-key')
+    const apiKey = await getProviderApiKey(p.slug)
     if (apiKey) {
       return createModel(p.type, config, apiKey)
     }

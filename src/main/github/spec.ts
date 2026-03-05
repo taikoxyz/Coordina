@@ -17,7 +17,16 @@ export interface SoulInput {
 export interface OpenClawConfig {
   agents: { defaults: { model: { primary: string; fallbacks?: string[] } } }
   models: { providers: { [provider: string]: { apiKey?: string; baseUrl?: string; api?: string } } }
-  gateway?: { auth?: { token?: string } }
+  gateway?: {
+    auth?: { token?: string }
+    http?: {
+      endpoints?: {
+        responses?: {
+          enabled?: boolean
+        }
+      }
+    }
+  }
 }
 
 export function generateIdentityMd(agent: AgentIdentity): string {
@@ -47,7 +56,7 @@ export function generateTeamMd(team: {
   image?: string
   leadAgentSlug?: string
   storageGi?: number
-  agents: { slug: string; name: string; role: string; telegramBotId?: string; email?: string; slackHandle?: string; githubId?: string; cpu?: number; isLead?: boolean }[]
+  agents: { slug: string; name: string; role: string; telegramBotId?: string; email?: string; slackHandle?: string; githubId?: string; cpu?: number; isLead?: boolean; gatewayUrl?: string }[]
 }): string {
   const lines: string[] = ['## TEAM', '', '## About']
   lines.push(`- name: ${team.name}`)
@@ -67,6 +76,7 @@ export function generateTeamMd(team: {
     if (a.slackHandle) lines.push(`- slack: ${a.slackHandle}`)
     if (a.githubId) lines.push(`- github: @${a.githubId}`)
     if (a.cpu) lines.push(`- cpu: ${a.cpu}`)
+    if (a.gatewayUrl) lines.push(`- gateway: ${a.gatewayUrl}`)
     if (a.isLead) lines.push(`- lead: true`)
     lines.push('')
   }

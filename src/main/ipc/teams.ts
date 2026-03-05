@@ -5,6 +5,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import os from 'os'
 import { listTeams, getTeam, saveTeam, deleteTeam } from '../store/teams'
+import { deleteTeamDeployment } from '../store/deployments'
 import { runPipeline } from '../watcher'
 import type { TeamSpec } from '../../shared/types'
 import { getSecret, setSecret, deleteSecret } from '../keychain'
@@ -60,7 +61,10 @@ export function registerTeamHandlers(): void {
     for (const agent of spec?.agents ?? []) {
       await deleteSecret(telegramAccount(slug, agent.slug), 'agent-telegram-token')
     }
-    await deleteTeam(slug)
+    await Promise.all([
+      deleteTeam(slug),
+      deleteTeamDeployment(slug),
+    ])
     return { ok: true }
   })
 
