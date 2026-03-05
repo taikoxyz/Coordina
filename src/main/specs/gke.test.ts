@@ -89,6 +89,8 @@ describe('gkeDeriver gateway injection', () => {
     expect(teamMd).toContain('- gateway_token:')
     expect(teamMd).toContain('### beta')
     expect(teamMd).toContain('- gateway: http://agent-beta.my-team.svc.cluster.local:18789')
+    expect(teamMd).toContain('## Communication Protocol')
+    expect(teamMd).toContain('POST <gateway>/v1/responses')
   })
 
   it('adds config hash annotations to trigger rollout when generated files change', async () => {

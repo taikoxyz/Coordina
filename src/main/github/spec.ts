@@ -99,6 +99,7 @@ export function generateTeamMd(team: {
   storageGi?: number
   agents: { slug: string; name: string; role: string; telegramBotId?: string; email?: string; slackHandle?: string; githubId?: string; cpu?: number; isLead?: boolean; gatewayUrl?: string; gatewayToken?: string }[]
 }): string {
+  const hasGateways = team.agents.some(a => a.gatewayUrl)
   const lines: string[] = ['## TEAM', '', '## About']
   lines.push(`- name: ${team.name}`)
   lines.push(`- slug: ${team.slug}`)
@@ -122,6 +123,23 @@ export function generateTeamMd(team: {
     if (a.isLead) lines.push(`- lead: true`)
     lines.push('')
   }
+  if (hasGateways) {
+    lines.push('## Communication Protocol')
+    lines.push('')
+    lines.push('To message a teammate, send an HTTP POST to their gateway URL.')
+    lines.push('Do NOT use OpenClaw node/tailnet commands — use direct HTTP calls.')
+    lines.push('')
+    lines.push('```')
+    lines.push('curl -X POST <gateway>/v1/responses \\')
+    lines.push('  -H "Authorization: Bearer <gateway_token>" \\')
+    lines.push('  -H "Content-Type: application/json" \\')
+    lines.push('  -d \'{"model": "anthropic/claude-sonnet-4-6", "input": "Your message here"}\'')
+    lines.push('```')
+    lines.push('')
+    lines.push('Replace `<gateway>` and `<gateway_token>` with the values from the member entry above.')
+    lines.push('')
+  }
+
   return lines.join('\n')
 }
 

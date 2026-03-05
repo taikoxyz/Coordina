@@ -199,4 +199,31 @@ describe('generateTeamMd', () => {
     expect(md).toContain('- gateway: http://agent-bob.team.svc.cluster.local:18789')
     expect(md).toContain('- gateway_token: bob-token-xyz')
   })
+
+  it('includes Communication Protocol section when gateways are present', () => {
+    const md = generateTeamMd({
+      name: 'Team',
+      slug: 'team',
+      agents: [
+        { slug: 'alice', name: 'Alice', role: 'Lead', gatewayUrl: 'http://agent-alice.team.svc.cluster.local:18789', gatewayToken: 'tok' },
+      ],
+    })
+
+    expect(md).toContain('## Communication Protocol')
+    expect(md).toContain('POST <gateway>/v1/responses')
+    expect(md).toContain('Authorization: Bearer <gateway_token>')
+    expect(md).toContain('Do NOT use OpenClaw node/tailnet commands')
+  })
+
+  it('omits Communication Protocol section when no gateways', () => {
+    const md = generateTeamMd({
+      name: 'Team',
+      slug: 'team',
+      agents: [
+        { slug: 'alice', name: 'Alice', role: 'Lead' },
+      ],
+    })
+
+    expect(md).not.toContain('## Communication Protocol')
+  })
 })
