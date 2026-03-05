@@ -51,6 +51,17 @@ describe('generateAgentStatefulSet', () => {
     expect(manifest).toContain('eng-alpha-anthropic-credentials')
     expect(manifest).toContain('openclaw.json')
   })
+
+  it('mounts workspace crontabs subPath to /etc/crontabs for persistent cron jobs', () => {
+    const manifest = generateAgentStatefulSet({ teamSlug: 'eng-alpha', agentSlug: 'alice' })
+    expect(manifest).toContain('/etc/crontabs')
+    expect(manifest).toContain('subPath: crontabs')
+  })
+
+  it('init container creates /workspace/crontabs directory', () => {
+    const manifest = generateAgentStatefulSet({ teamSlug: 'eng-alpha', agentSlug: 'alice' })
+    expect(manifest).toContain('mkdir -p /workspace/crontabs')
+  })
 })
 
 describe('generateIapBackendConfig', () => {

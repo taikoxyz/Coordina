@@ -132,6 +132,7 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
 
   const containerVolumeMounts: unknown[] = [
     { name: 'workspace', mountPath: '/workspace' },
+    { name: 'workspace', mountPath: '/etc/crontabs', subPath: 'crontabs' },
     { name: 'openclaw-state', mountPath: stateDir },
     { name: 'shared-config', mountPath: '/config/shared', readOnly: true },
     { name: 'agent-config', mountPath: '/config/agent', readOnly: true },
@@ -145,6 +146,7 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
     'test -f /workspace/SKILLS.md || cp /config/agent/SKILLS.md /workspace/SKILLS.md',
     `cp /config/agent/openclaw.json ${stateDir}/openclaw.json`,
     `chmod 777 ${stateDir}`,
+    'mkdir -p /workspace/crontabs',
   ].join(' && ')
 
   const manifest = {
