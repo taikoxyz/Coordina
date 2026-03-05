@@ -121,32 +121,29 @@ export function generateAgentPvc(input: { teamSlug: string; agentSlug: string; n
 export function generateAgentStatefulSet(input: AgentManifestInput): string {
   const { teamSlug, agentSlug, image = 'alpine/openclaw:latest', namespace = 'default', credentialSecretName, cpu } = input
   const resourceName = `agent-${agentSlug}`
-  const stateDir = '/openclaw-state'
+  const stateDir = '/agent-data/openclaw/state'
+  const workspaceDir = '/agent-data/openclaw/workspace'
 
   const volumes: unknown[] = [
-    { name: 'workspace', persistentVolumeClaim: { claimName: `${teamSlug}-agent-${agentSlug}` } },
+    { name: 'agent-data', persistentVolumeClaim: { claimName: `${teamSlug}-agent-${agentSlug}` } },
     { name: 'shared-config', configMap: { name: `${teamSlug}-shared-config` } },
     { name: 'agent-config', configMap: { name: `${teamSlug}-${agentSlug}-config` } },
-    { name: 'openclaw-state', emptyDir: {} },
   ]
 
   const containerVolumeMounts: unknown[] = [
-    { name: 'workspace', mountPath: '/workspace' },
-    { name: 'workspace', mountPath: '/etc/crontabs', subPath: 'crontabs' },
-    { name: 'openclaw-state', mountPath: stateDir },
+    { name: 'agent-data', mountPath: '/agent-data' },
     { name: 'shared-config', mountPath: '/config/shared', readOnly: true },
     { name: 'agent-config', mountPath: '/config/agent', readOnly: true },
   ]
 
   const initSeedCmd = [
-    'test -f /workspace/BOOTSTRAP.md || cp /config/shared/BOOTSTRAP.md /workspace/BOOTSTRAP.md',
-    'cp /config/shared/TEAM.md /workspace/TEAM.md',
-    'test -f /workspace/IDENTITY.md || cp /config/agent/IDENTITY.md /workspace/IDENTITY.md',
-    'test -f /workspace/SOUL.md || cp /config/agent/SOUL.md /workspace/SOUL.md',
-    'test -f /workspace/SKILLS.md || cp /config/agent/SKILLS.md /workspace/SKILLS.md',
+    `mkdir -p ${stateDir} ${workspaceDir}`,
+    `test -f ${workspaceDir}/BOOTSTRAP.md || cp /config/shared/BOOTSTRAP.md ${workspaceDir}/BOOTSTRAP.md`,
+    `cp /config/shared/TEAM.md ${workspaceDir}/TEAM.md`,
+    `test -f ${workspaceDir}/IDENTITY.md || cp /config/agent/IDENTITY.md ${workspaceDir}/IDENTITY.md`,
+    `test -f ${workspaceDir}/SOUL.md || cp /config/agent/SOUL.md ${workspaceDir}/SOUL.md`,
+    `test -f ${workspaceDir}/SKILLS.md || cp /config/agent/SKILLS.md ${workspaceDir}/SKILLS.md`,
     `cp /config/agent/openclaw.json ${stateDir}/openclaw.json`,
-    `chmod 777 ${stateDir}`,
-    'mkdir -p /workspace/crontabs',
   ].join(' && ')
 
   const manifest = {
@@ -170,8 +167,7 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
             image: 'busybox:1.36',
             command: ['sh', '-c', initSeedCmd],
             volumeMounts: [
-              { name: 'workspace', mountPath: '/workspace' },
-              { name: 'openclaw-state', mountPath: stateDir },
+              { name: 'agent-data', mountPath: '/agent-data' },
               { name: 'shared-config', mountPath: '/config/shared', readOnly: true },
               { name: 'agent-config', mountPath: '/config/agent', readOnly: true },
             ],
@@ -181,7 +177,7 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
             image,
             ports: [{ containerPort: 18789, name: 'gateway' }],
             env: [
-              { name: 'OPENCLAW_WORKSPACE_DIR', value: '/workspace' },
+              { name: 'OPENCLAW_WORKSPACE_DIR', value: workspaceDir },
               { name: 'OPENCLAW_STATE_DIR', value: stateDir },
             ],
             ...(credentialSecretName ? { envFrom: [{ secretRef: { name: credentialSecretName } }] } : {}),
