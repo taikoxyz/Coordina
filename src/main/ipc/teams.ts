@@ -52,7 +52,6 @@ export function registerTeamHandlers(): void {
     const normalized = normalizeTeamSpec(spec)
     validateTelegramPair(normalized)
     await saveTeam(normalized)
-    await runPipeline(normalized.slug)
     return { ok: true }
   })
 
