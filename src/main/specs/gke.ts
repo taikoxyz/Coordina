@@ -168,11 +168,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
           : {}),
         tools: {
           ...baseTools,
-          profile: (baseTools.profile as string | undefined) ?? 'coding',
-          allow: [...new Set([
-            ...((baseTools.allow as string[] | undefined) ?? []),
-            'sessions_list', 'sessions_send', 'sessions_spawn',
-          ])],
+          profile: (baseTools.profile as string | undefined) ?? 'full',
         },
         gateway: {
           ...baseGateway,

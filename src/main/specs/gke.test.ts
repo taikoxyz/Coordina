@@ -94,14 +94,11 @@ describe('gkeDeriver gateway injection', () => {
     expect(teamMd).toContain('POST <gateway>/v1/responses')
   })
 
-  it('sets tools.profile to coding with session tools allowed', async () => {
+  it('sets tools.profile to full for unrestricted agent capabilities', async () => {
     const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
     const alphaConfig = getOpenClawConfig(files, 'alpha')
 
-    expect(alphaConfig.tools?.profile).toBe('coding')
-    expect(alphaConfig.tools?.allow).toContain('sessions_send')
-    expect(alphaConfig.tools?.allow).toContain('sessions_spawn')
-    expect(alphaConfig.tools?.allow).toContain('sessions_list')
+    expect(alphaConfig.tools?.profile).toBe('full')
   })
 
   it('adds config hash annotations to trigger rollout when generated files change', async () => {
