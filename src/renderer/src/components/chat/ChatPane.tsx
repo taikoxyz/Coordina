@@ -40,7 +40,7 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
     }
   }
 
-  const title = agentSlug && agentName
+  const title = agentName
     ? `Chat with ${agentName}`
     : `Chat with ${teamSlug} (Lead Agent)`
 

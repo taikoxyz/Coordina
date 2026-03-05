@@ -30,7 +30,18 @@ export interface OpenClawConfig {
 }
 
 export function generateIdentityMd(agent: AgentIdentity): string {
-  return `My identity is defined in \`/config/shared/TEAM.md\` — find slug \`${agent.slug}\` under Members.\n`
+  const lines = [
+    `You are the following member of this team (your entry in TEAM.md):`,
+    ``,
+    `### ${agent.slug}`,
+    `- name: ${agent.name}`,
+    `- role: ${agent.role}`,
+  ]
+  if (agent.email) lines.push(`- email: ${agent.email}`)
+  if (agent.slackHandle) lines.push(`- slack: ${agent.slackHandle}`)
+  if (agent.githubId) lines.push(`- github: @${agent.githubId}`)
+  lines.push(``, `Full team context: \`/config/shared/TEAM.md\`.`)
+  return lines.join('\n') + '\n'
 }
 
 export function generateSoulMd(soul: SoulInput): string {

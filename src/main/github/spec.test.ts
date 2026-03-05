@@ -2,16 +2,26 @@ import { describe, it, expect } from 'vitest'
 import { generateIdentityMd, generateSoulMd, generateOpenClawJson, generateSkillsMd, generateAgentsMd, generateTeamMd } from './spec'
 
 describe('generateIdentityMd', () => {
-  it('references TEAM.md with agent slug', () => {
+  it('uses TEAM.md entry format with name, slug and role', () => {
     const md = generateIdentityMd({ name: 'Alice Chen', slug: 'alice', role: 'Engineer' })
-    expect(md).toContain('`alice`')
+    expect(md).toContain('### alice')
+    expect(md).toContain('- name: Alice Chen')
+    expect(md).toContain('- role: Engineer')
     expect(md).toContain('TEAM.md')
   })
 
-  it('works without optional fields', () => {
+  it('includes optional contact fields when provided', () => {
+    const md = generateIdentityMd({ name: 'Alice', slug: 'alice', role: 'Engineer', email: 'alice@example.com', slackHandle: 'alice-slack', githubId: 'alice-gh' })
+    expect(md).toContain('- email: alice@example.com')
+    expect(md).toContain('- slack: alice-slack')
+    expect(md).toContain('- github: @alice-gh')
+  })
+
+  it('omits optional fields when absent', () => {
     const md = generateIdentityMd({ name: 'Bob', slug: 'bob', role: 'PM' })
-    expect(md).toContain('`bob`')
-    expect(md).toContain('TEAM.md')
+    expect(md).not.toContain('- email:')
+    expect(md).not.toContain('- slack:')
+    expect(md).not.toContain('- github:')
   })
 })
 
