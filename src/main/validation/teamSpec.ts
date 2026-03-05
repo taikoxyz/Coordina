@@ -40,14 +40,6 @@ export const validateTeamSpec = (
     }
   }
 
-  if (spec.missionControl?.enabled) {
-    if (!spec.missionControl.image?.trim()) {
-      errors.push({ field: 'missionControl.image', message: 'Mission Control image is required when enabled' })
-    }
-    if (!spec.domain?.trim() && !spec.missionControl.domain?.trim()) {
-      errors.push({ field: 'missionControl.domain', message: 'Domain is required for Mission Control (set team domain or MC domain)' })
-    }
-  }
 
   return { valid: errors.length === 0, errors }
 }

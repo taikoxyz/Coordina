@@ -16,7 +16,7 @@ export interface AgentSpec {
 
 export interface MissionControlConfig {
   enabled: boolean
-  image: string
+  image?: string
   domain?: string
 }
 

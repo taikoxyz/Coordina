@@ -159,8 +159,9 @@ export async function* deployTeam(
   }
 
   const skipDiskPaths = new Set(options.keepDisks ? [
-    ...specFiles.filter(f => f.path.endsWith('/pv.yaml')).map(f => f.path),
-    ...specFiles.filter(f => f.path.endsWith('/pvc.yaml')).map(f => f.path),
+    // Keep existing agent disks/PVC bindings, but still apply Mission Control PVC manifests.
+    ...specFiles.filter(f => f.path.startsWith('agents/') && f.path.endsWith('/pv.yaml')).map(f => f.path),
+    ...specFiles.filter(f => f.path.startsWith('agents/') && f.path.endsWith('/pvc.yaml')).map(f => f.path),
   ] : [])
 
   const orderedPaths = [

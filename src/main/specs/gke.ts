@@ -108,13 +108,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
         : {}
 
       const agentToken = deriveAgentToken(seed, agent.slug)
-      const agentPeers = peers
-        .filter(p => p.slug !== agent.slug)
-        .reduce<Record<string, { url: string; token: string }>>((acc, p) => {
-          acc[p.slug] = { url: `http://agent-${p.slug}.${namespace}.svc.cluster.local:18789`, token: p.token }
-          return acc
-        }, {})
-      const openclawConfigWithGateway = { ...openclawConfig, gateway: { auth: { token: agentToken } }, peers: agentPeers }
+      const openclawConfigWithGateway = { ...openclawConfig, gateway: { auth: { token: agentToken } } }
       const credentialSecretName = `${spec.slug}-${agent.slug}-credentials`
       files.push({ path: `agents/${agent.slug}/pv.yaml`, content: generateAgentPv({ teamSlug: spec.slug, agentSlug: agent.slug, projectId, zone: diskZone ?? clusterZone, storageGi: agent.storageGi }) })
       files.push({ path: `agents/${agent.slug}/pvc.yaml`, content: generateAgentPvc({ teamSlug: spec.slug, agentSlug: agent.slug, namespace, storageGi: agent.storageGi }) })
@@ -136,7 +130,8 @@ const gkeDeriver: DeploymentSpecDeriver = {
     }
 
     if (spec.missionControl?.enabled) {
-      const mcDomain = spec.missionControl.domain || `mc.${domain}`
+      const mcImage = spec.missionControl.image || `gcr.io/${projectId}/mission-control:latest`
+      const mcDomain = spec.missionControl.domain || (spec.domain ? `mc.${spec.domain}` : undefined)
       const leadSlug = spec.leadAgentSlug || spec.agents[0]?.slug
       let adminPassword = await getMcAdminPassword(spec.slug)
       if (!adminPassword) {
@@ -152,9 +147,11 @@ const gkeDeriver: DeploymentSpecDeriver = {
 
       files.push({ path: 'mc/secret.yaml', content: generateMcSecret({ teamSlug: spec.slug, namespace, adminPassword, sessionSecret, apiKey, leadAgentSlug: leadSlug }) })
       files.push({ path: 'mc/pvc.yaml', content: generateMcPvc({ teamSlug: spec.slug, namespace }) })
-      files.push({ path: 'mc/deployment.yaml', content: generateMcDeployment({ teamSlug: spec.slug, image: spec.missionControl.image, namespace }) })
+      files.push({ path: 'mc/deployment.yaml', content: generateMcDeployment({ teamSlug: spec.slug, image: mcImage, namespace }) })
       files.push({ path: 'mc/service.yaml', content: generateMcService({ teamSlug: spec.slug, namespace }) })
-      files.push({ path: 'mc/ingress.yaml', content: generateMcIngress({ teamSlug: spec.slug, domain: mcDomain, namespace }) })
+      if (mcDomain) {
+        files.push({ path: 'mc/ingress.yaml', content: generateMcIngress({ teamSlug: spec.slug, domain: mcDomain, namespace }) })
+      }
     }
 
     files.push({ path: 'ingress.yaml', content: generateIngress({ teamSlug: spec.slug, agents: spec.agents.map(a => a.slug), domain, namespace }) })

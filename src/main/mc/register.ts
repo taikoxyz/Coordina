@@ -15,6 +15,10 @@ export interface McRegistrationResult {
   errors: Array<{ slug: string; error: string }>
 }
 
+function isAlreadyRegistered(status: number, body: string): boolean {
+  return status === 409 || /already exists|duplicate|conflict/i.test(body)
+}
+
 export async function registerAgentsWithMc(input: McRegistrationInput): Promise<McRegistrationResult> {
   const { mcBaseUrl, apiKey, agents, namespace } = input
   const headers = { 'Content-Type': 'application/json', 'x-api-key': apiKey }
@@ -32,8 +36,12 @@ export async function registerAgentsWithMc(input: McRegistrationInput): Promise<
       })
       if (!gwRes.ok) {
         const text = await gwRes.text()
-        errors.push({ slug: agent.slug, error: `gateway ${gwRes.status}: ${text}` })
-        continue
+        if (isAlreadyRegistered(gwRes.status, text)) {
+          // Continue: gateway already exists for this slug in MC.
+        } else {
+          errors.push({ slug: agent.slug, error: `gateway ${gwRes.status}: ${text}` })
+          continue
+        }
       }
 
       const agentRes = await fetch(`${mcBaseUrl}/api/agents`, {
@@ -43,8 +51,10 @@ export async function registerAgentsWithMc(input: McRegistrationInput): Promise<
       })
       if (!agentRes.ok) {
         const text = await agentRes.text()
-        errors.push({ slug: agent.slug, error: `agent ${agentRes.status}: ${text}` })
-        continue
+        if (!isAlreadyRegistered(agentRes.status, text)) {
+          errors.push({ slug: agent.slug, error: `agent ${agentRes.status}: ${text}` })
+          continue
+        }
       }
 
       registered.push(agent.slug)

@@ -12,7 +12,7 @@ const inputCls = 'bg-gray-800 border border-gray-700 rounded px-1.5 py-0.5 text-
 const labelCls = 'text-[10px] text-gray-500 block mb-0.5'
 
 export function McPanel({ spec, onSpecChange }: Props) {
-  const mc: MissionControlConfig = spec.missionControl || { enabled: false, image: '' }
+  const mc: MissionControlConfig = spec.missionControl || { enabled: false }
   const [adminPassword, setAdminPassword] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [credStatus, setCredStatus] = useState<{ hasCredentials: boolean } | null>(null)
@@ -51,12 +51,8 @@ export function McPanel({ spec, onSpecChange }: Props) {
       {mc.enabled && (
         <div className="space-y-1.5">
           <div>
-            <label className={labelCls}>image</label>
-            <input className={inputCls} value={mc.image} onChange={e => update({ image: e.target.value })} placeholder="gcr.io/project/mission-control:latest" />
-          </div>
-          <div>
-            <label className={labelCls}>domain</label>
-            <input className={inputCls} value={mc.domain ?? ''} onChange={e => update({ domain: e.target.value || undefined })} placeholder={`mc.${spec.domain || 'example.com'}`} />
+            <label className={labelCls}>image <span className="text-gray-600">(optional)</span></label>
+            <input className={inputCls} value={mc.image ?? ''} onChange={e => update({ image: e.target.value || undefined })} placeholder="gcr.io/<project-id>/mission-control:latest" />
           </div>
 
           <div className="border-t border-gray-700/40 pt-1.5">
