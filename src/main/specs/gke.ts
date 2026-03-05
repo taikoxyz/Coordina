@@ -15,6 +15,7 @@ import {
 import {
   generateTeamMd,
   generateIdentityMd,
+  generateMemoryMd,
   generateSoulMd,
   generateSkillsMd,
   generateOpenClawJson,
@@ -181,7 +182,8 @@ const gkeDeriver: DeploymentSpecDeriver = {
           teamSlug: spec.slug,
           agentSlug: agent.slug,
           namespace,
-          identityMd: generateIdentityMd({ name: agent.name, slug: agent.slug, role: agent.role, email: agent.email, slackHandle: agent.slackHandle, githubId: agent.githubId, providerSlug: agent.providerSlug, model }),
+          identityMd: generateIdentityMd({ name: agent.name, role: agent.role, soul: agent.soul, emoji: agent.emoji, avatar: agent.avatar }),
+          memoryMd: generateMemoryMd(),
           soulMd: generateSoulMd({ userInput: agent.soul }),
           skillsMd: generateSkillsMd(agent.skills),
           openclawJson: generateOpenClawJson(openclawConfigWithGateway),

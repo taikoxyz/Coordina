@@ -18,6 +18,8 @@ function normalizeAgent(agent: AgentSpec): AgentSpec {
     slug: normalizeOptional(agent.slug) ?? '',
     name: normalizeOptional(agent.name) ?? '',
     role: normalizeOptional(agent.role) ?? '',
+    emoji: normalizeOptional(agent.emoji),
+    avatar: normalizeOptional(agent.avatar),
     telegramBotId: normalizeOptional(agent.telegramBotId),
     email: normalizeOptional(agent.email),
     slackHandle: normalizeOptional(agent.slackHandle),

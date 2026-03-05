@@ -119,6 +119,8 @@ export function AgentRow({ teamSlug, agent, isFirst, providerSlugs, onChange, on
             </div>
           </div>
           {fieldRow('role', agent.role, set('role'), { placeholder: 'Researcher' })}
+          {fieldRow('emoji', agent.emoji ?? '', v => set('emoji')(v || undefined), { placeholder: '🤖' })}
+          {fieldRow('avatar', agent.avatar ?? '', v => set('avatar')(v || undefined), { placeholder: '/avatar.png or https://…' })}
           {fieldRow('telegram id', agent.telegramBotId ?? '', v => set('telegramBotId')(v || undefined), { mono: true, placeholder: '123456789' })}
           <div className="flex items-start gap-2">
             <label className="text-[10px] text-gray-500 w-20 shrink-0 pt-0.5">telegram token</label>

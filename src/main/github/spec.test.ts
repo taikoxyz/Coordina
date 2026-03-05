@@ -2,26 +2,27 @@ import { describe, it, expect } from 'vitest'
 import { generateIdentityMd, generateSoulMd, generateOpenClawJson, generateSkillsMd, generateAgentsMd, generateTeamMd } from './spec'
 
 describe('generateIdentityMd', () => {
-  it('uses TEAM.md entry format with name, slug and role', () => {
-    const md = generateIdentityMd({ name: 'Alice Chen', slug: 'alice', role: 'Engineer' })
-    expect(md).toContain('### alice')
-    expect(md).toContain('- name: Alice Chen')
-    expect(md).toContain('- role: Engineer')
-    expect(md).toContain('TEAM.md')
+  it('outputs OpenClaw format with Name, Creature, Vibe, Emoji, Avatar sections', () => {
+    const md = generateIdentityMd({ name: 'Alice Chen', role: 'Engineer' })
+    expect(md).toContain('Name:\nAlice Chen')
+    expect(md).toContain('Creature:\nEngineer')
+    expect(md).toContain('Vibe:')
+    expect(md).toContain('Emoji:')
+    expect(md).toContain('Avatar:')
   })
 
-  it('includes optional contact fields when provided', () => {
-    const md = generateIdentityMd({ name: 'Alice', slug: 'alice', role: 'Engineer', email: 'alice@example.com', slackHandle: 'alice-slack', githubId: 'alice-gh' })
-    expect(md).toContain('- email: alice@example.com')
-    expect(md).toContain('- slack: alice-slack')
-    expect(md).toContain('- github: @alice-gh')
+  it('includes soul as Vibe and optional emoji and avatar', () => {
+    const md = generateIdentityMd({ name: 'Alice', role: 'Engineer', soul: 'Sharp and curious.', emoji: '🤖', avatar: '/avatar.png' })
+    expect(md).toContain('Vibe:\nSharp and curious.')
+    expect(md).toContain('Emoji:\n🤖')
+    expect(md).toContain('Avatar:\n/avatar.png')
   })
 
-  it('omits optional fields when absent', () => {
-    const md = generateIdentityMd({ name: 'Bob', slug: 'bob', role: 'PM' })
-    expect(md).not.toContain('- email:')
-    expect(md).not.toContain('- slack:')
-    expect(md).not.toContain('- github:')
+  it('leaves optional sections blank when absent', () => {
+    const md = generateIdentityMd({ name: 'Bob', role: 'PM' })
+    expect(md).toContain('Vibe:\n')
+    expect(md).toContain('Emoji:\n')
+    expect(md).toContain('Avatar:\n')
   })
 })
 

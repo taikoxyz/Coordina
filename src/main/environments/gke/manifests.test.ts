@@ -143,18 +143,20 @@ describe('generateTeamConfigMap', () => {
 })
 
 describe('generateAgentConfigMap', () => {
-  it('generates per-agent ConfigMap with IDENTITY.md, SOUL.md and SKILLS.md', () => {
+  it('generates per-agent ConfigMap with IDENTITY.md, MEMORY.md, SOUL.md and SKILLS.md', () => {
     const yaml = generateAgentConfigMap({
       teamSlug: 'alpha',
       agentSlug: 'alice',
       namespace: 'team-alpha',
       identityMd: '# Identity',
+      memoryMd: '# Memory',
       soulMd: '# Soul',
       skillsMd: '# Skills',
       openclawJson: '{ "agents": { "defaults": { "model": { "primary": "anthropic/claude-sonnet-4-6" } } }, "models": { "providers": { "anthropic": {} } } }',
     })
     expect(yaml).toContain('name: alpha-alice-config')
     expect(yaml).toContain('IDENTITY.md: |')
+    expect(yaml).toContain('MEMORY.md: |')
     expect(yaml).toContain('SOUL.md: |')
     expect(yaml).toContain('SKILLS.md: |')
   })

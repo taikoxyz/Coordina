@@ -16,6 +16,8 @@ export interface AgentSpec {
   slug: string
   name: string
   role: string
+  emoji?: string
+  avatar?: string
   telegramBotId?: string
   email?: string
   slackHandle?: string

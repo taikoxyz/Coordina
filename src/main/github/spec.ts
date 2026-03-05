@@ -1,12 +1,9 @@
 export interface AgentIdentity {
   name: string
-  slug: string
   role: string
-  email?: string
-  slackHandle?: string
-  githubId?: string
-  providerSlug?: string
-  model?: string
+  soul?: string
+  emoji?: string
+  avatar?: string
 }
 
 export interface SoulInput {
@@ -30,18 +27,27 @@ export interface OpenClawConfig {
 }
 
 export function generateIdentityMd(agent: AgentIdentity): string {
-  const lines = [
-    `You are the following member of this team (your entry in TEAM.md):`,
+  return [
+    `Name:`,
+    agent.name,
     ``,
-    `### ${agent.slug}`,
-    `- name: ${agent.name}`,
-    `- role: ${agent.role}`,
-  ]
-  if (agent.email) lines.push(`- email: ${agent.email}`)
-  if (agent.slackHandle) lines.push(`- slack: ${agent.slackHandle}`)
-  if (agent.githubId) lines.push(`- github: @${agent.githubId}`)
-  lines.push(``, `Full team context: \`/config/shared/TEAM.md\`.`)
-  return lines.join('\n') + '\n'
+    `Creature:`,
+    agent.role,
+    ``,
+    `Vibe:`,
+    agent.soul ?? '',
+    ``,
+    `Emoji:`,
+    agent.emoji ?? '',
+    ``,
+    `Avatar:`,
+    agent.avatar ?? '',
+    ``,
+  ].join('\n')
+}
+
+export function generateMemoryMd(): string {
+  return `# Memory\n\n## Team\nSee \`TEAM.md\` for full team context, member roster, and contact details.\n`
 }
 
 export function generateSoulMd(soul: SoulInput): string {

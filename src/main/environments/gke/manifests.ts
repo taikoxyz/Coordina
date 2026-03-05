@@ -52,16 +52,17 @@ export function generateAgentConfigMap(input: {
   agentSlug: string
   namespace: string
   identityMd: string
+  memoryMd: string
   soulMd: string
   skillsMd: string
   openclawJson: string
 }): string {
-  const { teamSlug, agentSlug, namespace, identityMd, soulMd, skillsMd, openclawJson } = input
+  const { teamSlug, agentSlug, namespace, identityMd, memoryMd, soulMd, skillsMd, openclawJson } = input
   return generateConfigMap({
     name: `${teamSlug}-${agentSlug}-config`,
     namespace,
     labels: { 'coordina.team': teamSlug, 'coordina.agent': agentSlug },
-    data: { 'IDENTITY.md': identityMd, 'SOUL.md': soulMd, 'SKILLS.md': skillsMd, 'openclaw.json': openclawJson },
+    data: { 'IDENTITY.md': identityMd, 'MEMORY.md': memoryMd, 'SOUL.md': soulMd, 'SKILLS.md': skillsMd, 'openclaw.json': openclawJson },
   })
 }
 
@@ -140,7 +141,8 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
     `mkdir -p ${stateDir} ${workspaceDir}`,
     `test -f ${workspaceDir}/BOOTSTRAP.md || cp /config/shared/BOOTSTRAP.md ${workspaceDir}/BOOTSTRAP.md`,
     `cp /config/shared/TEAM.md ${workspaceDir}/TEAM.md`,
-    `test -f ${workspaceDir}/IDENTITY.md || cp /config/agent/IDENTITY.md ${workspaceDir}/IDENTITY.md`,
+    `cp /config/agent/IDENTITY.md ${workspaceDir}/IDENTITY.md`,
+    `test -f ${workspaceDir}/MEMORY.md || cp /config/agent/MEMORY.md ${workspaceDir}/MEMORY.md`,
     `test -f ${workspaceDir}/SOUL.md || cp /config/agent/SOUL.md ${workspaceDir}/SOUL.md`,
     `test -f ${workspaceDir}/SKILLS.md || cp /config/agent/SKILLS.md ${workspaceDir}/SKILLS.md`,
     `cp /config/agent/openclaw.json ${stateDir}/openclaw.json`,
