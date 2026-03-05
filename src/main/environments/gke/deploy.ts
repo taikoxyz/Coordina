@@ -16,6 +16,17 @@ export interface GkeDeployConfig {
   clientSecret: string
 }
 
+function parseAgentSlugFromStatefulSetName(name?: string): string | undefined {
+  if (!name || !name.startsWith('agent-')) return undefined
+  return name.slice('agent-'.length) || undefined
+}
+
+function parseAgentSlugFromPodName(name?: string): string | undefined {
+  if (!name) return undefined
+  const match = name.match(/^agent-(.+)-\d+$/)
+  return match?.[1]
+}
+
 async function buildKubeConfig(config: GkeDeployConfig): Promise<k8s.KubeConfig> {
   const auth = await getOAuth2Client(config.slug, { clientId: config.clientId, clientSecret: config.clientSecret })
   const containerClient = new ClusterManagerClient({ authClient: auth })
@@ -122,6 +133,18 @@ export async function* deployTeam(
   const networkingApi = kc.makeApiClient(k8s.NetworkingV1Api)
   const namespace = teamSlug
   const hasIngressManifest = specFiles.some(f => f.path === 'ingress.yaml')
+  const desiredStatefulSetNames = specFiles
+    .filter(f => f.path.includes('/statefulset.yaml'))
+    .map((f) => {
+      const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata?: k8s.V1ObjectMeta }
+      return doc?.metadata?.name
+    })
+    .filter((name): name is string => Boolean(name))
+  const desiredAgentSlugs = new Set(
+    desiredStatefulSetNames
+      .map(parseAgentSlugFromStatefulSetName)
+      .filter((slug): slug is string => Boolean(slug))
+  )
 
   // In port-forward mode ingress.yaml is omitted; delete stale ingress to avoid paying for unused LB resources.
   if (!hasIngressManifest) {
@@ -133,10 +156,44 @@ export async function* deployTeam(
     }
   }
 
-  // Always delete StatefulSets so pods terminate before any disk/config operations
-  for (const f of specFiles.filter(f => f.path.includes('/statefulset.yaml'))) {
-    const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata: k8s.V1ObjectMeta }
-    if (doc?.metadata?.name) await tryDelete(() => appsApi.deleteNamespacedStatefulSet({ name: doc.metadata.name!, namespace }))
+  const existingPodList = await coreApi.listNamespacedPod({ namespace, labelSelector: `coordina.team=${teamSlug}` })
+    .catch(() => ({ items: [] } as { items: k8s.V1Pod[] }))
+  const existingStatefulSetList = await appsApi.listNamespacedStatefulSet({ namespace, labelSelector: `coordina.team=${teamSlug}` })
+    .catch(() => ({ items: [] } as { items: k8s.V1StatefulSet[] }))
+  const existingPodNames = (existingPodList.items ?? []).map(p => p.metadata?.name).filter((name): name is string => Boolean(name))
+  const existingStatefulSetNames = (existingStatefulSetList.items ?? []).map(s => s.metadata?.name).filter((name): name is string => Boolean(name))
+
+  const removedAgentSlugs = new Set<string>()
+  for (const name of existingPodNames) {
+    const slug = parseAgentSlugFromPodName(name)
+    if (slug && !desiredAgentSlugs.has(slug)) removedAgentSlugs.add(slug)
+  }
+  for (const name of existingStatefulSetNames) {
+    const slug = parseAgentSlugFromStatefulSetName(name)
+    if (slug && !desiredAgentSlugs.has(slug)) removedAgentSlugs.add(slug)
+  }
+
+  for (const agentSlug of [...removedAgentSlugs].sort()) {
+    const statefulSetName = `agent-${agentSlug}`
+    await tryDelete(() => appsApi.deleteNamespacedStatefulSet({ name: statefulSetName, namespace }))
+    yield { resource: `StatefulSet/${statefulSetName}`, status: 'deleted', message: 'Agent removed from team spec' }
+    for (const podName of existingPodNames.filter(name => parseAgentSlugFromPodName(name) === agentSlug)) {
+      await tryDelete(() => coreApi.deleteNamespacedPod({ name: podName, namespace }))
+      yield { resource: `Pod/${podName}`, status: 'deleted', message: 'Agent removed from team spec' }
+    }
+    await tryDelete(() => coreApi.deleteNamespacedService({ name: statefulSetName, namespace }))
+    yield { resource: `Service/${statefulSetName}`, status: 'deleted', message: 'Agent removed from team spec' }
+    await tryDelete(() => coreApi.deleteNamespacedConfigMap({ name: `${teamSlug}-${agentSlug}-config`, namespace }))
+    yield { resource: `ConfigMap/${teamSlug}-${agentSlug}-config`, status: 'deleted', message: 'Agent removed from team spec' }
+    await tryDelete(() => coreApi.deleteNamespacedSecret({ name: `${teamSlug}-${agentSlug}-credentials`, namespace }))
+    yield { resource: `Secret/${teamSlug}-${agentSlug}-credentials`, status: 'deleted', message: 'Agent removed from team spec' }
+  }
+
+  // keepDisks=false is a destructive reset path; terminate desired StatefulSets first so PVC/PV operations can proceed safely.
+  if (!options.keepDisks) {
+    for (const name of desiredStatefulSetNames) {
+      await tryDelete(() => appsApi.deleteNamespacedStatefulSet({ name, namespace }))
+    }
   }
 
   if (!options.keepDisks) {
