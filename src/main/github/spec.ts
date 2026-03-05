@@ -28,6 +28,11 @@ export interface OpenClawConfig {
       }
     }
   }
+  tools?: {
+    profile?: string
+    allow?: string[]
+    deny?: string[]
+  }
 }
 
 export function generateIdentityMd(agent: AgentIdentity): string {
@@ -126,11 +131,12 @@ export function generateTeamMd(team: {
   if (hasGateways) {
     lines.push('## Communication Protocol')
     lines.push('')
-    lines.push('To message a teammate, send an HTTP POST to their gateway URL.')
-    lines.push('Do NOT use OpenClaw node/tailnet commands — use direct HTTP calls.')
+    lines.push('To message a teammate, use the `exec` tool to call their gateway HTTP API.')
+    lines.push('Do NOT use OpenClaw node/tailnet commands.')
     lines.push('')
+    lines.push('Example — send a message to a teammate:')
     lines.push('```')
-    lines.push('curl -X POST <gateway>/v1/responses \\')
+    lines.push('exec: curl -s -X POST <gateway>/v1/responses \\')
     lines.push('  -H "Authorization: Bearer <gateway_token>" \\')
     lines.push('  -H "Content-Type: application/json" \\')
     lines.push('  -d \'{"model": "anthropic/claude-sonnet-4-6", "input": "Your message here"}\'')

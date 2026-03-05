@@ -153,6 +153,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
       const baseAgentDefaults = (
         openclawConfig as { agents?: { defaults?: Record<string, unknown> } }
       ).agents?.defaults ?? {}
+      const baseTools = (openclawConfig as { tools?: Record<string, unknown> }).tools ?? {}
       const openclawConfigWithGateway = {
         ...openclawConfig,
         agents: {
@@ -165,6 +166,14 @@ const gkeDeriver: DeploymentSpecDeriver = {
         ...((baseChannels || telegramChannelsConfig)
           ? { channels: { ...(baseChannels ?? {}), ...(telegramChannelsConfig ?? {}) } }
           : {}),
+        tools: {
+          ...baseTools,
+          profile: (baseTools.profile as string | undefined) ?? 'coding',
+          allow: [...new Set([
+            ...((baseTools.allow as string[] | undefined) ?? []),
+            'sessions_list', 'sessions_send', 'sessions_spawn',
+          ])],
+        },
         gateway: {
           ...baseGateway,
           auth: {

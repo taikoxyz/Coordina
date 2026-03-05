@@ -210,6 +210,7 @@ describe('generateTeamMd', () => {
     })
 
     expect(md).toContain('## Communication Protocol')
+    expect(md).toContain('use the `exec` tool')
     expect(md).toContain('POST <gateway>/v1/responses')
     expect(md).toContain('Authorization: Bearer <gateway_token>')
     expect(md).toContain('Do NOT use OpenClaw node/tailnet commands')
