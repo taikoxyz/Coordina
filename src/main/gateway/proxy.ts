@@ -1,4 +1,5 @@
 import { Router, type Response } from 'express'
+import { createHmac } from 'node:crypto'
 import { lookup as dnsLookup } from 'node:dns/promises'
 import { createProxyMiddleware } from 'http-proxy-middleware'
 import * as k8s from '@kubernetes/client-node'
@@ -31,6 +32,10 @@ function sendProxyError(res: Response, status: number, error: string, detail?: s
     error,
     ...(detail ? { detail } : {}),
   })
+}
+
+function deriveAgentToken(seed: string, agentSlug: string): string {
+  return createHmac('sha256', seed).update(agentSlug).digest('hex').slice(0, 48)
 }
 
 function parseGkeGatewayConfig(config: unknown): GkeGatewayConfig | null {
@@ -131,19 +136,46 @@ async function resolveUpstreamTarget(teamSlug: string, deployment: TeamDeploymen
   }
 }
 
-function resolveUpstreamPath(pathname: string, leadAgentSlug: string, agentSlugs: Set<string>): string {
+function resolveTargetAgentSlug(pathname: string, leadAgentSlug: string, agentSlugs: Set<string>): string {
   const path = pathname || '/'
   const directWithPrefix = path.match(/^\/agents\/([^/]+)(\/.*)?$/)
   if (directWithPrefix && agentSlugs.has(directWithPrefix[1])) {
-    return `/agents/${directWithPrefix[1]}${directWithPrefix[2] ?? ''}`
+    return directWithPrefix[1]
   }
 
   const legacyDirect = path.match(/^\/([^/]+)(\/.*)?$/)
   if (legacyDirect && agentSlugs.has(legacyDirect[1])) {
-    return `/agents/${legacyDirect[1]}${legacyDirect[2] ?? ''}`
+    return legacyDirect[1]
   }
 
-  return `/agents/${leadAgentSlug}${path === '/' ? '' : path}`
+  return leadAgentSlug
+}
+
+function resolveIngressUpstreamPath(pathname: string, leadAgentSlug: string, agentSlugs: Set<string>): string {
+  const path = pathname || '/'
+  const targetAgentSlug = resolveTargetAgentSlug(path, leadAgentSlug, agentSlugs)
+  const directWithPrefix = path.match(/^\/agents\/([^/]+)(\/.*)?$/)
+  if (directWithPrefix && agentSlugs.has(directWithPrefix[1])) {
+    return `/agents/${targetAgentSlug}${directWithPrefix[2] ?? ''}`
+  }
+  const legacyDirect = path.match(/^\/([^/]+)(\/.*)?$/)
+  if (legacyDirect && agentSlugs.has(legacyDirect[1])) {
+    return `/agents/${targetAgentSlug}${legacyDirect[2] ?? ''}`
+  }
+  return `/agents/${targetAgentSlug}${path === '/' ? '' : path}`
+}
+
+function resolvePortForwardPath(pathname: string, agentSlugs: Set<string>): string {
+  const path = pathname || '/'
+  const directWithPrefix = path.match(/^\/agents\/[^/]+(\/.*)?$/)
+  if (directWithPrefix) {
+    return directWithPrefix[1] ?? '/'
+  }
+  const legacyDirect = path.match(/^\/([^/]+)(\/.*)?$/)
+  if (legacyDirect && agentSlugs.has(legacyDirect[1])) {
+    return legacyDirect[2] ?? '/'
+  }
+  return path
 }
 
 async function buildDeploymentRecord(params: {
@@ -224,15 +256,16 @@ export function createGatewayRouter(getToken: TokenFetcher = async () => null) {
       return
     }
     const mode = resolveGatewayMode(env.config)
-    const token = mode === 'ingress' ? await getToken(deployment.envSlug) : null
     const agentSlugs = new Set(teamSpec.agents.map(a => a.slug))
-    const rewrittenPath = resolveUpstreamPath(req.path, leadAgentSlug, agentSlugs)
+    const targetAgentSlug = resolveTargetAgentSlug(req.path, leadAgentSlug, agentSlugs)
+    const rewrittenPath = mode === 'port-forward'
+      ? resolvePortForwardPath(req.path, agentSlugs)
+      : resolveIngressUpstreamPath(req.path, leadAgentSlug, agentSlugs)
+    const token = mode === 'ingress'
+      ? await getToken(deployment.envSlug)
+      : (teamSpec.tokenSeed ? deriveAgentToken(teamSpec.tokenSeed, targetAgentSlug) : null)
     const upstream = await (async (): Promise<UpstreamTarget> => {
       if (mode === 'port-forward') {
-        const targetAgentSlug = rewrittenPath.match(/^\/agents\/([^/]+)/)?.[1]
-        if (!targetAgentSlug) {
-          throw new Error(`Could not resolve target agent from path '${rewrittenPath}'`)
-        }
         const cluster = parseGkeClusterRef(env.config)
         if (!cluster) {
           throw new Error(`Environment '${env.slug}' is missing GKE cluster settings (projectId, clusterName, clusterZone)`)

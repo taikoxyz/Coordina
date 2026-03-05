@@ -111,7 +111,30 @@ const gkeDeriver: DeploymentSpecDeriver = {
         : {}
 
       const agentToken = deriveAgentToken(seed, agent.slug)
-      const openclawConfigWithGateway = { ...openclawConfig, gateway: { auth: { token: agentToken } } }
+      const baseGateway = (openclawConfig as { gateway?: Record<string, unknown> }).gateway ?? {}
+      const baseHttp = (baseGateway.http as { endpoints?: Record<string, unknown> } | undefined) ?? {}
+      const baseEndpoints = baseHttp.endpoints ?? {}
+      const baseResponses = (baseEndpoints.responses as Record<string, unknown> | undefined) ?? {}
+      const openclawConfigWithGateway = {
+        ...openclawConfig,
+        gateway: {
+          ...baseGateway,
+          auth: {
+            ...((baseGateway.auth as Record<string, unknown> | undefined) ?? {}),
+            token: agentToken,
+          },
+          http: {
+            ...baseHttp,
+            endpoints: {
+              ...baseEndpoints,
+              responses: {
+                ...baseResponses,
+                enabled: true,
+              },
+            },
+          },
+        },
+      }
       const credentialSecretName = `${spec.slug}-${agent.slug}-credentials`
       files.push({ path: `agents/${agent.slug}/pv.yaml`, content: generateAgentPv({ teamSlug: spec.slug, agentSlug: agent.slug, projectId, zone: diskZone ?? clusterZone, storageGi: agent.storageGi }) })
       files.push({ path: `agents/${agent.slug}/pvc.yaml`, content: generateAgentPvc({ teamSlug: spec.slug, agentSlug: agent.slug, namespace, storageGi: agent.storageGi }) })

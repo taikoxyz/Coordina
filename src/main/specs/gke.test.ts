@@ -62,6 +62,12 @@ describe('gkeDeriver gateway injection', () => {
     expect(alphaConfig.peers).toBeUndefined()
   })
 
+  it('enables OpenClaw HTTP responses endpoint for chat UI', async () => {
+    const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
+    const alphaConfig = getOpenClawConfig(files, 'alpha')
+    expect(alphaConfig.gateway?.http?.endpoints?.responses?.enabled).toBe(true)
+  })
+
   it('includes gateway URLs in each TEAM.md member entry', async () => {
     const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
     const teamMd = getTeamMd(files)
