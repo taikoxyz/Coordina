@@ -40,5 +40,6 @@ export const validateTeamSpec = (
     }
   }
 
+
   return { valid: errors.length === 0, errors }
 }

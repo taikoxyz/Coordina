@@ -36,15 +36,23 @@ describe('generateSoulMd', () => {
 })
 
 describe('generateOpenClawJson', () => {
-  it('generates openclaw.json for anthropic provider', () => {
-    const json = generateOpenClawJson({ provider: 'anthropic', model: 'claude-sonnet-4-6', apiKey: 'sk-ant-xxx' })
-    expect(JSON.parse(json)).toMatchObject({ provider: 'anthropic', model: 'claude-sonnet-4-6' })
+  it('serializes structured provider config', () => {
+    const json = generateOpenClawJson({
+      agents: { defaults: { model: { primary: 'anthropic/claude-sonnet-4-6' } } },
+      models: { providers: { anthropic: { apiKey: 'sk-ant-xxx' } } },
+    })
+    const parsed = JSON.parse(json)
+    expect(parsed.agents.defaults.model.primary).toBe('anthropic/claude-sonnet-4-6')
+    expect(parsed.models.providers.anthropic.apiKey).toBe('sk-ant-xxx')
   })
 
-  it('excludes API key from JSON when not set', () => {
-    const json = generateOpenClawJson({ provider: 'ollama', model: 'llama3', baseUrl: 'http://localhost:11434' })
+  it('includes provider baseUrl when configured', () => {
+    const json = generateOpenClawJson({
+      agents: { defaults: { model: { primary: 'ollama/llama3' } } },
+      models: { providers: { ollama: { baseUrl: 'http://localhost:11434' } } },
+    })
     const parsed = JSON.parse(json)
-    expect(parsed.baseUrl).toBe('http://localhost:11434')
+    expect(parsed.models.providers.ollama.baseUrl).toBe('http://localhost:11434')
   })
 })
 
@@ -58,23 +66,6 @@ describe('generateSkillsMd', () => {
   it('shows placeholder for empty skills', () => {
     const md = generateSkillsMd([])
     expect(md).toContain('No skills defined')
-  })
-})
-
-describe('generateOpenClawJson peers', () => {
-  it('serializes peers into openclaw.json when provided', () => {
-    const config: import('./spec').OpenClawConfig = {
-      agents: { defaults: { model: { primary: 'anthropic/claude-sonnet-4-6' } } },
-      models: { providers: { anthropic: {} } },
-      peers: {
-        beta: { url: 'http://agent-beta.my-team.svc.cluster.local:18789', token: 'tok-beta' },
-        gamma: { url: 'http://agent-gamma.my-team.svc.cluster.local:18789', token: 'tok-gamma' },
-      },
-    }
-    const parsed = JSON.parse(generateOpenClawJson(config))
-    expect(parsed.peers.beta.url).toBe('http://agent-beta.my-team.svc.cluster.local:18789')
-    expect(parsed.peers.beta.token).toBe('tok-beta')
-    expect(parsed.peers.gamma.url).toBe('http://agent-gamma.my-team.svc.cluster.local:18789')
   })
 })
 

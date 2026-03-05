@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { generateAgentStatefulSet, generateIapBackendConfig, generateIngress, generateConfigMap, generateTeamConfigMap, generateAgentConfigMap } from './manifests'
+import { generateAgentStatefulSet, generateIapBackendConfig, generateIngress, generateConfigMap, generateTeamConfigMap, generateAgentConfigMap, generateMcSecret, generateMcPvc, generateMcDeployment, generateMcService, generateMcIngress } from './manifests'
 
 describe('generateAgentStatefulSet', () => {
   it('generates StatefulSet manifest with deterministic PVC name', () => {
@@ -133,10 +133,71 @@ describe('generateAgentConfigMap', () => {
       identityMd: '# Identity',
       soulMd: '# Soul',
       skillsMd: '# Skills',
+      openclawJson: '{"agents":{"defaults":{"model":{"primary":"openai/gpt-4o"}}},"models":{"providers":{"openai":{}}}}',
     })
     expect(yaml).toContain('name: alpha-alice-config')
     expect(yaml).toContain('IDENTITY.md: |')
     expect(yaml).toContain('SOUL.md: |')
     expect(yaml).toContain('SKILLS.md: |')
+  })
+})
+
+describe('generateMcSecret', () => {
+  it('generates MC Secret with gateway env vars', () => {
+    const manifest = generateMcSecret({
+      teamSlug: 'eng-alpha', namespace: 'eng-alpha',
+      adminPassword: 'pass123', sessionSecret: 'sess456', apiKey: 'key789',
+      leadAgentSlug: 'alice',
+    })
+    expect(manifest).toContain('kind: Secret')
+    expect(manifest).toContain('eng-alpha-mc-credentials')
+    expect(manifest).toContain('ADMIN_PASSWORD: pass123')
+    expect(manifest).toContain('agent-alice.eng-alpha.svc.cluster.local')
+    expect(manifest).toContain('OPENCLAW_GATEWAY_PORT')
+    expect(manifest).toContain('coordina.component: mission-control')
+  })
+})
+
+describe('generateMcPvc', () => {
+  it('generates MC PVC with default 5Gi storage', () => {
+    const manifest = generateMcPvc({ teamSlug: 'eng-alpha', namespace: 'eng-alpha' })
+    expect(manifest).toContain('kind: PersistentVolumeClaim')
+    expect(manifest).toContain('eng-alpha-mc-data')
+    expect(manifest).toContain('5Gi')
+    expect(manifest).toContain('coordina.component: mission-control')
+  })
+})
+
+describe('generateMcDeployment', () => {
+  it('generates MC Deployment with correct port and volume', () => {
+    const manifest = generateMcDeployment({ teamSlug: 'eng-alpha', image: 'gcr.io/proj/mc:latest', namespace: 'eng-alpha' })
+    expect(manifest).toContain('kind: Deployment')
+    expect(manifest).toContain('name: mission-control')
+    expect(manifest).toContain('containerPort: 3000')
+    expect(manifest).toContain('/app/.data')
+    expect(manifest).toContain('eng-alpha-mc-credentials')
+    expect(manifest).toContain('gcr.io/proj/mc:latest')
+    expect(manifest).toContain('/api/health')
+  })
+})
+
+describe('generateMcService', () => {
+  it('generates MC ClusterIP service on port 3000', () => {
+    const manifest = generateMcService({ teamSlug: 'eng-alpha', namespace: 'eng-alpha' })
+    expect(manifest).toContain('kind: Service')
+    expect(manifest).toContain('name: mission-control')
+    expect(manifest).toContain('port: 3000')
+    expect(manifest).toContain('coordina.component: mission-control')
+  })
+})
+
+describe('generateMcIngress', () => {
+  it('generates MC Ingress with custom domain', () => {
+    const manifest = generateMcIngress({ teamSlug: 'eng-alpha', domain: 'mc.example.com', namespace: 'eng-alpha' })
+    expect(manifest).toContain('kind: Ingress')
+    expect(manifest).toContain('eng-alpha-mc-ingress')
+    expect(manifest).toContain('mc.example.com')
+    expect(manifest).toContain('port:')
+    expect(manifest).toContain('3000')
   })
 })

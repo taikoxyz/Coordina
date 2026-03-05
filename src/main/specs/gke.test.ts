@@ -1,11 +1,17 @@
-// GKE deriver tests verifying peer gateway injection into agent openclaw.json
+// GKE deriver tests verifying gateway auth injection into agent openclaw.json
 // FEATURE: GKE derivation layer with K8s Secrets for API key security
 import { describe, it, expect, vi } from 'vitest'
 import yaml from 'js-yaml'
 import gkeDeriver from './gke'
 import type { TeamSpec, ProviderRecord } from '../../shared/types'
 
-vi.mock('../store/teams', () => ({ saveTeam: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('../store/teams', () => ({
+  saveTeam: vi.fn().mockResolvedValue(undefined),
+  getMcAdminPassword: vi.fn().mockResolvedValue('testadminpass'),
+  setMcAdminPassword: vi.fn().mockResolvedValue(undefined),
+  getMcApiKey: vi.fn().mockResolvedValue('testapikey123'),
+  setMcApiKey: vi.fn().mockResolvedValue(undefined),
+}))
 vi.mock('../providers/base', () => ({
   getProvider: vi.fn().mockReturnValue({
     toOpenClawJson: vi.fn().mockReturnValue({
@@ -40,39 +46,96 @@ function getOpenClawConfig(files: { path: string; content: string }[], agentSlug
   return JSON.parse(configmap.data['openclaw.json'])
 }
 
-describe('gkeDeriver peer injection', () => {
-  it('includes all teammates as peers in each agent openclaw.json', async () => {
+describe('gkeDeriver gateway config', () => {
+  it('injects gateway auth token into each agent openclaw.json', async () => {
     const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
     const alphaConfig = getOpenClawConfig(files, 'alpha')
-
-    expect(alphaConfig.peers).toBeDefined()
-    expect(alphaConfig.peers.beta).toBeDefined()
-    expect(alphaConfig.peers.gamma).toBeDefined()
+    expect(alphaConfig.gateway?.auth?.token).toBeDefined()
   })
 
-  it('excludes the agent itself from its own peers', async () => {
+  it('uses deterministic per-agent gateway tokens', async () => {
     const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
     const alphaConfig = getOpenClawConfig(files, 'alpha')
     const betaConfig = getOpenClawConfig(files, 'beta')
 
-    expect(alphaConfig.peers.alpha).toBeUndefined()
-    expect(betaConfig.peers.beta).toBeUndefined()
+    expect(typeof alphaConfig.gateway?.auth?.token).toBe('string')
+    expect(typeof betaConfig.gateway?.auth?.token).toBe('string')
+    expect(alphaConfig.gateway?.auth?.token).not.toBe(betaConfig.gateway?.auth?.token)
   })
 
-  it('uses http:// URLs for peer gateways', async () => {
+  it('does not write unsupported top-level peers key', async () => {
     const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
     const alphaConfig = getOpenClawConfig(files, 'alpha')
 
-    expect(alphaConfig.peers.beta.url).toBe('http://agent-beta.my-team.svc.cluster.local:18789')
-    expect(alphaConfig.peers.gamma.url).toBe('http://agent-gamma.my-team.svc.cluster.local:18789')
+    expect(alphaConfig.peers).toBeUndefined()
+  })
+})
+
+describe('gkeDeriver Mission Control integration', () => {
+  it('generates MC manifests when missionControl is enabled', async () => {
+    const specWithMc: TeamSpec = {
+      ...teamSpec,
+      missionControl: { enabled: true, image: 'gcr.io/proj/mc:latest' },
+    }
+    const files = await gkeDeriver.derive(specWithMc, providers, envConfig)
+    const mcPaths = files.filter(f => f.path.startsWith('mc/')).map(f => f.path).sort()
+    expect(mcPaths).toEqual([
+      'mc/deployment.yaml', 'mc/ingress.yaml', 'mc/pvc.yaml', 'mc/secret.yaml', 'mc/service.yaml',
+    ])
   })
 
-  it('includes auth token for each peer', async () => {
+  it('does not generate MC manifests when missionControl is not enabled', async () => {
     const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
-    const alphaConfig = getOpenClawConfig(files, 'alpha')
+    expect(files.filter(f => f.path.startsWith('mc/'))).toHaveLength(0)
+  })
 
-    expect(typeof alphaConfig.peers.beta.token).toBe('string')
-    expect(alphaConfig.peers.beta.token.length).toBeGreaterThan(0)
-    expect(alphaConfig.peers.beta.token).not.toBe(alphaConfig.peers.gamma.token)
+  it('uses team domain for MC ingress when MC domain not set', async () => {
+    const specWithMc: TeamSpec = {
+      ...teamSpec,
+      missionControl: { enabled: true, image: 'gcr.io/proj/mc:latest' },
+    }
+    const files = await gkeDeriver.derive(specWithMc, providers, envConfig)
+    const mcIngress = files.find(f => f.path === 'mc/ingress.yaml')!
+    expect(mcIngress.content).toContain('mc.example.com')
+  })
+
+  it('uses custom MC domain when provided', async () => {
+    const specWithMc: TeamSpec = {
+      ...teamSpec,
+      missionControl: { enabled: true, image: 'gcr.io/proj/mc:latest', domain: 'dashboard.myco.dev' },
+    }
+    const files = await gkeDeriver.derive(specWithMc, providers, envConfig)
+    const mcIngress = files.find(f => f.path === 'mc/ingress.yaml')!
+    expect(mcIngress.content).toContain('dashboard.myco.dev')
+  })
+
+  it('persists generated credentials to keychain when not stored', async () => {
+    const { getMcAdminPassword, setMcAdminPassword, getMcApiKey, setMcApiKey } = await import('../store/teams')
+    vi.mocked(getMcAdminPassword).mockResolvedValueOnce(null)
+    vi.mocked(getMcApiKey).mockResolvedValueOnce(null)
+
+    const specWithMc: TeamSpec = {
+      ...teamSpec,
+      missionControl: { enabled: true, image: 'gcr.io/proj/mc:latest' },
+    }
+    await gkeDeriver.derive(specWithMc, providers, envConfig)
+
+    expect(setMcAdminPassword).toHaveBeenCalledWith('my-team', expect.any(String))
+    expect(setMcApiKey).toHaveBeenCalledWith('my-team', expect.any(String))
+    const savedPassword = vi.mocked(setMcAdminPassword).mock.calls[0][1]
+    const savedKey = vi.mocked(setMcApiKey).mock.calls[0][1]
+    expect(savedPassword.length).toBe(64)
+    expect(savedKey.length).toBe(64)
+  })
+
+  it('sets lead agent as gateway host in MC secret', async () => {
+    const specWithMc: TeamSpec = {
+      ...teamSpec,
+      leadAgentSlug: 'alpha',
+      missionControl: { enabled: true, image: 'gcr.io/proj/mc:latest' },
+    }
+    const files = await gkeDeriver.derive(specWithMc, providers, envConfig)
+    const mcSecret = files.find(f => f.path === 'mc/secret.yaml')!
+    expect(mcSecret.content).toContain('agent-alpha.my-team.svc.cluster.local')
   })
 })
