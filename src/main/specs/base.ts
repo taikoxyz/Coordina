@@ -2,12 +2,17 @@
 // FEATURE: Derivation abstraction layer for cloud-agnostic manifest generation
 import { TeamSpec, ProviderRecord, SpecFile } from '../../shared/types'
 
+export interface DeriveSecrets {
+  agentTelegramTokens?: Record<string, string | undefined>
+}
+
 export interface DeploymentSpecDeriver {
   envType: string
   derive(
     spec: TeamSpec,
     providers: Map<string, ProviderRecord & { apiKey?: string }>,
-    envConfig: Record<string, unknown>
+    envConfig: Record<string, unknown>,
+    secrets?: DeriveSecrets
   ): Promise<SpecFile[]>
 }
 

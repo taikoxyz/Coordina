@@ -1,4 +1,4 @@
-// GKE deriver tests verifying gateway auth injection into agent openclaw.json
+// GKE deriver tests verifying openclaw.json gateway auth and telegram wiring
 // FEATURE: GKE derivation layer with K8s Secrets for API key security
 import { describe, it, expect, vi } from 'vitest'
 import yaml from 'js-yaml'
@@ -76,5 +76,50 @@ describe('gkeDeriver gateway injection', () => {
     expect(teamMd).toContain('- gateway: ws://agent-alpha.my-team.svc.cluster.local:18789')
     expect(teamMd).toContain('### beta')
     expect(teamMd).toContain('- gateway: ws://agent-beta.my-team.svc.cluster.local:18789')
+  })
+})
+
+describe('gkeDeriver telegram config', () => {
+  it('does not include telegram top-level config', async () => {
+    const withTelegram: TeamSpec = {
+      ...teamSpec,
+      telegramGroupChatId: '-1001234567890',
+      telegramOwnerUserId: '222222222',
+      agents: teamSpec.agents.map((agent) => (
+        agent.slug === 'alpha' ? { ...agent, telegramBotId: '111111111' } : agent
+      )),
+    }
+
+    const files = await gkeDeriver.derive(withTelegram, providers, envConfig)
+    const alphaConfig = getOpenClawConfig(files, 'alpha')
+
+    expect(alphaConfig.peers).toBeUndefined()
+    expect(alphaConfig.telegram).toBeUndefined()
+  })
+
+  it('injects TELEGRAM_BOT_TOKEN into credentials secret when telegram is fully configured', async () => {
+    const withTelegram: TeamSpec = {
+      ...teamSpec,
+      telegramGroupChatId: '-1001234567890',
+      telegramOwnerUserId: '222222222',
+      agents: teamSpec.agents.map((agent) => (
+        agent.slug === 'alpha' ? { ...agent, telegramBotId: '111111111' } : agent
+      )),
+    }
+    const files = await gkeDeriver.derive(withTelegram, providers, envConfig, {
+      agentTelegramTokens: { 'alpha': '123:abc-token' },
+    })
+    const alphaCreds = files.find(f => f.path === 'agents/alpha/credentials.yaml')
+    const betaCreds = files.find(f => f.path === 'agents/beta/credentials.yaml')
+    const alphaConfig = getOpenClawConfig(files, 'alpha')
+    expect(alphaCreds?.content).toContain('TELEGRAM_BOT_TOKEN')
+    expect(alphaCreds?.content).toContain('123:abc-token')
+    expect(betaCreds?.content).not.toContain('TELEGRAM_BOT_TOKEN')
+    expect(alphaConfig.channels.telegram.dmPolicy).toBe('allowlist')
+    expect(alphaConfig.channels.telegram.allowFrom).toEqual(['222222222'])
+    expect(alphaConfig.channels.telegram.groupPolicy).toBe('allowlist')
+    expect(alphaConfig.channels.telegram.groupAllowFrom).toEqual(['222222222'])
+    expect(alphaConfig.channels.telegram.groups['-1001234567890']).toEqual({ requireMention: true })
+    expect(alphaConfig.channels.telegram.enabled).toBe(true)
   })
 })

@@ -70,6 +70,18 @@ describe('generateSkillsMd', () => {
   })
 })
 
+describe('generateOpenClawJson gateway', () => {
+  it('serializes gateway auth into openclaw.json when provided', () => {
+    const config: import('./spec').OpenClawConfig = {
+      agents: { defaults: { model: { primary: 'anthropic/claude-sonnet-4-6' } } },
+      models: { providers: { anthropic: {} } },
+      gateway: { auth: { token: 'tok-gateway' } },
+    }
+    const parsed = JSON.parse(generateOpenClawJson(config))
+    expect(parsed.gateway.auth.token).toBe('tok-gateway')
+  })
+})
+
 describe('generateAgentsMd', () => {
   it('marks lead agent', () => {
     const md = generateAgentsMd([
@@ -79,6 +91,53 @@ describe('generateAgentsMd', () => {
     expect(md).toContain('Alice')
     expect(md).toContain('_(lead)_')
     expect(md).toContain('Bob')
+  })
+})
+
+describe('generateTeamMd telegram', () => {
+  it('includes telegram group and bot ids when team chat id is set', () => {
+    const md = generateTeamMd({
+      name: 'My Team',
+      slug: 'my-team',
+      telegramGroupChatId: '-1001234567890',
+      telegramOwnerUserId: '222222222',
+      agents: [
+        { slug: 'alpha', name: 'Alpha', role: 'Lead', telegramBotId: '111111111' },
+        { slug: 'beta', name: 'Beta', role: 'Engineer' },
+      ],
+    })
+
+    expect(md).toContain('- telegram_group_chat_id: -1001234567890')
+    expect(md).toContain('- telegram_owner_user_id: 222222222')
+    expect(md).toContain('- telegram_bot_id: 111111111')
+    expect(md).not.toContain('### beta\n- name: Beta\n- role: Engineer\n- telegram_bot_id:')
+  })
+
+  it('omits per-agent telegram ids when team chat id is not set', () => {
+    const md = generateTeamMd({
+      name: 'My Team',
+      slug: 'my-team',
+      agents: [
+        { slug: 'alpha', name: 'Alpha', role: 'Lead', telegramBotId: '111111111' },
+      ],
+    })
+
+    expect(md).not.toContain('telegram_group_chat_id')
+    expect(md).not.toContain('telegram_bot_id')
+  })
+
+  it('omits per-agent telegram ids when owner user id is not set', () => {
+    const md = generateTeamMd({
+      name: 'My Team',
+      slug: 'my-team',
+      telegramGroupChatId: '-1001234567890',
+      agents: [
+        { slug: 'alpha', name: 'Alpha', role: 'Lead', telegramBotId: '111111111' },
+      ],
+    })
+
+    expect(md).toContain('telegram_group_chat_id')
+    expect(md).not.toContain('telegram_bot_id')
   })
 })
 

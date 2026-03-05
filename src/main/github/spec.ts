@@ -51,14 +51,18 @@ export function generateSkillsMd(skills: string[]): string {
 export function generateTeamMd(team: {
   name: string
   slug: string
+  telegramGroupChatId?: string
+  telegramOwnerUserId?: string
   image?: string
   leadAgentSlug?: string
   storageGi?: number
-  agents: { slug: string; name: string; role: string; email?: string; slackHandle?: string; githubId?: string; cpu?: number; isLead?: boolean; gatewayUrl?: string }[]
+  agents: { slug: string; name: string; role: string; telegramBotId?: string; email?: string; slackHandle?: string; githubId?: string; cpu?: number; isLead?: boolean; gatewayUrl?: string }[]
 }): string {
   const lines: string[] = ['## TEAM', '', '## About']
   lines.push(`- name: ${team.name}`)
   lines.push(`- slug: ${team.slug}`)
+  if (team.telegramGroupChatId) lines.push(`- telegram_group_chat_id: ${team.telegramGroupChatId}`)
+  if (team.telegramOwnerUserId) lines.push(`- telegram_owner_user_id: ${team.telegramOwnerUserId}`)
   if (team.image) lines.push(`- image: ${team.image}`)
   if (team.leadAgentSlug) lines.push(`- lead: ${team.leadAgentSlug}`)
   if (team.storageGi) lines.push(`- storage: ${team.storageGi}Gi`)
@@ -67,6 +71,7 @@ export function generateTeamMd(team: {
     lines.push(`### ${a.slug}`)
     lines.push(`- name: ${a.name}`)
     lines.push(`- role: ${a.role}`)
+    if (team.telegramGroupChatId && team.telegramOwnerUserId && a.telegramBotId) lines.push(`- telegram_bot_id: ${a.telegramBotId}`)
     if (a.email) lines.push(`- email: ${a.email}`)
     if (a.slackHandle) lines.push(`- slack: ${a.slackHandle}`)
     if (a.githubId) lines.push(`- github: @${a.githubId}`)
