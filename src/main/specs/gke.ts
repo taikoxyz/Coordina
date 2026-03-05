@@ -18,6 +18,7 @@ import {
   generateMemoryMd,
   generateSoulMd,
   generateSkillsMd,
+  generateAgentsMd,
   generateOpenClawJson,
 } from '../github/spec'
 
@@ -217,6 +218,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
         memoryMd: generateMemoryMd(),
         soulMd: generateSoulMd({ userInput: agent.soul }),
         skillsMd: generateSkillsMd(agent.skills),
+        agentsMd: generateAgentsMd(),
         openclawJson: generateOpenClawJson(openclawConfigWithGateway),
       })
       const agentConfigHash = createHash('sha256').update(agentConfigMap).digest('hex')

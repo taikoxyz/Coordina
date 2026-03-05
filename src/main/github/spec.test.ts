@@ -64,13 +64,13 @@ describe('generateSoulMd', () => {
     expect(md).toContain('Bob is methodical.')
   })
 
-  it('outputs soul markdown with telegram directive appended', () => {
+  it('outputs minimal soul markdown without directives', () => {
     const md = generateSoulMd({ userInput: 'x' })
-    expect(md).toContain('# Soul\n\nx\n')
-    expect(md).toContain('## Telegram')
-    expect(md).toContain('When `@all` is part of a telegram message, I MUST respond.')
+    expect(md).toBe('# Soul\n\nx\n')
+    expect(md).not.toContain('## Telegram')
   })
 })
+
 
 describe('generateOpenClawJson', () => {
   it('generates openclaw.json for anthropic provider', () => {
@@ -120,14 +120,11 @@ describe('generateOpenClawJson gateway', () => {
 })
 
 describe('generateAgentsMd', () => {
-  it('marks lead agent', () => {
-    const md = generateAgentsMd([
-      { slug: 'alice', name: 'Alice', role: 'Engineer', isLead: true },
-      { slug: 'bob', name: 'Bob', role: 'PM' },
-    ])
-    expect(md).toContain('Alice')
-    expect(md).toContain('_(lead)_')
-    expect(md).toContain('Bob')
+  it('includes telegram @all response rule', () => {
+    const md = generateAgentsMd()
+    expect(md).toContain('# Agents')
+    expect(md).toContain('## Telegram')
+    expect(md).toContain('When `@all` is part of a telegram message, I MUST respond.')
   })
 })
 

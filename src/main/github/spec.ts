@@ -63,7 +63,7 @@ export function generateMemoryMd(): string {
 
 export function generateSoulMd(soul: SoulInput): string {
   const description = soul.enhanced ?? soul.userInput
-  return `# Soul\n\n${description}\n\n## Telegram\nWhen \`@all\` is part of a telegram message, I MUST respond.\n`
+  return `# Soul\n\n${description}\n`
 }
 
 export function generateOpenClawJson(config: OpenClawConfig): string {
@@ -133,14 +133,12 @@ export function generateTeamMd(team: {
   return lines.join('\n')
 }
 
-export function generateAgentsMd(agents: { slug: string; name: string; role: string; isLead?: boolean }[]): string {
-  const lines = ['# Agents', '']
-  for (const a of agents) {
-    const tag = a.isLead ? ' _(lead)_' : ''
-    lines.push(`## ${a.name}${tag}`)
-    lines.push(`- **Slug:** \`${a.slug}\``)
-    lines.push(`- **Role:** ${a.role}`)
-    lines.push('')
-  }
-  return lines.join('\n')
+export function generateAgentsMd(): string {
+  return [
+    '# Agents',
+    '',
+    '## Telegram',
+    'When `@all` is part of a telegram message, I MUST respond.',
+    '',
+  ].join('\n')
 }
