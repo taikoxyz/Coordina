@@ -58,6 +58,9 @@ export function generateMemoryMd(): string {
     '## Team',
     'When responding to queries about team structure, teammates, or agent-to-agent context, read `$OPENCLAW_WORKSPACE_DIR/TEAM.md` first.',
     '',
+    '## Telegram',
+    'When `@all` is part of a telegram message, I MUST respond.',
+    '',
   ].join('\n')
 }
 
