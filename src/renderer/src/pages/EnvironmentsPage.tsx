@@ -10,12 +10,51 @@ const labelCls = 'text-[10px] text-gray-500 block mb-0.5'
 const GKE_SLUG = 'goog-gke'
 const GKE_NAME = 'Google Kubernetes Engine'
 
-interface GkeForm { projectId: string; clusterName: string; clusterZone: string; diskZone: string; clientId: string; clientSecret: string }
-const emptyGke = (): GkeForm => ({ projectId: '', clusterName: '', clusterZone: 'us-central1', diskZone: 'us-central1-a', clientId: '', clientSecret: '' })
+interface GkeForm {
+  projectId: string
+  clusterName: string
+  clusterZone: string
+  diskZone: string
+  clientId: string
+  clientSecret: string
+  gatewayMode: 'port-forward' | 'ingress'
+  domain: string
+}
+const emptyGke = (): GkeForm => ({
+  projectId: '',
+  clusterName: '',
+  clusterZone: 'us-central1',
+  diskZone: 'us-central1-a',
+  clientId: '',
+  clientSecret: '',
+  gatewayMode: 'port-forward',
+  domain: '',
+})
 
 function fromRecord(env: EnvironmentRecord): GkeForm {
-  const c = env.config as { projectId?: string; clusterName?: string; clusterZone?: string; diskZone?: string; clientId?: string; clientSecret?: string }
-  return { projectId: c.projectId ?? '', clusterName: c.clusterName ?? '', clusterZone: c.clusterZone ?? 'us-central1', diskZone: c.diskZone ?? 'us-central1-a', clientId: c.clientId ?? '', clientSecret: c.clientSecret ?? '' }
+  const c = env.config as {
+    projectId?: string
+    clusterName?: string
+    clusterZone?: string
+    diskZone?: string
+    clientId?: string
+    clientSecret?: string
+    gatewayMode?: string
+    domain?: string
+  }
+  const inferredMode = c.gatewayMode === 'ingress' || c.gatewayMode === 'port-forward'
+    ? c.gatewayMode
+    : (c.domain ? 'ingress' : 'port-forward')
+  return {
+    projectId: c.projectId ?? '',
+    clusterName: c.clusterName ?? '',
+    clusterZone: c.clusterZone ?? 'us-central1',
+    diskZone: c.diskZone ?? 'us-central1-a',
+    clientId: c.clientId ?? '',
+    clientSecret: c.clientSecret ?? '',
+    gatewayMode: inferredMode,
+    domain: c.domain ?? '',
+  }
 }
 
 function validateForm(form: GkeForm): string | null {
@@ -24,6 +63,7 @@ function validateForm(form: GkeForm): string | null {
   if (!form.clientId.trim()) return 'OAuth client ID is required'
   if (!form.clientId.includes('.apps.googleusercontent.com')) return 'OAuth client ID must end with .apps.googleusercontent.com'
   if (!form.clientSecret.trim()) return 'OAuth client secret is required'
+  if (form.gatewayMode === 'ingress' && !form.domain.trim()) return 'Base domain is required when using ingress mode'
   return null
 }
 
@@ -64,7 +104,16 @@ export function EnvironmentsPage() {
       slug: GKE_SLUG,
       type: 'gke',
       name: GKE_NAME,
-      config: { projectId: form.projectId, clusterName: form.clusterName, clusterZone: form.clusterZone, diskZone: form.diskZone || undefined, clientId: form.clientId, clientSecret: form.clientSecret },
+      config: {
+        projectId: form.projectId,
+        clusterName: form.clusterName,
+        clusterZone: form.clusterZone,
+        diskZone: form.diskZone || undefined,
+        clientId: form.clientId,
+        clientSecret: form.clientSecret,
+        gatewayMode: form.gatewayMode,
+        domain: form.gatewayMode === 'ingress' ? (form.domain || undefined) : undefined,
+      },
     }
     const result = await saveEnv.mutateAsync(record)
     if ((result as { ok: boolean }).ok) {
@@ -109,6 +158,29 @@ export function EnvironmentsPage() {
                 {field('clusterName', 'cluster name', 'coordina-cluster')}
                 {field('clusterZone', 'cluster location', 'us-central1')}
                 {field('diskZone', 'disk zone', 'us-central1-a')}
+              </div>
+              <div className="grid grid-cols-2 gap-1.5">
+                <div>
+                  <label className={labelCls}>gateway mode</label>
+                  <select
+                    className={inputCls}
+                    value={form.gatewayMode}
+                    onChange={e => { setForm({ ...form, gatewayMode: e.target.value as GkeForm['gatewayMode'] }); setFormError(null) }}
+                  >
+                    <option value="port-forward">port-forward (no domain)</option>
+                    <option value="ingress">ingress (domain + IAP)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>base domain</label>
+                  <input
+                    className={inputCls}
+                    value={form.domain}
+                    onChange={e => { setForm({ ...form, domain: e.target.value }); setFormError(null) }}
+                    placeholder="example.com"
+                    disabled={form.gatewayMode !== 'ingress'}
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-1.5">
                 {field('clientId', 'OAuth client ID', '0123456789-abc.apps.googleusercontent.com')}

@@ -14,7 +14,11 @@ describe('provider registry', () => {
       validate: () => ({ valid: true }),
       testConnection: async () => ({ valid: true }),
       listModels: async () => [],
-      toOpenClawJson: (c: unknown) => ({ provider: 'test', model: (c as { model: string }).model }),
+      toOpenClawJson: (c: unknown) => ({
+        agents: { defaults: { model: { primary: `test/${(c as { model: string }).model}` } } },
+        models: { providers: { test: {} } },
+      }),
+      toEnvVars: () => ({}),
     })
     expect(getProvider('test').displayName).toBe('Test')
     expect(listProviders().some((p) => p.id === 'test')).toBe(true)

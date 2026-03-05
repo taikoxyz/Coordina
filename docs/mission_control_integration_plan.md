@@ -257,10 +257,9 @@ for AGENT_SLUG in alice bob carol dave; do
 done
 ```
 
-Find your agent slugs in Coordina's UI (Team → Agents list) or in the local SQLite:
+Find your agent slugs in Coordina's UI (Team → Agents list) or in the local team spec JSON:
 ```bash
-sqlite3 ~/Library/Application\ Support/coordina/coordina.db \
-  "SELECT slug, name, is_lead FROM agents WHERE team_slug = 'YOUR_TEAM_SLUG';"
+jq -r '.agents[] | [.slug, .name, .isLead] | @tsv' ~/.coordina/teams/YOUR_TEAM_SLUG.json
 ```
 
 A helper script at `scripts/register-agents-with-mc.sh` can automate this once you have agent slugs — no Coordina code changes required.

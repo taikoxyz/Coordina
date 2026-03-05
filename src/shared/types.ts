@@ -17,7 +17,6 @@ export interface AgentSpec {
 export interface TeamSpec {
   slug: string
   name: string
-  domain?: string
   image?: string
   storageGi?: number
   leadAgentSlug?: string

@@ -26,6 +26,7 @@ import type { DeploymentSpecDeriver } from './base'
 import type { TeamSpec, ProviderRecord, SpecFile } from '../../shared/types'
 import { getProvider } from '../providers/base'
 import { saveTeam } from '../store/teams'
+import { resolveGatewayMode } from '../gateway/mode'
 
 function deriveAgentToken(seed: string, agentSlug: string): string {
   return createHmac('sha256', seed).update(agentSlug).digest('hex').slice(0, 48)
@@ -62,9 +63,15 @@ const gkeDeriver: DeploymentSpecDeriver = {
     providers: Map<string, ProviderRecord & { apiKey?: string }>,
     envConfig: Record<string, unknown>
   ): Promise<SpecFile[]> {
-    const { projectId, clusterZone, diskZone } = envConfig as { projectId: string; clusterZone: string; diskZone?: string }
+    const {
+      projectId,
+      clusterZone,
+      diskZone,
+      domain: envDomain,
+    } = envConfig as { projectId: string; clusterZone: string; diskZone?: string; domain?: string; gatewayMode?: 'port-forward' | 'ingress' }
     const namespace = spec.slug
-    const domain = spec.domain || 'example.com'
+    const mode = resolveGatewayMode(envConfig)
+    const ingressDomain = mode === 'ingress' ? envDomain : undefined
     const files: SpecFile[] = []
 
     if (!spec.tokenSeed) {
@@ -72,11 +79,6 @@ const gkeDeriver: DeploymentSpecDeriver = {
       await saveTeam(spec)
     }
     const seed = spec.tokenSeed!
-    const peers = spec.agents.map(a => ({
-      slug: a.slug,
-      url: `ws://agent-${a.slug}.${namespace}.svc.cluster.local:18789`,
-      token: deriveAgentToken(seed, a.slug),
-    }))
 
     files.push({ path: 'namespace.yaml', content: generateNamespace(namespace) })
 
@@ -85,7 +87,13 @@ const gkeDeriver: DeploymentSpecDeriver = {
       content: generateTeamConfigMap({
         teamSlug: spec.slug,
         namespace,
-        teamMd: generateTeamMd({ ...spec, peers }),
+        teamMd: generateTeamMd({
+          ...spec,
+          agents: spec.agents.map(a => ({
+            ...a,
+            gatewayUrl: `ws://agent-${a.slug}.${namespace}.svc.cluster.local:18789`,
+          })),
+        }),
         bootstrapMd: spec.bootstrapInstructions || DEFAULT_BOOTSTRAP_INSTRUCTIONS,
       }),
     })
@@ -103,13 +111,30 @@ const gkeDeriver: DeploymentSpecDeriver = {
         : {}
 
       const agentToken = deriveAgentToken(seed, agent.slug)
-      const agentPeers = peers
-        .filter(p => p.slug !== agent.slug)
-        .reduce<Record<string, { url: string; token: string }>>((acc, p) => {
-          acc[p.slug] = { url: `http://agent-${p.slug}.${namespace}.svc.cluster.local:18789`, token: p.token }
-          return acc
-        }, {})
-      const openclawConfigWithGateway = { ...openclawConfig, gateway: { auth: { token: agentToken } } }
+      const baseGateway = (openclawConfig as { gateway?: Record<string, unknown> }).gateway ?? {}
+      const baseHttp = (baseGateway.http as { endpoints?: Record<string, unknown> } | undefined) ?? {}
+      const baseEndpoints = baseHttp.endpoints ?? {}
+      const baseResponses = (baseEndpoints.responses as Record<string, unknown> | undefined) ?? {}
+      const openclawConfigWithGateway = {
+        ...openclawConfig,
+        gateway: {
+          ...baseGateway,
+          auth: {
+            ...((baseGateway.auth as Record<string, unknown> | undefined) ?? {}),
+            token: agentToken,
+          },
+          http: {
+            ...baseHttp,
+            endpoints: {
+              ...baseEndpoints,
+              responses: {
+                ...baseResponses,
+                enabled: true,
+              },
+            },
+          },
+        },
+      }
       const credentialSecretName = `${spec.slug}-${agent.slug}-credentials`
       files.push({ path: `agents/${agent.slug}/pv.yaml`, content: generateAgentPv({ teamSlug: spec.slug, agentSlug: agent.slug, projectId, zone: diskZone ?? clusterZone, storageGi: agent.storageGi }) })
       files.push({ path: `agents/${agent.slug}/pvc.yaml`, content: generateAgentPvc({ teamSlug: spec.slug, agentSlug: agent.slug, namespace, storageGi: agent.storageGi }) })
@@ -130,7 +155,9 @@ const gkeDeriver: DeploymentSpecDeriver = {
       files.push({ path: `agents/${agent.slug}/service.yaml`, content: generateAgentService({ teamSlug: spec.slug, agentSlug: agent.slug, namespace }) })
     }
 
-    files.push({ path: 'ingress.yaml', content: generateIngress({ teamSlug: spec.slug, agents: spec.agents.map(a => a.slug), domain, namespace }) })
+    if (ingressDomain) {
+      files.push({ path: 'ingress.yaml', content: generateIngress({ teamSlug: spec.slug, agents: spec.agents.map(a => a.slug), domain: ingressDomain, namespace }) })
+    }
 
     return files
   },

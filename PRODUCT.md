@@ -375,7 +375,7 @@ A lightweight local Express server (Node.js/TypeScript) that:
 | GitHub OAuth token | OS keychain (`keytar`) |
 | GKE credentials | OS keychain (`keytar`) |
 | Team configs | GitHub repo (source of truth) |
-| Local cache | SQLite (via `better-sqlite3`) |
+| Local cache | JSON files under `~/.coordina/` |
 
 ---
 

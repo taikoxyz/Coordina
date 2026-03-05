@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSpecStatus } from '../../hooks/useSpecStatus'
 import { useEnvironments } from '../../hooks/useEnvironments'
+import { ChatPane } from '../chat/ChatPane'
 import type { TeamSpec, DeployOptions } from '../../../../shared/types'
 
 interface Props {
@@ -13,7 +14,7 @@ interface Props {
 
 type DeployState = 'idle' | 'deploying' | 'done' | 'error'
 type DeriveState = 'idle' | 'running' | 'done' | 'error'
-type Tab = 'json' | 'files'
+type Tab = 'json' | 'files' | 'chat'
 
 interface DeployFile {
   path: string
@@ -33,6 +34,14 @@ export function StatusPanel({ spec, onSave, isSaving }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('json')
   const [deployFiles, setDeployFiles] = useState<DeployFile[]>([])
   const [selectedFile, setSelectedFile] = useState<string | null>(null)
+  const [selectedAgentSlug, setSelectedAgentSlug] = useState<string>('')
+
+  useEffect(() => {
+    if (!spec.agents.length) return
+    if (!selectedAgentSlug || !spec.agents.some(a => a.slug === selectedAgentSlug)) {
+      setSelectedAgentSlug(spec.agents[0].slug)
+    }
+  }, [spec.agents, selectedAgentSlug])
 
   useEffect(() => {
     if (environments?.length && !selectedEnvSlug) setSelectedEnvSlug(environments[0].slug)
@@ -97,6 +106,7 @@ export function StatusPanel({ spec, onSave, isSaving }: Props) {
   const validationColor = status.isValid ? 'text-green-400' : (status.validationErrors.length ? 'text-red-400' : 'text-gray-500')
   const derivationColor = status.derivationStatus === 'success' ? 'text-green-400' : (status.derivationStatus === 'error' ? 'text-red-400' : status.derivationStatus === 'running' ? 'text-yellow-400' : 'text-gray-500')
   const fileContent = deployFiles.find(f => f.path === selectedFile)?.content ?? ''
+  const activeAgentSlug = selectedAgentSlug || spec.agents[0]?.slug || ''
 
   return (
     <div className="h-full flex flex-col border-l border-gray-700/60">
@@ -106,6 +116,7 @@ export function StatusPanel({ spec, onSave, isSaving }: Props) {
         <button onClick={() => setActiveTab('files')} className={`text-[10px] pb-px ${activeTab === 'files' ? 'text-blue-300 border-b border-blue-400' : 'text-gray-500 hover:text-gray-300'}`}>
           Files{deployFiles.length > 0 ? ` (${deployFiles.length})` : ''}
         </button>
+        <button onClick={() => setActiveTab('chat')} className={`text-[10px] pb-px ${activeTab === 'chat' ? 'text-blue-300 border-b border-blue-400' : 'text-gray-500 hover:text-gray-300'}`}>Chat</button>
         <div className="flex-1" />
         <span className={`text-[10px] ${validationColor}`}>
           {status.isValid ? '✓ valid' : (status.validationErrors.length ? `✗ ${status.validationErrors.length} error${status.validationErrors.length > 1 ? 's' : ''}` : '— validating')}
@@ -166,6 +177,37 @@ export function StatusPanel({ spec, onSave, isSaving }: Props) {
                 </>
               ) : (
                 <div className="p-3 text-[10px] text-gray-600">Select a file</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'chat' && (
+          <div className="flex-1 flex overflow-hidden">
+            <div className="w-48 shrink-0 border-r border-gray-700/60 overflow-y-auto p-2 space-y-1">
+              {spec.agents.map((agent, index) => (
+                <button
+                  key={agent.slug}
+                  onClick={() => setSelectedAgentSlug(agent.slug)}
+                  className={`w-full text-left rounded px-2 py-1 text-[11px] ${
+                    activeAgentSlug === agent.slug ? 'bg-gray-800 text-blue-300' : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
+                  }`}
+                >
+                  <div className="truncate">{agent.name || agent.slug}</div>
+                  <div className="text-[9px] text-gray-600 font-mono truncate">
+                    {index === 0 ? 'Lead' : 'Direct'} · {agent.slug}
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="flex-1 min-w-0">
+              {spec.agents.length > 0 && (
+                <ChatPane
+                  teamSlug={spec.slug}
+                  envSlug={selectedEnvSlug || undefined}
+                  agentSlug={activeAgentSlug === spec.agents[0]?.slug ? undefined : activeAgentSlug}
+                  agentName={spec.agents.find(a => a.slug === activeAgentSlug)?.name}
+                />
               )}
             </div>
           </div>

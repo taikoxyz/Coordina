@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { generateAgentStatefulSet, generateIapBackendConfig, generateIngress, generateConfigMap, generateTeamConfigMap, generateAgentConfigMap } from './manifests'
+import { generateAgentStatefulSet, generateAgentService, generateIapBackendConfig, generateIngress, generateConfigMap, generateTeamConfigMap, generateAgentConfigMap } from './manifests'
 
 describe('generateAgentStatefulSet', () => {
   it('generates StatefulSet manifest with deterministic PVC name', () => {
@@ -61,6 +61,14 @@ describe('generateAgentStatefulSet', () => {
   it('init container creates state and workspace directories', () => {
     const manifest = generateAgentStatefulSet({ teamSlug: 'eng-alpha', agentSlug: 'alice' })
     expect(manifest).toContain('mkdir -p /agent-data/openclaw/state /agent-data/openclaw/workspace')
+    expect(manifest).toContain('chown -R 1000:1000 /agent-data/openclaw')
+    expect(manifest).toContain('chmod -R u+rwX,g+rwX /agent-data/openclaw')
+  })
+
+  it('sets pod fsGroup so runtime process can write PVC-backed state', () => {
+    const manifest = generateAgentStatefulSet({ teamSlug: 'eng-alpha', agentSlug: 'alice' })
+    expect(manifest).toContain('fsGroup: 1000')
+    expect(manifest).toContain('fsGroupChangePolicy: OnRootMismatch')
   })
 })
 
@@ -81,6 +89,16 @@ describe('generateIngress', () => {
     expect(manifest).toContain('eng-alpha-ingress')
     expect(manifest).toContain('alice')
     expect(manifest).toContain('bob')
+  })
+})
+
+describe('generateAgentService', () => {
+  it('adds NEG annotation required by GCE ingress for ClusterIP backends', () => {
+    const manifest = generateAgentService({ teamSlug: 'eng-alpha', agentSlug: 'alice' })
+    expect(manifest).toContain('kind: Service')
+    expect(manifest).toContain('cloud.google.com/neg')
+    expect(manifest).toContain('{"ingress": true}')
+    expect(manifest).toContain('type: ClusterIP')
   })
 })
 
@@ -133,6 +151,7 @@ describe('generateAgentConfigMap', () => {
       identityMd: '# Identity',
       soulMd: '# Soul',
       skillsMd: '# Skills',
+      openclawJson: '{ "agents": { "defaults": { "model": { "primary": "anthropic/claude-sonnet-4-6" } } }, "models": { "providers": { "anthropic": {} } } }',
     })
     expect(yaml).toContain('name: alpha-alice-config')
     expect(yaml).toContain('IDENTITY.md: |')

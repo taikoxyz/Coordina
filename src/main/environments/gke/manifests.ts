@@ -144,6 +144,8 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
     `test -f ${workspaceDir}/SOUL.md || cp /config/agent/SOUL.md ${workspaceDir}/SOUL.md`,
     `test -f ${workspaceDir}/SKILLS.md || cp /config/agent/SKILLS.md ${workspaceDir}/SKILLS.md`,
     `cp /config/agent/openclaw.json ${stateDir}/openclaw.json`,
+    'chown -R 1000:1000 /agent-data/openclaw',
+    'chmod -R u+rwX,g+rwX /agent-data/openclaw',
   ].join(' && ')
 
   const manifest = {
@@ -161,6 +163,10 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
       template: {
         metadata: { labels: { app: resourceName, 'coordina.team': teamSlug } },
         spec: {
+          securityContext: {
+            fsGroup: 1000,
+            fsGroupChangePolicy: 'OnRootMismatch',
+          },
           volumes,
           initContainers: [{
             name: 'bootstrap-init',
@@ -210,7 +216,14 @@ export function generateAgentService(input: { teamSlug: string; agentSlug: strin
   const manifest = {
     apiVersion: 'v1',
     kind: 'Service',
-    metadata: { name: resourceName, namespace },
+    metadata: {
+      name: resourceName,
+      namespace,
+      annotations: {
+        // Required by GCE Ingress for ClusterIP backends.
+        'cloud.google.com/neg': '{"ingress": true}',
+      },
+    },
     spec: {
       selector: { app: resourceName },
       ports: [{ port: 18789, targetPort: 18789, name: 'gateway' }],
