@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { generateIdentityMd, generateSoulMd, generateOpenClawJson, generateSkillsMd, generateAgentsMd } from './spec'
+import { generateIdentityMd, generateSoulMd, generateOpenClawJson, generateSkillsMd, generateAgentsMd, generateTeamMd } from './spec'
 
 describe('generateIdentityMd', () => {
   it('references TEAM.md with agent slug', () => {
@@ -70,23 +70,6 @@ describe('generateSkillsMd', () => {
   })
 })
 
-describe('generateOpenClawJson peers', () => {
-  it('serializes peers into openclaw.json when provided', () => {
-    const config: import('./spec').OpenClawConfig = {
-      agents: { defaults: { model: { primary: 'anthropic/claude-sonnet-4-6' } } },
-      models: { providers: { anthropic: {} } },
-      peers: {
-        beta: { url: 'http://agent-beta.my-team.svc.cluster.local:18789', token: 'tok-beta' },
-        gamma: { url: 'http://agent-gamma.my-team.svc.cluster.local:18789', token: 'tok-gamma' },
-      },
-    }
-    const parsed = JSON.parse(generateOpenClawJson(config))
-    expect(parsed.peers.beta.url).toBe('http://agent-beta.my-team.svc.cluster.local:18789')
-    expect(parsed.peers.beta.token).toBe('tok-beta')
-    expect(parsed.peers.gamma.url).toBe('http://agent-gamma.my-team.svc.cluster.local:18789')
-  })
-})
-
 describe('generateAgentsMd', () => {
   it('marks lead agent', () => {
     const md = generateAgentsMd([
@@ -96,5 +79,23 @@ describe('generateAgentsMd', () => {
     expect(md).toContain('Alice')
     expect(md).toContain('_(lead)_')
     expect(md).toContain('Bob')
+  })
+})
+
+describe('generateTeamMd', () => {
+  it('includes per-agent gateway URL in Members section', () => {
+    const md = generateTeamMd({
+      name: 'Team',
+      slug: 'team',
+      agents: [
+        { slug: 'alice', name: 'Alice', role: 'Lead', gatewayUrl: 'ws://agent-alice.team.svc.cluster.local:18789', isLead: true },
+        { slug: 'bob', name: 'Bob', role: 'Engineer', gatewayUrl: 'ws://agent-bob.team.svc.cluster.local:18789' },
+      ],
+    })
+
+    expect(md).toContain('### alice')
+    expect(md).toContain('- gateway: ws://agent-alice.team.svc.cluster.local:18789')
+    expect(md).toContain('### bob')
+    expect(md).toContain('- gateway: ws://agent-bob.team.svc.cluster.local:18789')
   })
 })
