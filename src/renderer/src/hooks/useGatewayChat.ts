@@ -1,18 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 
-export interface ChatAttachment {
-  name: string
-  mimeType: string
-  size: number
-}
-
-export interface ChatMessage {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  timestamp: number
-  attachments?: ChatAttachment[]
-}
+export type { ChatAttachment, ChatMessage } from '../../../shared/types'
+import type { ChatMessage } from '../../../shared/types'
 
 export interface GatewayChatError {
   kind: 'connection' | 'auth' | 'not_found' | 'gateway'
@@ -113,21 +102,69 @@ function errorFromStatus(status: number, detail?: string): GatewayChatError {
 export function useGatewayChat(teamSlug: string, agentSlug?: string, envSlug?: string) {
   const conversationKey = `${teamSlug}::${envSlug ?? '__default_env__'}::${agentSlug ?? '__lead__'}`
   const [messagesByConversation, setMessagesByConversation] = useState<Record<string, ChatMessage[]>>({})
+  const [hasMoreByConversation, setHasMoreByConversation] = useState<Record<string, boolean>>({})
   const [connected, setConnected] = useState(true)
   const [error, setError] = useState<GatewayChatError | null>(null)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const [loadingInitial, setLoadingInitial] = useState(false)
+
   const messages = messagesByConversation[conversationKey] ?? []
+  const hasMore = hasMoreByConversation[conversationKey] ?? false
 
   const appendMessage = useCallback((message: ChatMessage) => {
     setMessagesByConversation(prev => ({
       ...prev,
       [conversationKey]: [...(prev[conversationKey] ?? []), message],
     }))
-  }, [conversationKey])
+    void window.api.invoke('chat:history:append', {
+      teamSlug,
+      envSlug: envSlug ?? '__default_env__',
+      agentSlug: agentSlug ?? '__lead__',
+      message,
+    }).catch(() => undefined)
+  }, [conversationKey, teamSlug, envSlug, agentSlug])
 
   useEffect(() => {
     setConnected(true)
     setError(null)
+
+    if (messagesByConversation[conversationKey] !== undefined) return
+
+    setLoadingInitial(true)
+    void window.api.invoke('chat:history:load', {
+      teamSlug,
+      envSlug: envSlug ?? '__default_env__',
+      agentSlug: agentSlug ?? '__lead__',
+    }).then((result: unknown) => {
+      const { messages: loaded, hasMore: more } = result as { messages: ChatMessage[]; hasMore: boolean }
+      setMessagesByConversation(prev => ({ ...prev, [conversationKey]: loaded }))
+      setHasMoreByConversation(prev => ({ ...prev, [conversationKey]: more }))
+    }).catch(() => {
+      setMessagesByConversation(prev => ({ ...prev, [conversationKey]: [] }))
+    }).finally(() => setLoadingInitial(false))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationKey])
+
+  const loadOlderMessages = useCallback(async () => {
+    if (loadingOlder || !hasMore) return
+    setLoadingOlder(true)
+    const offset = (messagesByConversation[conversationKey] ?? []).length
+    try {
+      const result = await window.api.invoke('chat:history:loadOlder', {
+        teamSlug,
+        envSlug: envSlug ?? '__default_env__',
+        agentSlug: agentSlug ?? '__lead__',
+        offset,
+      }) as { messages: ChatMessage[]; hasMore: boolean }
+      setMessagesByConversation(prev => ({
+        ...prev,
+        [conversationKey]: [...result.messages, ...(prev[conversationKey] ?? [])],
+      }))
+      setHasMoreByConversation(prev => ({ ...prev, [conversationKey]: result.hasMore }))
+    } finally {
+      setLoadingOlder(false)
+    }
+  }, [conversationKey, hasMore, loadingOlder, messagesByConversation, teamSlug, envSlug, agentSlug])
 
   const sendMessage = useCallback(async (content: string, files: File[] = []) => {
     const text = content.trim()
@@ -217,5 +254,5 @@ export function useGatewayChat(teamSlug: string, agentSlug?: string, envSlug?: s
     }
   }, [agentSlug, appendMessage, envSlug, teamSlug])
 
-  return { messages, connected, error, sendMessage }
+  return { messages, connected, error, sendMessage, hasMore, loadingOlder, loadingInitial, loadOlderMessages }
 }

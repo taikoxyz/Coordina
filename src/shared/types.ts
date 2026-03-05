@@ -1,3 +1,17 @@
+export interface ChatAttachment {
+  name: string
+  mimeType: string
+  size: number
+}
+
+export interface ChatMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: number
+  attachments?: ChatAttachment[]
+}
+
 export interface AgentSpec {
   slug: string
   name: string

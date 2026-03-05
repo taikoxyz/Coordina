@@ -1,4 +1,6 @@
 import { ipcMain } from 'electron'
+import { loadRecentMessages, loadOlderMessages, appendChatMessage } from '../store/chatHistory'
+import type { ChatMessage } from '../../shared/types'
 
 const LOCAL_PORT = 19876
 
@@ -70,5 +72,21 @@ export function registerChatHandlers() {
         detail: e instanceof Error ? e.message : String(e),
       }
     }
+  })
+
+  ipcMain.handle('chat:history:load', async (_event, req: { teamSlug: string; envSlug?: string; agentSlug?: string }) => {
+    const { teamSlug, envSlug = '__default_env__', agentSlug = '__lead__' } = req
+    return loadRecentMessages(teamSlug, envSlug, agentSlug)
+  })
+
+  ipcMain.handle('chat:history:loadOlder', async (_event, req: { teamSlug: string; envSlug?: string; agentSlug?: string; offset: number }) => {
+    const { teamSlug, envSlug = '__default_env__', agentSlug = '__lead__', offset } = req
+    return loadOlderMessages(teamSlug, envSlug, agentSlug, offset)
+  })
+
+  ipcMain.handle('chat:history:append', async (_event, req: { teamSlug: string; envSlug?: string; agentSlug?: string; message: ChatMessage }) => {
+    const { teamSlug, envSlug = '__default_env__', agentSlug = '__lead__', message } = req
+    await appendChatMessage(teamSlug, envSlug, agentSlug, message)
+    return { ok: true }
   })
 }

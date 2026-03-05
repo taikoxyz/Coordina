@@ -11,16 +11,33 @@ interface Props {
 }
 
 export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: Props) {
-  const { messages, connected, error, sendMessage } = useGatewayChat(teamSlug, agentSlug, envSlug)
+  const { messages, connected, error, sendMessage, hasMore, loadingOlder, loadingInitial, loadOlderMessages } = useGatewayChat(teamSlug, agentSlug, envSlug)
   const [input, setInput] = useState('')
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [sending, setSending] = useState(false)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const prevScrollHeightRef = useRef(0)
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const lastMessageId = messages[messages.length - 1]?.id
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [lastMessageId])
+
+  useEffect(() => {
+    const el = scrollContainerRef.current
+    if (!el || prevScrollHeightRef.current === 0) return
+    el.scrollTop += el.scrollHeight - prevScrollHeightRef.current
+    prevScrollHeightRef.current = 0
+  }, [messages.length])
+
+  async function handleLoadMore() {
+    if (scrollContainerRef.current) {
+      prevScrollHeightRef.current = scrollContainerRef.current.scrollHeight
+    }
+    await loadOlderMessages()
+  }
 
   async function handleSend() {
     const text = input.trim()
@@ -63,7 +80,21 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4">
+        {hasMore && (
+          <div className="flex justify-center mb-4">
+            <button
+              onClick={() => void handleLoadMore()}
+              disabled={loadingOlder}
+              className="text-xs px-3 py-1.5 bg-gray-800 text-gray-300 rounded hover:bg-gray-700 disabled:opacity-40"
+            >
+              {loadingOlder ? 'Loading…' : 'Load earlier messages'}
+            </button>
+          </div>
+        )}
+        {loadingInitial && (
+          <div className="text-center text-gray-500 py-4 text-xs">Loading history…</div>
+        )}
         {error && (
           <div className="mb-4 rounded-lg border border-red-700/60 bg-red-950/40 text-red-100 p-3">
             <div className="flex items-center gap-2">
@@ -85,7 +116,7 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
             </div>
           </div>
         )}
-        {messages.length === 0 && !error && (
+        {messages.length === 0 && !error && !loadingInitial && (
           <div className="text-center text-gray-500 py-12 text-sm">
             {connected ? 'Connected. Say something to get started.' : 'Last request failed. You can retry now.'}
           </div>
