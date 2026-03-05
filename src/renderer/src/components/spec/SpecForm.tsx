@@ -90,6 +90,26 @@ export function SpecForm({ spec, onSpecChange }: Props) {
           </div>
         </div>
 
+        <div>
+          <label className={labelCls}>telegram group chat id</label>
+          <input
+            className={inputCls}
+            value={spec.telegramGroupChatId ?? ''}
+            onChange={e => set('telegramGroupChatId')(e.target.value || undefined)}
+            placeholder="-1001234567890"
+          />
+        </div>
+
+        <div>
+          <label className={labelCls}>telegram owner user id</label>
+          <input
+            className={inputCls}
+            value={spec.telegramOwnerUserId ?? ''}
+            onChange={e => set('telegramOwnerUserId')(e.target.value || undefined)}
+            placeholder="123456789"
+          />
+        </div>
+
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className={labelCls}>default image</label>
@@ -165,6 +185,7 @@ export function SpecForm({ spec, onSpecChange }: Props) {
             {spec.agents.map((agent, i) => (
               <AgentRow
                 key={i}
+                teamSlug={spec.slug}
                 agent={agent}
                 isFirst={i === 0}
                 providerSlugs={providerSlugs}
@@ -175,6 +196,11 @@ export function SpecForm({ spec, onSpecChange }: Props) {
           </div>
         </div>
       </div>
+      {saveTeam.error && (
+        <div className="px-3 py-1.5 border-t border-red-800/50 text-[10px] text-red-300">
+          {(saveTeam.error as Error).message}
+        </div>
+      )}
     </div>
   )
 }

@@ -23,6 +23,7 @@ import {
 import { DEFAULT_BOOTSTRAP_INSTRUCTIONS } from './bootstrap'
 import { registerDeriver } from './base'
 import type { DeploymentSpecDeriver } from './base'
+import type { DeriveSecrets } from './base'
 import type { TeamSpec, ProviderRecord, SpecFile } from '../../shared/types'
 import { getProvider } from '../providers/base'
 import { saveTeam } from '../store/teams'
@@ -61,7 +62,8 @@ const gkeDeriver: DeploymentSpecDeriver = {
   async derive(
     spec: TeamSpec,
     providers: Map<string, ProviderRecord & { apiKey?: string }>,
-    envConfig: Record<string, unknown>
+    envConfig: Record<string, unknown>,
+    secrets?: DeriveSecrets
   ): Promise<SpecFile[]> {
     const {
       projectId,
@@ -72,6 +74,8 @@ const gkeDeriver: DeploymentSpecDeriver = {
     const namespace = spec.slug
     const mode = resolveGatewayMode(envConfig)
     const ingressDomain = mode === 'ingress' ? envDomain : undefined
+    const telegramGroupChatId = spec.telegramGroupChatId?.trim()
+    const telegramOwnerUserId = spec.telegramOwnerUserId?.trim()
     const files: SpecFile[] = []
 
     if (!spec.tokenSeed) {
@@ -89,6 +93,8 @@ const gkeDeriver: DeploymentSpecDeriver = {
         namespace,
         teamMd: generateTeamMd({
           ...spec,
+          telegramGroupChatId,
+          telegramOwnerUserId,
           agents: spec.agents.map(a => ({
             ...a,
             gatewayUrl: `ws://agent-${a.slug}.${namespace}.svc.cluster.local:18789`,
@@ -111,12 +117,36 @@ const gkeDeriver: DeploymentSpecDeriver = {
         : {}
 
       const agentToken = deriveAgentToken(seed, agent.slug)
+      const telegramBotId = agent.telegramBotId?.trim()
+      const telegramBotToken = secrets?.agentTelegramTokens?.[agent.slug]
+      const hasTelegramRouting = Boolean(telegramGroupChatId && telegramOwnerUserId && telegramBotId)
+      const baseChannels = (typeof (openclawConfig as { channels?: unknown }).channels === 'object' && (openclawConfig as { channels?: unknown }).channels !== null)
+        ? (openclawConfig as { channels?: Record<string, unknown> }).channels
+        : undefined
+      const telegramChannelsConfig = hasTelegramRouting
+        ? {
+            telegram: {
+              enabled: Boolean(telegramBotToken),
+              dmPolicy: 'allowlist',
+              allowFrom: [telegramOwnerUserId!],
+              groupPolicy: 'allowlist',
+              groupAllowFrom: [telegramOwnerUserId!],
+              groups: {
+                [telegramGroupChatId!]: { requireMention: true },
+              },
+              streaming: 'partial',
+            },
+          }
+        : undefined
       const baseGateway = (openclawConfig as { gateway?: Record<string, unknown> }).gateway ?? {}
       const baseHttp = (baseGateway.http as { endpoints?: Record<string, unknown> } | undefined) ?? {}
       const baseEndpoints = baseHttp.endpoints ?? {}
       const baseResponses = (baseEndpoints.responses as Record<string, unknown> | undefined) ?? {}
       const openclawConfigWithGateway = {
         ...openclawConfig,
+        ...((baseChannels || telegramChannelsConfig)
+          ? { channels: { ...(baseChannels ?? {}), ...(telegramChannelsConfig ?? {}) } }
+          : {}),
         gateway: {
           ...baseGateway,
           auth: {
@@ -135,10 +165,16 @@ const gkeDeriver: DeploymentSpecDeriver = {
           },
         },
       }
+      const envVarsWithTelegram = {
+        ...envVars,
+        ...(hasTelegramRouting && telegramBotToken
+          ? { TELEGRAM_BOT_TOKEN: telegramBotToken }
+          : {}),
+      }
       const credentialSecretName = `${spec.slug}-${agent.slug}-credentials`
       files.push({ path: `agents/${agent.slug}/pv.yaml`, content: generateAgentPv({ teamSlug: spec.slug, agentSlug: agent.slug, projectId, zone: diskZone ?? clusterZone, storageGi: agent.storageGi }) })
       files.push({ path: `agents/${agent.slug}/pvc.yaml`, content: generateAgentPvc({ teamSlug: spec.slug, agentSlug: agent.slug, namespace, storageGi: agent.storageGi }) })
-      files.push({ path: `agents/${agent.slug}/credentials.yaml`, content: generateProviderSecret({ teamSlug: spec.slug, providerSlug: agent.providerSlug, agentSlug: agent.slug, namespace, envVars }) })
+      files.push({ path: `agents/${agent.slug}/credentials.yaml`, content: generateProviderSecret({ teamSlug: spec.slug, providerSlug: agent.providerSlug, agentSlug: agent.slug, namespace, envVars: envVarsWithTelegram }) })
       files.push({
         path: `agents/${agent.slug}/configmap.yaml`,
         content: generateAgentConfigMap({

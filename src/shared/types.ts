@@ -16,6 +16,7 @@ export interface AgentSpec {
   slug: string
   name: string
   role: string
+  telegramBotId?: string
   email?: string
   slackHandle?: string
   githubId?: string
@@ -31,6 +32,8 @@ export interface AgentSpec {
 export interface TeamSpec {
   slug: string
   name: string
+  telegramGroupChatId?: string
+  telegramOwnerUserId?: string
   image?: string
   storageGi?: number
   leadAgentSlug?: string
