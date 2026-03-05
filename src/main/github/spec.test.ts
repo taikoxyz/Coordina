@@ -187,14 +187,16 @@ describe('generateTeamMd', () => {
       name: 'Team',
       slug: 'team',
       agents: [
-        { slug: 'alice', name: 'Alice', role: 'Lead', gatewayUrl: 'ws://agent-alice.team.svc.cluster.local:18789', isLead: true },
-        { slug: 'bob', name: 'Bob', role: 'Engineer', gatewayUrl: 'ws://agent-bob.team.svc.cluster.local:18789' },
+        { slug: 'alice', name: 'Alice', role: 'Lead', gatewayUrl: 'http://agent-alice.team.svc.cluster.local:18789', gatewayToken: 'alice-token-abc', isLead: true },
+        { slug: 'bob', name: 'Bob', role: 'Engineer', gatewayUrl: 'http://agent-bob.team.svc.cluster.local:18789', gatewayToken: 'bob-token-xyz' },
       ],
     })
 
     expect(md).toContain('### alice')
-    expect(md).toContain('- gateway: ws://agent-alice.team.svc.cluster.local:18789')
+    expect(md).toContain('- gateway: http://agent-alice.team.svc.cluster.local:18789')
+    expect(md).toContain('- gateway_token: alice-token-abc')
     expect(md).toContain('### bob')
-    expect(md).toContain('- gateway: ws://agent-bob.team.svc.cluster.local:18789')
+    expect(md).toContain('- gateway: http://agent-bob.team.svc.cluster.local:18789')
+    expect(md).toContain('- gateway_token: bob-token-xyz')
   })
 })

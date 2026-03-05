@@ -97,7 +97,7 @@ export function generateTeamMd(team: {
   image?: string
   leadAgentSlug?: string
   storageGi?: number
-  agents: { slug: string; name: string; role: string; telegramBotId?: string; email?: string; slackHandle?: string; githubId?: string; cpu?: number; isLead?: boolean; gatewayUrl?: string }[]
+  agents: { slug: string; name: string; role: string; telegramBotId?: string; email?: string; slackHandle?: string; githubId?: string; cpu?: number; isLead?: boolean; gatewayUrl?: string; gatewayToken?: string }[]
 }): string {
   const lines: string[] = ['## TEAM', '', '## About']
   lines.push(`- name: ${team.name}`)
@@ -118,6 +118,7 @@ export function generateTeamMd(team: {
     if (a.githubId) lines.push(`- github: @${a.githubId}`)
     if (a.cpu) lines.push(`- cpu: ${a.cpu}`)
     if (a.gatewayUrl) lines.push(`- gateway: ${a.gatewayUrl}`)
+    if (a.gatewayToken) lines.push(`- gateway_token: ${a.gatewayToken}`)
     if (a.isLead) lines.push(`- lead: true`)
     lines.push('')
   }

@@ -77,6 +77,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
     const ingressDomain = mode === 'ingress' ? envDomain : undefined
     const telegramGroupChatId = spec.telegramGroupChatId?.trim()
     const telegramOwnerUserId = spec.telegramOwnerUserId?.trim()
+    const workspaceDir = '/agent-data/openclaw/workspace'
     const files: SpecFile[] = []
 
     if (!spec.tokenSeed) {
@@ -84,6 +85,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
       await saveTeam(spec)
     }
     const seed = spec.tokenSeed!
+    const teamGatewayToken = deriveAgentToken(seed, spec.slug)
 
     files.push({ path: 'namespace.yaml', content: generateNamespace(namespace) })
 
@@ -96,7 +98,8 @@ const gkeDeriver: DeploymentSpecDeriver = {
         telegramOwnerUserId,
         agents: spec.agents.map(a => ({
           ...a,
-          gatewayUrl: `ws://agent-${a.slug}.${namespace}.svc.cluster.local:18789`,
+          gatewayUrl: `http://agent-${a.slug}.${namespace}.svc.cluster.local:18789`,
+          gatewayToken: teamGatewayToken,
         })),
       }),
       bootstrapMd: spec.bootstrapInstructions || DEFAULT_BOOTSTRAP_INSTRUCTIONS,
@@ -120,7 +123,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
         ? modelProvider.toEnvVars({ apiKey: providerRecord.apiKey, model })
         : {}
 
-      const agentToken = deriveAgentToken(seed, agent.slug)
+      const agentToken = teamGatewayToken
       const telegramBotId = agent.telegramBotId?.trim()
       const telegramBotToken = secrets?.agentTelegramTokens?.[agent.slug]
       const hasTelegramRouting = Boolean(telegramGroupChatId && telegramOwnerUserId && telegramBotId)
@@ -146,8 +149,19 @@ const gkeDeriver: DeploymentSpecDeriver = {
       const baseHttp = (baseGateway.http as { endpoints?: Record<string, unknown> } | undefined) ?? {}
       const baseEndpoints = baseHttp.endpoints ?? {}
       const baseResponses = (baseEndpoints.responses as Record<string, unknown> | undefined) ?? {}
+      const baseAgents = (openclawConfig as { agents?: Record<string, unknown> }).agents ?? {}
+      const baseAgentDefaults = (
+        openclawConfig as { agents?: { defaults?: Record<string, unknown> } }
+      ).agents?.defaults ?? {}
       const openclawConfigWithGateway = {
         ...openclawConfig,
+        agents: {
+          ...baseAgents,
+          defaults: {
+            ...baseAgentDefaults,
+            workspace: workspaceDir,
+          },
+        },
         ...((baseChannels || telegramChannelsConfig)
           ? { channels: { ...(baseChannels ?? {}), ...(telegramChannelsConfig ?? {}) } }
           : {}),

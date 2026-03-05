@@ -24,7 +24,6 @@ Each OpenClaw agent workspace lives at `~/.openclaw/workspace/` and is driven by
 | `SOUL.md` | Personality, tone, values, long-term behavioral constraints. Loaded every session. |
 | `IDENTITY.md` | Name, vibe, emoji, quirks. Created/updated during bootstrap. |
 | `MEMORY.md` | Curated long-term memory. Agent writes daily logs to `memory/YYYY-MM-DD.md` and distills key learnings into MEMORY.md. |
-| `AGENTS.md` | Operational rules: memory management, safety constraints, when to speak vs. stay quiet. |
 
 ### Implications for our product
 

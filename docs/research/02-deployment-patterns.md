@@ -156,12 +156,10 @@ team-spec-repo/
 │   ├── alice/              # Lead agent
 │   │   ├── SOUL.md
 │   │   ├── IDENTITY.md
-│   │   ├── AGENTS.md
 │   │   └── openclaw.json   # Model provider config
 │   └── bob/                # Team member
 │       ├── SOUL.md
 │       ├── IDENTITY.md
-│       ├── AGENTS.md
 │       └── openclaw.json
 ├── deploy/
 │   └── helm/

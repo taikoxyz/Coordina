@@ -145,10 +145,6 @@ spec:
 
         ## User Preferences
         - Timezone: UTC
-      AGENTS.md: |
-        # Operating Instructions
-        - Be concise
-        - Always check existing tests before modifying code
 ```
 
 Files in `spec.workspace.initialFiles` are **write-once**: copied to the PVC on first boot only, never overwritten. Agent writes to `MEMORY.md` survive pod restarts.
@@ -220,9 +216,6 @@ data:
 
     ## User Preferences
     - Timezone: UTC
-  AGENTS.md: |
-    # Operating Instructions
-    - Be concise
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -248,12 +241,10 @@ spec:
               mkdir -p "${WORKSPACE}/memory"
 
               # Write-once: skip if file already exists
-              for f in MEMORY.md AGENTS.md; do
-                if [ ! -f "${WORKSPACE}/${f}" ]; then
-                  cp "/seed/${f}" "${WORKSPACE}/${f}"
-                  echo "Seeded ${f}"
-                fi
-              done
+              if [ ! -f "${WORKSPACE}/MEMORY.md" ]; then
+                cp "/seed/MEMORY.md" "${WORKSPACE}/MEMORY.md"
+                echo "Seeded MEMORY.md"
+              fi
           volumeMounts:
             - name: data
               mountPath: /home/node/.openclaw
@@ -462,8 +453,8 @@ Use init containers when you need guaranteed, deterministic setup. Use the agent
 | Use case | Safe to mount as ConfigMap? | Why |
 |---|---|---|
 | `MEMORY.md` | **No** | OpenClaw writes to it during operation; read-only mount breaks memory system |
-| `AGENTS.md`, `SOUL.md` | **No** (if agent should be able to update them) | Same reason |
-| `AGENTS.md`, `SOUL.md` | **Yes** (if you want to enforce them as read-only from the platform) | The agent won't be able to overwrite them; suitable for operator-controlled config |
+| `SOUL.md` | **No** (if agent should be able to update them) | Same reason |
+| `SOUL.md` | **Yes** (if you want to enforce them as read-only from the platform) | The agent won't be able to overwrite them; suitable for operator-controlled config |
 | Static `INSTRUCTIONS.md` or similar | **Yes** | The agent only reads it |
 | `openclaw.json` | **Yes** (as a merge source) | The operator's `init-config` init container merges it into the PVC copy |
 
@@ -476,7 +467,6 @@ All files live in the workspace directory (`~/.openclaw/workspace/` on Docker, P
 | File | Purpose | When injected |
 |------|---------|---------------|
 | `MEMORY.md` | Long-term curated memory | Primary sessions only |
-| `AGENTS.md` | Operating instructions | Every session |
 | `SOUL.md` | Personality, tone, values | Every session |
 | `IDENTITY.md` | Agent name, emoji, quirks | Every session |
 | `USER.md` | User preferences | Every session |
@@ -492,7 +482,7 @@ File injection is truncated at 20,000 chars each, 150,000 chars total (configura
 
 ### Recommended pattern for Coordina (k8s)
 
-Coordina already generates `SOUL.md`, `IDENTITY.md`, `AGENTS.md`, and `openclaw.json` per agent. On k8s, the cleanest flow is:
+Coordina already generates `SOUL.md`, `IDENTITY.md`, and `openclaw.json` per agent. On k8s, the cleanest flow is:
 
 1. Store generated workspace files in the team spec repo under `agents/<slug>/`
 2. On deploy, create a ConfigMap per agent containing these files
@@ -822,12 +812,12 @@ Add `bootstrapInstructionsMd: string` to the input interface and include it as a
 
 Current input:
 ```typescript
-{ teamSlug, namespace, teamJson, agentsMd }
+{ teamSlug, namespace, teamJson }
 ```
 
 New input:
 ```typescript
-{ teamSlug, namespace, teamJson, agentsMd, bootstrapInstructionsMd }
+{ teamSlug, namespace, teamJson, bootstrapInstructionsMd }
 ```
 
 Add to the ConfigMap data:
@@ -868,7 +858,6 @@ files.push({
     teamSlug: team.slug,
     namespace,
     teamJson: getContent('team.json'),
-    agentsMd: getContent('AGENTS.md'),
     bootstrapInstructionsMd: bootstrapInstructions,
   }),
 })

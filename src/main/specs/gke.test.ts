@@ -59,7 +59,7 @@ describe('gkeDeriver gateway injection', () => {
 
     expect(typeof alphaConfig.gateway?.auth?.token).toBe('string')
     expect(alphaConfig.gateway.auth.token.length).toBeGreaterThan(0)
-    expect(alphaConfig.gateway.auth.token).not.toBe(betaConfig.gateway.auth.token)
+    expect(alphaConfig.gateway.auth.token).toBe(betaConfig.gateway.auth.token)
   })
 
   it('does not include unsupported peers key in openclaw.json', async () => {
@@ -74,14 +74,21 @@ describe('gkeDeriver gateway injection', () => {
     expect(alphaConfig.gateway?.http?.endpoints?.responses?.enabled).toBe(true)
   })
 
+  it('sets agents.defaults.workspace to PVC-backed workspace path', async () => {
+    const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
+    const alphaConfig = getOpenClawConfig(files, 'alpha')
+    expect(alphaConfig.agents?.defaults?.workspace).toBe('/agent-data/openclaw/workspace')
+  })
+
   it('includes gateway URLs in each TEAM.md member entry', async () => {
     const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
     const teamMd = getTeamMd(files)
 
     expect(teamMd).toContain('### alpha')
-    expect(teamMd).toContain('- gateway: ws://agent-alpha.my-team.svc.cluster.local:18789')
+    expect(teamMd).toContain('- gateway: http://agent-alpha.my-team.svc.cluster.local:18789')
+    expect(teamMd).toContain('- gateway_token:')
     expect(teamMd).toContain('### beta')
-    expect(teamMd).toContain('- gateway: ws://agent-beta.my-team.svc.cluster.local:18789')
+    expect(teamMd).toContain('- gateway: http://agent-beta.my-team.svc.cluster.local:18789')
   })
 
   it('adds config hash annotations to trigger rollout when generated files change', async () => {

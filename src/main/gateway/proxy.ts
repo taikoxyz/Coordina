@@ -1,4 +1,5 @@
-import { Router, type Response } from 'express'
+import { Router, type Request, type Response } from 'express'
+import type { IncomingMessage } from 'node:http'
 import { createHmac } from 'node:crypto'
 import { lookup as dnsLookup } from 'node:dns/promises'
 import { createProxyMiddleware } from 'http-proxy-middleware'
@@ -18,12 +19,28 @@ interface UpstreamTarget {
   hostHeader?: string
 }
 
+interface ProxyRequestContext {
+  rewrittenPath: string
+  token: string | null
+  upstream: UpstreamTarget
+}
+
 interface GkeGatewayConfig {
   projectId: string
   clusterName: string
   clusterZone: string
   clientId: string
   clientSecret: string
+}
+
+class ProxyRequestError extends Error {
+  constructor(
+    readonly status: number,
+    readonly proxyError: string,
+    readonly detail?: string,
+  ) {
+    super(proxyError)
+  }
 }
 
 function sendProxyError(res: Response, status: number, error: string, detail?: string): void {
@@ -178,6 +195,27 @@ function resolvePortForwardPath(pathname: string, agentSlugs: Set<string>): stri
   return path
 }
 
+interface ParsedProxyRequest {
+  teamSlug: string
+  requestedPath: string
+  requestedEnvSlug?: string
+}
+
+function parseProxyRequest(req: IncomingMessage): ParsedProxyRequest {
+  const parsed = new URL(req.url ?? '/', 'http://localhost')
+  const match = parsed.pathname.match(/^\/proxy\/([^/]+)(\/.*)?$/)
+  if (!match) {
+    throw new ProxyRequestError(404, 'Invalid proxy route')
+  }
+
+  const requestedEnvSlug = parsed.searchParams.get('envSlug') ?? undefined
+  return {
+    teamSlug: match[1],
+    requestedPath: match[2] ?? '/',
+    ...(requestedEnvSlug ? { requestedEnvSlug } : {}),
+  }
+}
+
 async function buildDeploymentRecord(params: {
   teamSlug: string
   teamSpec: Awaited<ReturnType<typeof getTeam>>
@@ -205,119 +243,186 @@ async function buildDeploymentRecord(params: {
   }
 }
 
-export function createGatewayRouter(getToken: TokenFetcher = async () => null) {
-  const router = Router()
+async function buildProxyRequestContext(req: IncomingMessage, getToken: TokenFetcher): Promise<ProxyRequestContext> {
+  const { teamSlug, requestedPath, requestedEnvSlug } = parseProxyRequest(req)
+  const [teamSpec, existingDeployment] = await Promise.all([getTeam(teamSlug), getTeamDeployment(teamSlug)])
 
-  router.use('/proxy/:teamSlug', async (req, res, next) => {
-    const { teamSlug } = req.params
-    const [teamSpec, existingDeployment] = await Promise.all([getTeam(teamSlug), getTeamDeployment(teamSlug)])
+  if (!teamSpec) {
+    throw new ProxyRequestError(404, `Team '${teamSlug}' is not deployed`)
+  }
 
-    if (!teamSpec) {
-      res.status(404).json({ error: `Team '${teamSlug}' is not deployed` })
-      return
-    }
-
-    const requestedEnvSlug = typeof req.query.envSlug === 'string' ? req.query.envSlug : undefined
-    const deployment = await (async (): Promise<TeamDeploymentRecord | null> => {
-      if (requestedEnvSlug) {
-        // If UI specifies env, it must take precedence over cached deployment metadata.
-        if (existingDeployment?.envSlug === requestedEnvSlug) return existingDeployment
-        const recovered = await buildDeploymentRecord({ teamSlug, teamSpec, envSlug: requestedEnvSlug })
-        if (!recovered) return null
-        await saveTeamDeployment(recovered)
-        return recovered
-      }
-
-      if (existingDeployment) return existingDeployment
-
-      const envs = await listEnvironments()
-      if (envs.length !== 1) return null
-
-      const recovered = await buildDeploymentRecord({ teamSlug, teamSpec, envSlug: envs[0].slug })
+  const deployment = await (async (): Promise<TeamDeploymentRecord | null> => {
+    if (requestedEnvSlug) {
+      // If UI specifies env, it must take precedence over cached deployment metadata.
+      if (existingDeployment?.envSlug === requestedEnvSlug) return existingDeployment
+      const recovered = await buildDeploymentRecord({ teamSlug, teamSpec, envSlug: requestedEnvSlug })
       if (!recovered) return null
       await saveTeamDeployment(recovered)
       return recovered
-    })()
-
-    if (!deployment) {
-      res.status(404).json({ error: `Team '${teamSlug}' is not deployed` })
-      return
     }
 
-    const leadAgentSlug = deployment.leadAgentSlug || teamSpec.agents[0]?.slug
-    if (!leadAgentSlug) {
-      res.status(404).json({ error: `Team '${teamSlug}' has no agents` })
-      return
-    }
+    if (existingDeployment) return existingDeployment
 
-    const env = await getEnvironment(deployment.envSlug)
-    if (!env) {
-      res.status(404).json({ error: `Environment '${deployment.envSlug}' not found` })
-      return
-    }
-    const mode = resolveGatewayMode(env.config)
-    const agentSlugs = new Set(teamSpec.agents.map(a => a.slug))
-    const targetAgentSlug = resolveTargetAgentSlug(req.path, leadAgentSlug, agentSlugs)
-    const rewrittenPath = mode === 'port-forward'
-      ? resolvePortForwardPath(req.path, agentSlugs)
-      : resolveIngressUpstreamPath(req.path, leadAgentSlug, agentSlugs)
-    const token = mode === 'ingress'
-      ? await getToken(deployment.envSlug)
-      : (teamSpec.tokenSeed ? deriveAgentToken(teamSpec.tokenSeed, targetAgentSlug) : null)
-    const upstream = await (async (): Promise<UpstreamTarget> => {
-      if (mode === 'port-forward') {
-        const cluster = parseGkeClusterRef(env.config)
-        if (!cluster) {
-          throw new Error(`Environment '${env.slug}' is missing GKE cluster settings (projectId, clusterName, clusterZone)`)
-        }
-        const target = await ensureAgentPortForward({
-          envSlug: deployment.envSlug,
-          teamSlug,
-          agentSlug: targetAgentSlug,
-          cluster,
-        })
-        return { target }
+    const envs = await listEnvironments()
+    if (envs.length !== 1) return null
+
+    const recovered = await buildDeploymentRecord({ teamSlug, teamSpec, envSlug: envs[0].slug })
+    if (!recovered) return null
+    await saveTeamDeployment(recovered)
+    return recovered
+  })()
+
+  if (!deployment) {
+    throw new ProxyRequestError(404, `Team '${teamSlug}' is not deployed`)
+  }
+
+  const leadAgentSlug = deployment.leadAgentSlug || teamSpec.agents[0]?.slug
+  if (!leadAgentSlug) {
+    throw new ProxyRequestError(404, `Team '${teamSlug}' has no agents`)
+  }
+
+  const env = await getEnvironment(deployment.envSlug)
+  if (!env) {
+    throw new ProxyRequestError(404, `Environment '${deployment.envSlug}' not found`)
+  }
+
+  const mode = resolveGatewayMode(env.config)
+  const agentSlugs = new Set(teamSpec.agents.map(a => a.slug))
+  const targetAgentSlug = resolveTargetAgentSlug(requestedPath, leadAgentSlug, agentSlugs)
+  const rewrittenPath = mode === 'port-forward'
+    ? resolvePortForwardPath(requestedPath, agentSlugs)
+    : resolveIngressUpstreamPath(requestedPath, leadAgentSlug, agentSlugs)
+  const token = mode === 'ingress'
+    ? await getToken(deployment.envSlug)
+    : (teamSpec.tokenSeed ? deriveAgentToken(teamSpec.tokenSeed, teamSlug) : null)
+
+  const upstream = await (async (): Promise<UpstreamTarget> => {
+    if (mode === 'port-forward') {
+      const cluster = parseGkeClusterRef(env.config)
+      if (!cluster) {
+        throw new Error(`Environment '${env.slug}' is missing GKE cluster settings (projectId, clusterName, clusterZone)`)
       }
-      return resolveUpstreamTarget(teamSlug, deployment)
-    })().catch((e) => {
-      sendProxyError(res as Response, 502, 'Failed to establish port-forward to agent gateway', e instanceof Error ? e.message : String(e))
-      return null
-    })
-    if (!upstream) return
-
-    const proxy = createProxyMiddleware({
-      target: upstream.target,
-      changeOrigin: true,
-      ws: true,
-      pathRewrite: () => rewrittenPath,
-      on: {
-        error: (err, _req, res) => {
-          const e = err as NodeJS.ErrnoException
-          const code = e.code ? String(e.code) : 'UNKNOWN_PROXY_ERROR'
-          const detail = e.message ? `${code}: ${e.message}` : code
-          sendProxyError(res as Response, 502, 'Gateway upstream connection failed', detail)
-        },
-        proxyReq: (proxyReq) => {
-          if (token) {
-            proxyReq.setHeader('Authorization', `Bearer ${token}`)
-          }
-          if (upstream.hostHeader) {
-            proxyReq.setHeader('Host', upstream.hostHeader)
-          }
-        },
-        proxyReqWs: (proxyReq) => {
-          if (token) {
-            proxyReq.setHeader('Authorization', `Bearer ${token}`)
-          }
-          if (upstream.hostHeader) {
-            proxyReq.setHeader('Host', upstream.hostHeader)
-          }
-        },
-      },
-    })
-
-    proxy(req, res, next)
+      const target = await ensureAgentPortForward({
+        envSlug: deployment.envSlug,
+        teamSlug,
+        agentSlug: targetAgentSlug,
+        cluster,
+      })
+      return { target }
+    }
+    return resolveUpstreamTarget(teamSlug, deployment)
+  })().catch((e) => {
+    throw new ProxyRequestError(
+      502,
+      'Failed to establish port-forward to agent gateway',
+      e instanceof Error ? e.message : String(e),
+    )
   })
+
+  return { rewrittenPath, token, upstream }
+}
+
+const proxyRequestContextSymbol = Symbol('proxyRequestContext')
+const resolvedProxyRequestContextSymbol = Symbol('resolvedProxyRequestContext')
+
+type ContextualIncomingMessage = IncomingMessage & {
+  [proxyRequestContextSymbol]?: Promise<ProxyRequestContext>
+  [resolvedProxyRequestContextSymbol]?: ProxyRequestContext
+}
+
+function getResolvedProxyRequestContext(req: IncomingMessage): ProxyRequestContext | undefined {
+  return (req as ContextualIncomingMessage)[resolvedProxyRequestContextSymbol]
+}
+
+function getProxyRequestContext(req: IncomingMessage, getToken: TokenFetcher): Promise<ProxyRequestContext> {
+  const contextualReq = req as ContextualIncomingMessage
+
+  if (!contextualReq[proxyRequestContextSymbol]) {
+    contextualReq[proxyRequestContextSymbol] = buildProxyRequestContext(req, getToken).then((context) => {
+      contextualReq[resolvedProxyRequestContextSymbol] = context
+      return context
+    })
+  }
+
+  return contextualReq[proxyRequestContextSymbol]
+}
+
+function isProxyPath(req: Request): boolean {
+  return req.path === '/proxy' || req.path.startsWith('/proxy/')
+}
+
+function isExpressResponse(value: unknown): value is Response {
+  if (typeof value !== 'object' || value === null) return false
+  const candidate = value as Partial<Response>
+  return typeof candidate.status === 'function' && typeof candidate.json === 'function'
+}
+
+export function createGatewayRouter(getToken: TokenFetcher = async () => null) {
+  const router = Router()
+  const proxy = createProxyMiddleware({
+    pathFilter: '/proxy',
+    target: 'http://127.0.0.1',
+    changeOrigin: true,
+    ws: true,
+    router: async (req) => (await getProxyRequestContext(req, getToken)).upstream.target,
+    pathRewrite: async (_path, req) => (await getProxyRequestContext(req, getToken)).rewrittenPath,
+    on: {
+      error: (err, _req, res) => {
+        if (!isExpressResponse(res)) {
+          return
+        }
+
+        if (err instanceof ProxyRequestError) {
+          sendProxyError(res, err.status, err.proxyError, err.detail)
+          return
+        }
+
+        const e = err as NodeJS.ErrnoException
+        const code = e.code ? String(e.code) : 'UNKNOWN_PROXY_ERROR'
+        const detail = e.message ? `${code}: ${e.message}` : code
+        sendProxyError(res, 502, 'Gateway upstream connection failed', detail)
+      },
+      proxyReq: (proxyReq, req) => {
+        const context = getResolvedProxyRequestContext(req)
+        if (!context) return
+        if (context.token) {
+          proxyReq.setHeader('Authorization', `Bearer ${context.token}`)
+        }
+        if (context.upstream.hostHeader) {
+          proxyReq.setHeader('Host', context.upstream.hostHeader)
+        }
+      },
+      proxyReqWs: (proxyReq, req) => {
+        const context = getResolvedProxyRequestContext(req)
+        if (!context) return
+        if (context.token) {
+          proxyReq.setHeader('Authorization', `Bearer ${context.token}`)
+        }
+        if (context.upstream.hostHeader) {
+          proxyReq.setHeader('Host', context.upstream.hostHeader)
+        }
+      },
+    },
+  })
+
+  router.use(async (req, res, next) => {
+    if (!isProxyPath(req)) {
+      next()
+      return
+    }
+
+    try {
+      await getProxyRequestContext(req, getToken)
+      next()
+    } catch (e) {
+      if (e instanceof ProxyRequestError) {
+        sendProxyError(res, e.status, e.proxyError, e.detail)
+        return
+      }
+      next(e)
+    }
+  })
+  router.use(proxy)
 
   return router
 }
