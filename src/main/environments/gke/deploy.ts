@@ -196,6 +196,13 @@ export async function* deployTeam(
     }
   }
 
+  if (options.forceRecreate && options.keepDisks) {
+    for (const name of desiredStatefulSetNames) {
+      await tryDelete(() => appsApi.deleteNamespacedStatefulSet({ name, namespace }))
+      yield { resource: `StatefulSet/${name}`, status: 'deleted', message: 'Force recreate' }
+    }
+  }
+
   if (!options.keepDisks) {
     // Delete PVCs then PVs so K8s releases disk references before GCE disk operations
     for (const f of specFiles.filter(f => f.path.endsWith('/pvc.yaml'))) {

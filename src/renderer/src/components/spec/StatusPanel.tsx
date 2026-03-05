@@ -26,6 +26,7 @@ export function StatusPanel({ spec, onSave, isSaving }: Props) {
   const { data: environments } = useEnvironments()
   const [selectedEnvSlug, setSelectedEnvSlug] = useState('')
   const [keepDisks, setKeepDisks] = useState(true)
+  const [forceRecreate, setForceRecreate] = useState(false)
   const [deployState, setDeployState] = useState<DeployState>('idle')
   const [deriveState, setDeriveState] = useState<DeriveState>('idle')
   const [deployLogs, setDeployLogs] = useState<string[]>([])
@@ -82,7 +83,7 @@ export function StatusPanel({ spec, onSave, isSaving }: Props) {
   const handleDeploy = async () => {
     setDeployState('deploying')
     setDeployLogs([])
-    const options: DeployOptions = { keepDisks }
+    const options: DeployOptions = { keepDisks, forceRecreate }
     const result = await window.api.invoke('deploy:team', { teamSlug: spec.slug, envSlug: selectedEnvSlug, options }) as { ok: boolean; reason?: string }
     setDeployState(result.ok ? 'done' : 'error')
     if (!result.ok) setDeployLogs(prev => [...prev, `ERROR: ${result.reason}`])
@@ -249,6 +250,10 @@ export function StatusPanel({ spec, onSave, isSaving }: Props) {
           <label className="flex items-center gap-1 text-[10px] text-gray-400 cursor-pointer whitespace-nowrap">
             <input type="checkbox" checked={keepDisks} onChange={e => setKeepDisks(e.target.checked)} className="accent-blue-500" />
             Keep disks
+          </label>
+          <label className="flex items-center gap-1 text-[10px] text-gray-400 cursor-pointer whitespace-nowrap">
+            <input type="checkbox" checked={forceRecreate} onChange={e => setForceRecreate(e.target.checked)} className="accent-blue-500" />
+            Force recreate
           </label>
         </div>
 

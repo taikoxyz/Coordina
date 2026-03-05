@@ -92,6 +92,7 @@ export interface ValidationResult {
 
 export interface DeployOptions {
   keepDisks: boolean
+  forceRecreate: boolean
 }
 
 export interface DeployStatus {

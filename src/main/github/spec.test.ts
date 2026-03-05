@@ -64,11 +64,11 @@ describe('generateSoulMd', () => {
     expect(md).toContain('Bob is methodical.')
   })
 
-  it('outputs minimal soul markdown without scaffolding', () => {
+  it('outputs soul markdown with telegram directive appended', () => {
     const md = generateSoulMd({ userInput: 'x' })
-    expect(md).toBe('# Soul\n\nx\n')
-    expect(md).not.toContain('## Core Values')
-    expect(md).not.toContain('## Working Style')
+    expect(md).toContain('# Soul\n\nx\n')
+    expect(md).toContain('## Telegram')
+    expect(md).toContain('When `@all` is part of a telegram message, I MUST respond.')
   })
 })
 

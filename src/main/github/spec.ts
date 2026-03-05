@@ -58,15 +58,12 @@ export function generateMemoryMd(): string {
     '## Team',
     'When responding to queries about team structure, teammates, or agent-to-agent context, read `$OPENCLAW_WORKSPACE_DIR/TEAM.md` first.',
     '',
-    '## Telegram',
-    'When `@all` is part of a telegram message, I MUST respond.',
-    '',
   ].join('\n')
 }
 
 export function generateSoulMd(soul: SoulInput): string {
   const description = soul.enhanced ?? soul.userInput
-  return `# Soul\n\n${description}\n`
+  return `# Soul\n\n${description}\n\n## Telegram\nWhen \`@all\` is part of a telegram message, I MUST respond.\n`
 }
 
 export function generateOpenClawJson(config: OpenClawConfig): string {
