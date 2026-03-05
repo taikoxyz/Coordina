@@ -4,6 +4,10 @@ export interface AgentIdentity {
   soul?: string
   emoji?: string
   avatar?: string
+  teamName?: string
+  teamSlug?: string
+  leadAgentSlug?: string
+  teamSize?: number
 }
 
 export interface SoulInput {
@@ -27,6 +31,15 @@ export interface OpenClawConfig {
 }
 
 export function generateIdentityMd(agent: AgentIdentity): string {
+  const teamLines: string[] = []
+  if (agent.teamName || agent.teamSlug || agent.leadAgentSlug || typeof agent.teamSize === 'number') {
+    teamLines.push('Team:')
+    if (agent.teamName) teamLines.push(`- name: ${agent.teamName}`)
+    if (agent.teamSlug) teamLines.push(`- slug: ${agent.teamSlug}`)
+    if (agent.leadAgentSlug) teamLines.push(`- lead: ${agent.leadAgentSlug}`)
+    if (typeof agent.teamSize === 'number') teamLines.push(`- members: ${agent.teamSize}`)
+  }
+
   return [
     `Name:`,
     agent.name,
@@ -43,11 +56,22 @@ export function generateIdentityMd(agent: AgentIdentity): string {
     `Avatar:`,
     agent.avatar ?? '',
     ``,
+    `Team lookup policy:`,
+    'If the conversation touches the team, a teammate, or another agent, read `$OPENCLAW_WORKSPACE_DIR/TEAM.md` first.',
+    ``,
+    ...teamLines,
+    ``,
   ].join('\n')
 }
 
 export function generateMemoryMd(): string {
-  return `# Memory\n\n## Team\nSee \`TEAM.md\` for full team context, member roster, and contact details.\n`
+  return [
+    '# Memory',
+    '',
+    '## Team',
+    'When responding to queries about team structure, teammates, or agent-to-agent context, read `$OPENCLAW_WORKSPACE_DIR/TEAM.md` first.',
+    '',
+  ].join('\n')
 }
 
 export function generateSoulMd(soul: SoulInput): string {

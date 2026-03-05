@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { generateIdentityMd, generateSoulMd, generateOpenClawJson, generateSkillsMd, generateAgentsMd, generateTeamMd } from './spec'
+import { generateIdentityMd, generateMemoryMd, generateSoulMd, generateOpenClawJson, generateSkillsMd, generateAgentsMd, generateTeamMd } from './spec'
 
 describe('generateIdentityMd', () => {
   it('outputs OpenClaw format with Name, Creature, Vibe, Emoji, Avatar sections', () => {
@@ -23,6 +23,35 @@ describe('generateIdentityMd', () => {
     expect(md).toContain('Vibe:\n')
     expect(md).toContain('Emoji:\n')
     expect(md).toContain('Avatar:\n')
+  })
+
+  it('includes workspace-team path in lookup instruction', () => {
+    const md = generateIdentityMd({ name: 'Alice', role: 'Engineer' })
+    expect(md).toContain('read `$OPENCLAW_WORKSPACE_DIR/TEAM.md` first.')
+  })
+
+  it('adds team context when provided', () => {
+    const md = generateIdentityMd({
+      name: 'Alice',
+      role: 'Engineer',
+      teamName: 'Team Phoenix',
+      teamSlug: 'team-phoenix',
+      leadAgentSlug: 'lead-agent',
+      teamSize: 5,
+    })
+    expect(md).toContain('Team:')
+    expect(md).toContain('- name: Team Phoenix')
+    expect(md).toContain('- slug: team-phoenix')
+    expect(md).toContain('- lead: lead-agent')
+    expect(md).toContain('- members: 5')
+  })
+})
+
+describe('generateMemoryMd', () => {
+  it('references workspace TEAM.md for team-related queries', () => {
+    const md = generateMemoryMd()
+    expect(md).toContain('## Team')
+    expect(md).toContain('read `$OPENCLAW_WORKSPACE_DIR/TEAM.md` first.')
   })
 })
 

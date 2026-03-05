@@ -73,6 +73,7 @@ export interface AgentManifestInput {
   namespace?: string
   credentialSecretName?: string
   cpu?: number
+  podAnnotations?: Record<string, string>
 }
 
 export function generateAgentPv(input: { teamSlug: string; agentSlug: string; projectId: string; zone: string; storageGi?: number }): string {
@@ -120,7 +121,15 @@ export function generateAgentPvc(input: { teamSlug: string; agentSlug: string; n
 }
 
 export function generateAgentStatefulSet(input: AgentManifestInput): string {
-  const { teamSlug, agentSlug, image = 'alpine/openclaw:latest', namespace = 'default', credentialSecretName, cpu } = input
+  const {
+    teamSlug,
+    agentSlug,
+    image = 'alpine/openclaw:latest',
+    namespace = 'default',
+    credentialSecretName,
+    cpu,
+    podAnnotations,
+  } = input
   const resourceName = `agent-${agentSlug}`
   const stateDir = '/agent-data/openclaw/state'
   const workspaceDir = '/agent-data/openclaw/workspace'
@@ -163,7 +172,10 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
       serviceName: resourceName,
       replicas: 1,
       template: {
-        metadata: { labels: { app: resourceName, 'coordina.team': teamSlug } },
+        metadata: {
+          labels: { app: resourceName, 'coordina.team': teamSlug },
+          ...(podAnnotations ? { annotations: podAnnotations } : {}),
+        },
         spec: {
           securityContext: {
             fsGroup: 1000,

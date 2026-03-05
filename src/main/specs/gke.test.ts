@@ -45,6 +45,12 @@ function getTeamMd(files: { path: string; content: string }[]): string {
   return configmap.data['TEAM.md']
 }
 
+function getStatefulSetTemplateAnnotations(files: { path: string; content: string }[], agentSlug: string): Record<string, string> {
+  const file = files.find(f => f.path === `agents/${agentSlug}/statefulset.yaml`)!
+  const manifest = yaml.load(file.content) as { spec: { template: { metadata: { annotations?: Record<string, string> } } } }
+  return manifest.spec.template.metadata?.annotations ?? {}
+}
+
 describe('gkeDeriver gateway injection', () => {
   it('includes per-agent gateway auth token in openclaw.json', async () => {
     const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
@@ -76,6 +82,18 @@ describe('gkeDeriver gateway injection', () => {
     expect(teamMd).toContain('- gateway: ws://agent-alpha.my-team.svc.cluster.local:18789')
     expect(teamMd).toContain('### beta')
     expect(teamMd).toContain('- gateway: ws://agent-beta.my-team.svc.cluster.local:18789')
+  })
+
+  it('adds config hash annotations to trigger rollout when generated files change', async () => {
+    const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
+    const annotations = getStatefulSetTemplateAnnotations(files, 'alpha')
+    const sharedConfigHash = annotations['coordina/shared-config-hash']
+    const agentConfigHash = annotations['coordina/agent-config-hash']
+
+    expect(typeof sharedConfigHash).toBe('string')
+    expect(sharedConfigHash).toHaveLength(64)
+    expect(typeof agentConfigHash).toBe('string')
+    expect(agentConfigHash).toHaveLength(64)
   })
 })
 

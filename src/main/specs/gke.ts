@@ -1,6 +1,6 @@
 // GKE deployment spec deriver generating K8s manifests from team spec files
 // FEATURE: GKE derivation layer with K8s Secrets for API key security
-import { randomBytes, createHmac } from 'crypto'
+import { randomBytes, createHmac, createHash } from 'crypto'
 import yaml from 'js-yaml'
 import {
   generateNamespace,
@@ -87,22 +87,25 @@ const gkeDeriver: DeploymentSpecDeriver = {
 
     files.push({ path: 'namespace.yaml', content: generateNamespace(namespace) })
 
+    const teamConfig = generateTeamConfigMap({
+      teamSlug: spec.slug,
+      namespace,
+      teamMd: generateTeamMd({
+        ...spec,
+        telegramGroupChatId,
+        telegramOwnerUserId,
+        agents: spec.agents.map(a => ({
+          ...a,
+          gatewayUrl: `ws://agent-${a.slug}.${namespace}.svc.cluster.local:18789`,
+        })),
+      }),
+      bootstrapMd: spec.bootstrapInstructions || DEFAULT_BOOTSTRAP_INSTRUCTIONS,
+    })
+    const teamConfigHash = createHash('sha256').update(teamConfig).digest('hex')
+
     files.push({
       path: 'configmap-shared.yaml',
-      content: generateTeamConfigMap({
-        teamSlug: spec.slug,
-        namespace,
-        teamMd: generateTeamMd({
-          ...spec,
-          telegramGroupChatId,
-          telegramOwnerUserId,
-          agents: spec.agents.map(a => ({
-            ...a,
-            gatewayUrl: `ws://agent-${a.slug}.${namespace}.svc.cluster.local:18789`,
-          })),
-        }),
-        bootstrapMd: spec.bootstrapInstructions || DEFAULT_BOOTSTRAP_INSTRUCTIONS,
-      }),
+      content: teamConfig,
     })
 
     for (const agent of spec.agents) {
@@ -176,20 +179,42 @@ const gkeDeriver: DeploymentSpecDeriver = {
       files.push({ path: `agents/${agent.slug}/pv.yaml`, content: generateAgentPv({ teamSlug: spec.slug, agentSlug: agent.slug, projectId, zone: diskZone ?? clusterZone, storageGi: agent.storageGi }) })
       files.push({ path: `agents/${agent.slug}/pvc.yaml`, content: generateAgentPvc({ teamSlug: spec.slug, agentSlug: agent.slug, namespace, storageGi: agent.storageGi }) })
       files.push({ path: `agents/${agent.slug}/credentials.yaml`, content: generateProviderSecret({ teamSlug: spec.slug, providerSlug: agent.providerSlug, agentSlug: agent.slug, namespace, envVars: envVarsWithTelegram }) })
-      files.push({
-        path: `agents/${agent.slug}/configmap.yaml`,
-        content: generateAgentConfigMap({
-          teamSlug: spec.slug,
-          agentSlug: agent.slug,
-          namespace,
-          identityMd: generateIdentityMd({ name: agent.name, role: agent.role, soul: agent.soul, emoji: agent.emoji, avatar: agent.avatar }),
-          memoryMd: generateMemoryMd(),
-          soulMd: generateSoulMd({ userInput: agent.soul }),
-          skillsMd: generateSkillsMd(agent.skills),
-          openclawJson: generateOpenClawJson(openclawConfigWithGateway),
-        }),
+      const identityMd = generateIdentityMd({
+        name: agent.name,
+        role: agent.role,
+        soul: agent.soul,
+        emoji: agent.emoji,
+        avatar: agent.avatar,
+        teamName: spec.name,
+        teamSlug: spec.slug,
+        leadAgentSlug: spec.leadAgentSlug,
+        teamSize: spec.agents.length,
       })
-      files.push({ path: `agents/${agent.slug}/statefulset.yaml`, content: generateAgentStatefulSet({ teamSlug: spec.slug, agentSlug: agent.slug, image: agent.image || spec.image || undefined, namespace, credentialSecretName, cpu: agent.cpu }) })
+      const agentConfigMap = generateAgentConfigMap({
+        teamSlug: spec.slug,
+        agentSlug: agent.slug,
+        namespace,
+        identityMd,
+        memoryMd: generateMemoryMd(),
+        soulMd: generateSoulMd({ userInput: agent.soul }),
+        skillsMd: generateSkillsMd(agent.skills),
+        openclawJson: generateOpenClawJson(openclawConfigWithGateway),
+      })
+      const agentConfigHash = createHash('sha256').update(agentConfigMap).digest('hex')
+
+      files.push({ path: `agents/${agent.slug}/configmap.yaml`, content: agentConfigMap })
+      files.push({ path: `agents/${agent.slug}/statefulset.yaml`, content: generateAgentStatefulSet({
+        teamSlug: spec.slug,
+        agentSlug: agent.slug,
+        image: agent.image || spec.image || undefined,
+        namespace,
+        credentialSecretName,
+        cpu: agent.cpu,
+        podAnnotations: {
+          'coordina/shared-config-hash': teamConfigHash,
+          'coordina/agent-config-hash': agentConfigHash,
+        },
+      }) })
       files.push({ path: `agents/${agent.slug}/service.yaml`, content: generateAgentService({ teamSlug: spec.slug, agentSlug: agent.slug, namespace }) })
     }
 
