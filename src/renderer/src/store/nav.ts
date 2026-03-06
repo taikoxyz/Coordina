@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 export type Page = 'teams' | 'settings'
-export type TeamTab = 'overview' | 'agents' | 'viewer' | 'deploy'
+export type TeamTab = 'overview' | 'agents' | 'deploy'
 export type SettingsTab = 'general' | 'providers' | 'environments'
 
 interface NavStore {

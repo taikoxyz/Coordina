@@ -5,11 +5,8 @@ import { TeamToolbar } from '../components/team/TeamToolbar'
 import { TeamOverview } from '../components/team/TeamOverview'
 import { AgentsTab } from '../components/team/AgentsTab'
 import { DeployTab } from '../components/team/DeployTab'
-import { ChatPane } from '../components/chat/ChatPane'
-import { FileBrowser } from '../components/files/FileBrowser'
 import { useEnvironments } from '../hooks/useEnvironments'
 import { cn } from '../lib/utils'
-import { FileText, MessageSquareText } from 'lucide-react'
 import type { TeamSpec } from '../../../shared/types'
 
 interface Props {
@@ -19,7 +16,6 @@ interface Props {
 const tabs: { id: TeamTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'agents', label: 'Agents' },
-  { id: 'viewer', label: 'View' },
   { id: 'deploy', label: 'Deploy' },
 ]
 
@@ -27,12 +23,10 @@ export function TeamDetailPage({ teamSlug }: Props) {
   const { data: savedSpec, isLoading } = useTeam(teamSlug)
   const [localSpec, setLocalSpec] = useState<TeamSpec | null>(null)
   const [isEditingOverview, setIsEditingOverview] = useState(false)
-  const [viewerMode, setViewerMode] = useState<'chat' | 'files'>('chat')
   const { teamTab, setTeamTab } = useNav()
   const saveTeam = useSaveTeam()
   const { data: environments } = useEnvironments()
 
-  const [selectedAgentSlug, setSelectedAgentSlug] = useState<string>('')
   const [selectedEnvSlug, setSelectedEnvSlug] = useState('')
 
   useEffect(() => {
@@ -41,13 +35,6 @@ export function TeamDetailPage({ teamSlug }: Props) {
       setIsEditingOverview(false)
     }
   }, [savedSpec])
-
-  useEffect(() => {
-    if (!localSpec?.agents.length) return
-    if (!selectedAgentSlug || !localSpec.agents.some(a => a.slug === selectedAgentSlug)) {
-      setSelectedAgentSlug(localSpec.agents[0].slug)
-    }
-  }, [localSpec?.agents, selectedAgentSlug])
 
   useEffect(() => {
     if (environments?.length && !selectedEnvSlug) setSelectedEnvSlug(environments[0].slug)
@@ -61,7 +48,6 @@ export function TeamDetailPage({ teamSlug }: Props) {
     await handleSave()
     setIsEditingOverview(false)
   }
-  const activeAgent = localSpec.agents.find(a => a.slug === selectedAgentSlug) || localSpec.agents[0]
 
   return (
     <div className="h-full flex flex-col bg-white">
@@ -110,94 +96,15 @@ export function TeamDetailPage({ teamSlug }: Props) {
         )}
 
         {teamTab === 'agents' && (
-          <AgentsTab spec={localSpec} onSpecChange={setLocalSpec} />
+          <AgentsTab
+            spec={localSpec}
+            onSpecChange={setLocalSpec}
+            envSlug={selectedEnvSlug || undefined}
+          />
         )}
 
         {teamTab === 'deploy' && (
           <DeployTab spec={localSpec} onSave={handleSave} isSaving={saveTeam.isPending} />
-        )}
-
-        {teamTab === 'viewer' && (
-          <div className="flex h-full overflow-hidden">
-            <div className="w-52 shrink-0 border-r border-gray-100 bg-[#f6f5f3] flex flex-col">
-              <div className="px-3 py-3 border-b border-gray-100 space-y-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400">Per-agent view</div>
-                <div className="space-y-1.5">
-                  {([
-                    { id: 'chat', label: 'Chat', icon: MessageSquareText },
-                    { id: 'files', label: 'Files', icon: FileText },
-                  ] as const).map((mode) => {
-                    const Icon = mode.icon
-                    return (
-                      <button
-                        key={mode.id}
-                        onClick={() => setViewerMode(mode.id)}
-                        className={cn(
-                          'w-full flex items-center gap-2 rounded-xl px-2.5 py-2 text-[12px] font-medium transition-colors',
-                          viewerMode === mode.id
-                            ? 'bg-white text-gray-900 shadow-sm ring-1 ring-gray-200'
-                            : 'text-gray-500 hover:bg-white/80 hover:text-gray-700'
-                        )}
-                      >
-                        <Icon className="w-3.5 h-3.5 shrink-0" />
-                        {mode.label}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                {localSpec.agents.map((agent, index) => (
-                  <button
-                    key={agent.slug}
-                    onClick={() => setSelectedAgentSlug(agent.slug)}
-                    className={cn(
-                      'w-full text-left rounded-xl px-2.5 py-2 transition-colors',
-                      selectedAgentSlug === agent.slug
-                        ? 'bg-white text-gray-900 shadow-sm ring-1 ring-gray-200'
-                        : 'text-gray-600 hover:bg-white/80 hover:text-gray-900'
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      {agent.emoji ? (
-                        <span className="text-[13px]">{agent.emoji}</span>
-                      ) : (
-                        <div className="w-5 h-5 rounded-full bg-blue-50 flex items-center justify-center text-[10px] font-semibold text-blue-600">
-                          {(agent.name || '?').charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <div className="text-[12px] font-medium truncate">{agent.name || agent.slug}</div>
-                        <div className="text-[10px] text-gray-400 truncate font-mono">
-                          {index === 0 ? 'Lead' : 'Direct'} · {agent.slug}
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex-1 min-w-0">
-              {viewerMode === 'chat' && localSpec.agents.length > 0 && (
-                <ChatPane
-                  teamSlug={localSpec.slug}
-                  envSlug={selectedEnvSlug || undefined}
-                  agentSlug={selectedAgentSlug === localSpec.agents[0]?.slug ? undefined : selectedAgentSlug}
-                  agentName={activeAgent?.name}
-                />
-              )}
-              {viewerMode === 'files' && activeAgent && (
-                <FileBrowser
-                  key={`${teamSlug}:${activeAgent.slug}`}
-                  teamSlug={teamSlug}
-                  agentSlug={activeAgent.slug}
-                  agentName={activeAgent.name}
-                />
-              )}
-            </div>
-          </div>
         )}
       </div>
 
