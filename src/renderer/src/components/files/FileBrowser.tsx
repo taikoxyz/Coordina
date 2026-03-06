@@ -66,6 +66,7 @@ export function FileBrowser({ teamSlug, agentSlug, agentName, teamSnapshot }: Pr
 
   const activeTabData = openTabs.find(t => t.path === activeTab)
   const files = fileList?.files ?? []
+  const fileListError = fileList?.error
 
   return (
     <div className="flex h-full bg-white">
@@ -78,11 +79,16 @@ export function FileBrowser({ teamSlug, agentSlug, agentName, teamSnapshot }: Pr
           {fileList?.offline && (
             <p className="text-xs text-yellow-600 mt-0.5">Preview — showing files that will be seeded on deploy</p>
           )}
+          {!fileList?.offline && fileListError && (
+            <p className="text-xs text-red-600 mt-0.5">{fileListError}</p>
+          )}
         </div>
         {listLoading ? (
           <div className="px-3 py-4 text-xs text-gray-400">Loading…</div>
-        ) : fileList?.error ? (
-          <div className="px-3 py-4 text-xs text-red-600">{fileList.error}</div>
+        ) : files.length === 0 ? (
+          <div className="px-3 py-4 text-xs text-gray-400">
+            {fileListError ?? 'No files available'}
+          </div>
         ) : (
           <FileTree files={files} onSelect={openFile} activeFile={activeTab ?? undefined} />
         )}
