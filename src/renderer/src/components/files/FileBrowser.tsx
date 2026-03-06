@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { RefreshCw } from 'lucide-react'
 import { FileTree } from './FileTree'
 import { FileTab } from './FileTab'
 import { MarkdownViewer } from './MarkdownViewer'
@@ -19,19 +20,30 @@ interface OpenTab {
   path: string
   content: string | null
   loading: boolean
+  error?: string
 }
 
 export function FileBrowser({ teamSlug, agentSlug, agentName }: Props) {
   const [openTabs, setOpenTabs] = useState<OpenTab[]>([])
   const [activeTab, setActiveTab] = useState<string | null>(null)
+  const [refreshingTabs, setRefreshingTabs] = useState(false)
 
-  const { data: fileList, isLoading: listLoading } = useQuery<{
+  const {
+    data: fileList,
+    isLoading: listLoading,
+    isFetching: listFetching,
+    refetch: refetchFileList,
+  } = useQuery<{
     files: FileEntry[]
     error?: string
   }>({
     queryKey: ['files:list', teamSlug, agentSlug],
     queryFn: () => window.api.invoke('files:list', teamSlug, agentSlug) as Promise<{ files: FileEntry[]; error?: string }>,
   })
+
+  async function fetchFile(filePath: string): Promise<{ content: string | null; error?: string }> {
+    return window.api.invoke('files:get', teamSlug, agentSlug, filePath) as Promise<{ content: string | null; error?: string }>
+  }
 
   async function openFile(filePath: string) {
     // If already open, just switch to it
@@ -44,10 +56,32 @@ export function FileBrowser({ teamSlug, agentSlug, agentName }: Props) {
     setOpenTabs(prev => [...prev, { path: filePath, content: null, loading: true }])
     setActiveTab(filePath)
 
-    const result = await window.api.invoke('files:get', teamSlug, agentSlug, filePath) as { content: string | null }
+    const result = await fetchFile(filePath)
     setOpenTabs(prev => prev.map(t =>
-      t.path === filePath ? { ...t, content: result.content, loading: false } : t
+      t.path === filePath ? { ...t, content: result.content, loading: false, error: result.error } : t
     ))
+  }
+
+  async function reloadFiles() {
+    const tabsToRefresh = openTabs.map(tab => tab.path)
+    setRefreshingTabs(true)
+    setOpenTabs(prev => prev.map(tab => ({ ...tab, loading: true })))
+
+    try {
+      await refetchFileList()
+      const refreshedTabs = await Promise.all(tabsToRefresh.map(async (path) => {
+        const result = await fetchFile(path)
+        return {
+          path,
+          content: result.content,
+          loading: false,
+          error: result.error,
+        }
+      }))
+      setOpenTabs(refreshedTabs)
+    } finally {
+      setRefreshingTabs(false)
+    }
   }
 
   function closeTab(filePath: string) {
@@ -63,18 +97,31 @@ export function FileBrowser({ teamSlug, agentSlug, agentName }: Props) {
   const activeTabData = openTabs.find(t => t.path === activeTab)
   const files = fileList?.files ?? []
   const fileListError = fileList?.error
+  const isRefreshing = listFetching || refreshingTabs
 
   return (
     <div className="flex h-full bg-white">
       {/* Left: file tree */}
       <div className="w-56 flex-shrink-0 border-r border-gray-200 flex flex-col bg-gray-50">
         <div className="px-3 py-2 border-b border-gray-200">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            {agentName ?? agentSlug}
-          </p>
-          {fileListError && (
-            <p className="text-xs text-red-600 mt-0.5">{fileListError}</p>
-          )}
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">
+                {agentName ?? agentSlug}
+              </p>
+              {fileListError && (
+                <p className="text-xs text-red-600 mt-0.5">{fileListError}</p>
+              )}
+            </div>
+            <button
+              onClick={reloadFiles}
+              disabled={isRefreshing}
+              className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-default transition-colors"
+              title="Refresh files"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
         </div>
         {listLoading ? (
           <div className="px-3 py-4 text-xs text-gray-400">Loading…</div>
@@ -114,7 +161,7 @@ export function FileBrowser({ teamSlug, agentSlug, agentName }: Props) {
             </div>
           ) : activeTabData.content === null ? (
             <div className="flex items-center justify-center h-full text-red-500 text-sm">
-              Failed to load file
+              {activeTabData.error ?? 'Failed to load file'}
             </div>
           ) : (
             <MarkdownViewer content={activeTabData.content} filePath={activeTabData.path} />
