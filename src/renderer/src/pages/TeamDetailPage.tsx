@@ -55,7 +55,7 @@ export function TeamDetailPage({ teamSlug }: Props) {
     <div className="h-full flex flex-col bg-white">
       <TeamToolbar
         spec={localSpec}
-        showSaveButton={teamTab === 'agents'}
+        showSaveButton={false}
         onSave={handleSave}
         isSaving={saveTeam.isPending}
       />
@@ -103,6 +103,8 @@ export function TeamDetailPage({ teamSlug }: Props) {
           <AgentsTab
             spec={localSpec}
             onSpecChange={setLocalSpec}
+            onSave={handleSave}
+            isSaving={saveTeam.isPending}
             envSlug={selectedEnvSlug || undefined}
           />
         )}

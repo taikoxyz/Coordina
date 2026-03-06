@@ -19,6 +19,8 @@ import {
 interface Props {
   spec: TeamSpec
   onSpecChange: (spec: TeamSpec) => void
+  onSave: () => Promise<void>
+  isSaving: boolean
   envSlug?: string
 }
 
@@ -28,13 +30,14 @@ const nameThemeOptions: Array<{ value: AgentNameTheme; label: string }> = [
   { value: 'mixed', label: 'Mixed' },
 ]
 
-export function AgentsTab({ spec, onSpecChange, envSlug }: Props) {
+export function AgentsTab({ spec, onSpecChange, onSave, isSaving, envSlug }: Props) {
   const { data: providers } = useProviders()
   const providerSlugs = (providers ?? []).map((p) => p.slug)
   const [nameTheme, setNameTheme] = useState<AgentNameTheme>('sci-fi')
   const [selectedAgentSlug, setSelectedAgentSlug] = useState(
     spec.agents[0]?.slug ?? '',
   )
+  const [isEditingAgent, setIsEditingAgent] = useState(false)
   const [panelMode, setPanelMode] = useState<'details' | 'chat' | 'files'>(
     'details',
   )
@@ -75,6 +78,7 @@ export function AgentsTab({ spec, onSpecChange, envSlug }: Props) {
   useEffect(() => {
     if (!spec.agents.length) {
       setSelectedAgentSlug('')
+      setIsEditingAgent(false)
       return
     }
     if (
@@ -82,6 +86,7 @@ export function AgentsTab({ spec, onSpecChange, envSlug }: Props) {
       !spec.agents.some((agent) => agent.slug === selectedAgentSlug)
     ) {
       setSelectedAgentSlug(spec.agents[0].slug)
+      setIsEditingAgent(false)
     }
   }, [spec.agents, selectedAgentSlug])
 
@@ -117,7 +122,10 @@ export function AgentsTab({ spec, onSpecChange, envSlug }: Props) {
           {spec.agents.map((agent, index) => (
             <button
               key={agent.slug}
-              onClick={() => setSelectedAgentSlug(agent.slug)}
+              onClick={() => {
+                setSelectedAgentSlug(agent.slug)
+                setIsEditingAgent(false)
+              }}
               className={cn(
                 'w-full border-b border-gray-100 px-3 py-2.5 text-left transition-colors',
                 selectedAgentSlug === agent.slug
@@ -232,6 +240,13 @@ export function AgentsTab({ spec, onSpecChange, envSlug }: Props) {
                 agent={activeAgent}
                 isFirst={selectedAgentIndex <= 0}
                 providerSlugs={providerSlugs}
+                isEditing={isEditingAgent}
+                onEdit={() => setIsEditingAgent(true)}
+                onSave={async () => {
+                  await onSave()
+                  setIsEditingAgent(false)
+                }}
+                isSaving={isSaving}
                 onChange={(updated) => {
                   setSelectedAgentSlug(updated.slug)
                   updateAgent(selectedAgentIndex, updated)
