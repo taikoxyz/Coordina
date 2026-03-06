@@ -146,6 +146,9 @@ const gkeDeriver: DeploymentSpecDeriver = {
             },
           }
         : undefined
+      const telegramMessagesConfig = hasTelegramRouting
+        ? { groupChat: { mentionPatterns: ['@all', '@agents', '@team', `@${telegramBotId}`] } }
+        : undefined
       const baseGateway = (openclawConfig as { gateway?: Record<string, unknown> }).gateway ?? {}
       const baseHttp = (baseGateway.http as { endpoints?: Record<string, unknown> } | undefined) ?? {}
       const baseEndpoints = baseHttp.endpoints ?? {}
@@ -167,6 +170,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
         ...((baseChannels || telegramChannelsConfig)
           ? { channels: { ...(baseChannels ?? {}), ...(telegramChannelsConfig ?? {}) } }
           : {}),
+        ...(telegramMessagesConfig ? { messages: telegramMessagesConfig } : {}),
         tools: {
           ...baseTools,
           profile: (baseTools.profile as string | undefined) ?? 'full',

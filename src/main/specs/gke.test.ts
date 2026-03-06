@@ -155,6 +155,7 @@ describe('gkeDeriver telegram config', () => {
     expect(alphaConfig.channels.telegram.groupPolicy).toBe('allowlist')
     expect(alphaConfig.channels.telegram.groupAllowFrom).toEqual(['222222222'])
     expect(alphaConfig.channels.telegram.groups['-1001234567890']).toEqual({ requireMention: true })
+    expect(alphaConfig.messages.groupChat.mentionPatterns).toEqual(['@all', '@agents', '@team', '@111111111'])
     expect(alphaConfig.channels.telegram.enabled).toBe(true)
   })
 })
