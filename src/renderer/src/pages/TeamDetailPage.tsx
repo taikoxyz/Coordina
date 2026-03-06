@@ -18,15 +18,15 @@ interface Props {
 const tabs: { id: TeamTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'agents', label: 'Agents' },
+  { id: 'viewer', label: 'View' },
   { id: 'deploy', label: 'Deploy' },
-  { id: 'chat', label: 'Chat' },
-  { id: 'files', label: 'Files' },
 ]
 
 export function TeamDetailPage({ teamSlug }: Props) {
   const { data: savedSpec, isLoading } = useTeam(teamSlug)
   const [localSpec, setLocalSpec] = useState<TeamSpec | null>(null)
   const [isEditingOverview, setIsEditingOverview] = useState(false)
+  const [viewerMode, setViewerMode] = useState<'chat' | 'files'>('chat')
   const { teamTab, setTeamTab } = useNav()
   const saveTeam = useSaveTeam()
   const { data: environments } = useEnvironments()
@@ -66,7 +66,7 @@ export function TeamDetailPage({ teamSlug }: Props) {
     <div className="h-full flex flex-col bg-white">
       <TeamToolbar
         spec={localSpec}
-        showSaveButton={teamTab !== 'overview'}
+        showSaveButton={teamTab === 'agents' || teamTab === 'deploy'}
         onSave={handleSave}
         isSaving={saveTeam.isPending}
       />
@@ -116,42 +116,63 @@ export function TeamDetailPage({ teamSlug }: Props) {
           <DeployTab spec={localSpec} onSave={handleSave} isSaving={saveTeam.isPending} />
         )}
 
-        {teamTab === 'chat' && (
+        {teamTab === 'viewer' && (
           <div className="flex h-full overflow-hidden">
-            {/* Agent selector sidebar */}
-            <div className="w-48 shrink-0 border-r border-gray-200 overflow-y-auto p-2 space-y-1 bg-gray-50">
-              {localSpec.agents.map((agent, index) => (
-                <button
-                  key={agent.slug}
-                  onClick={() => setSelectedAgentSlug(agent.slug)}
-                  className={cn(
-                    'w-full text-left rounded-md px-2.5 py-2 transition-colors',
-                    selectedAgentSlug === agent.slug
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-600 hover:bg-white hover:text-gray-900'
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    {agent.emoji ? (
-                      <span className="text-sm">{agent.emoji}</span>
-                    ) : (
-                      <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center text-xs font-semibold text-blue-600">
-                        {(agent.name || '?').charAt(0).toUpperCase()}
-                      </div>
+            <div className="w-56 shrink-0 border-r border-gray-200 bg-gray-50 flex flex-col">
+              <div className="px-3 py-3 border-b border-gray-200">
+                <div className="text-xs font-semibold uppercase tracking-wider text-gray-500">Per-agent view</div>
+                <div className="mt-2 inline-flex rounded-md border border-gray-200 bg-white p-0.5">
+                  {(['chat', 'files'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => setViewerMode(mode)}
+                      className={cn(
+                        'px-2.5 py-1 text-xs font-medium rounded transition-colors',
+                        viewerMode === mode
+                          ? 'bg-gray-900 text-white'
+                          : 'text-gray-500 hover:text-gray-700'
+                      )}
+                    >
+                      {mode === 'chat' ? 'Chat' : 'Files'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                {localSpec.agents.map((agent, index) => (
+                  <button
+                    key={agent.slug}
+                    onClick={() => setSelectedAgentSlug(agent.slug)}
+                    className={cn(
+                      'w-full text-left rounded-md px-2.5 py-2 transition-colors',
+                      selectedAgentSlug === agent.slug
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-600 hover:bg-white hover:text-gray-900'
                     )}
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium truncate">{agent.name || agent.slug}</div>
-                      <div className="text-xs text-gray-400 truncate">
-                        {index === 0 ? 'Lead' : 'Direct'} · {agent.slug}
+                  >
+                    <div className="flex items-center gap-2">
+                      {agent.emoji ? (
+                        <span className="text-sm">{agent.emoji}</span>
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center text-xs font-semibold text-blue-600">
+                          {(agent.name || '?').charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">{agent.name || agent.slug}</div>
+                        <div className="text-xs text-gray-400 truncate">
+                          {index === 0 ? 'Lead' : 'Direct'} · {agent.slug}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                ))}
+              </div>
             </div>
-            {/* Chat pane */}
+
             <div className="flex-1 min-w-0">
-              {localSpec.agents.length > 0 && (
+              {viewerMode === 'chat' && localSpec.agents.length > 0 && (
                 <ChatPane
                   teamSlug={localSpec.slug}
                   envSlug={selectedEnvSlug || undefined}
@@ -159,41 +180,7 @@ export function TeamDetailPage({ teamSlug }: Props) {
                   agentName={activeAgent?.name}
                 />
               )}
-            </div>
-          </div>
-        )}
-
-        {teamTab === 'files' && (
-          <div className="flex h-full overflow-hidden">
-            {/* Agent selector sidebar */}
-            <div className="w-48 shrink-0 border-r border-gray-200 overflow-y-auto p-2 space-y-1 bg-gray-50">
-              {localSpec.agents.map((agent) => (
-                <button
-                  key={agent.slug}
-                  onClick={() => setSelectedAgentSlug(agent.slug)}
-                  className={cn(
-                    'w-full text-left rounded-md px-2.5 py-2 transition-colors',
-                    selectedAgentSlug === agent.slug
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-600 hover:bg-white hover:text-gray-900'
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    {agent.emoji ? (
-                      <span className="text-sm">{agent.emoji}</span>
-                    ) : (
-                      <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center text-xs font-semibold text-blue-600">
-                        {(agent.name || '?').charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                    <div className="text-sm font-medium truncate">{agent.name || agent.slug}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-            {/* File browser */}
-            <div className="flex-1 min-w-0">
-              {activeAgent && (
+              {viewerMode === 'files' && activeAgent && (
                 <FileBrowser
                   key={`${teamSlug}:${activeAgent.slug}`}
                   teamSlug={teamSlug}
