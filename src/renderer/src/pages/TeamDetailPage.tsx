@@ -46,6 +46,7 @@ export function TeamDetailPage({ teamSlug }: Props) {
   if (!localSpec) return <div className="p-6 text-sm text-gray-500">Team not found.</div>
 
   const handleSave = () => saveTeam.mutateAsync(localSpec).then(() => undefined)
+  const handleSaveSpec = (specToSave: TeamSpec) => saveTeam.mutateAsync(specToSave).then(() => undefined)
   const handleOverviewSave = async () => {
     await handleSave()
     setIsEditingOverview(false)
@@ -104,6 +105,7 @@ export function TeamDetailPage({ teamSlug }: Props) {
             spec={localSpec}
             onSpecChange={setLocalSpec}
             onSave={handleSave}
+            onSaveSpec={handleSaveSpec}
             isSaving={saveTeam.isPending}
             envSlug={selectedEnvSlug || undefined}
           />

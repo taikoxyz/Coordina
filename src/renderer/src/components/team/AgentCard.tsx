@@ -365,23 +365,13 @@ export function AgentCard({
           </>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <ReadField label="Name" value={agent.name} />
-                {agent.slug && (
-                  <p className="text-xs text-gray-400 font-mono mt-0.5">
-                    {agent.slug}
-                  </p>
-                )}
-              </div>
-              <ReadField label="Role" value={agent.role} />
-            </div>
-
             <div className="grid grid-cols-3 gap-3">
               <ReadField label="Emoji" value={agent.emoji} />
               <ReadField label="Avatar URL" value={agent.avatar} monospace />
               <ReadField label="Provider" value={agent.provider} monospace />
             </div>
+
+            <hr className="border-gray-100" />
 
             <div className="grid grid-cols-2 gap-3">
               <ReadField label="Telegram Bot ID" value={agent.telegramBot} monospace />
@@ -396,11 +386,15 @@ export function AgentCard({
               </div>
             </div>
 
+            <hr className="border-gray-100" />
+
             <div className="grid grid-cols-3 gap-3">
               <ReadField label="Container image" value={agent.image} monospace />
               <ReadField label="CPU (cores)" value={agent.cpu} />
               <ReadField label="Disk (Gi)" value={agent.diskGi} />
             </div>
+
+            <hr className="border-gray-100" />
 
             <div>
               <label className={labelCls}>Persona</label>

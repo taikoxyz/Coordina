@@ -108,7 +108,7 @@ export function TeamOverview({
 
   if (!isEditing) {
     return (
-      <div className="max-w-3xl space-y-5 py-6 px-6">
+      <div className="max-w-2xl mx-auto space-y-6 py-6 px-6">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-semibold text-gray-900">Team overview</h3>
@@ -122,40 +122,46 @@ export function TeamOverview({
           </button>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-5">
-          <div>
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Team details</h4>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-              <ReadField label="Name" value={spec.name} />
-              <ReadField label="Slug" value={spec.slug} monospace />
-            </div>
-          </div>
-
-          <div>
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Telegram integration</h4>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-              <ReadField label="Group ID" value={spec.telegramGroupId} monospace />
-              <ReadField label="Admin ID" value={spec.telegramAdminId} monospace />
-            </div>
-          </div>
-
-          <div>
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Infrastructure defaults</h4>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-              <ReadField label="Default container image" value={spec.defaultImage} monospace />
-              <ReadField label="Storage (Gi)" value={spec.defaultDiskGi} />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <div className={readLabelCls}>Startup instructions</div>
-            <div className={`min-h-20 whitespace-pre-wrap rounded-lg bg-gray-50 px-4 py-3 font-mono text-xs ${spec.startupInstructions?.trim() ? 'text-gray-700' : emptyValueCls}`}>
-              {spec.startupInstructions?.trim() || 'Not set'}
-            </div>
+        <div>
+          <h4 className="text-sm font-semibold text-gray-900 mb-3">Team details</h4>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+            <ReadField label="Name" value={spec.name} />
+            <ReadField label="Slug" value={spec.slug} monospace />
           </div>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+        <hr className="border-gray-200" />
+
+        <div>
+          <h4 className="text-sm font-semibold text-gray-900 mb-3">Telegram integration</h4>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+            <ReadField label="Group ID" value={spec.telegramGroupId} monospace />
+            <ReadField label="Admin ID" value={spec.telegramAdminId} monospace />
+          </div>
+        </div>
+
+        <hr className="border-gray-200" />
+
+        <div>
+          <h4 className="text-sm font-semibold text-gray-900 mb-3">Infrastructure defaults</h4>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+            <ReadField label="Default container image" value={spec.defaultImage} monospace />
+            <ReadField label="Storage (Gi)" value={spec.defaultDiskGi} />
+          </div>
+        </div>
+
+        <hr className="border-gray-200" />
+
+        <div className="space-y-1.5">
+          <div className={readLabelCls}>Startup instructions</div>
+          <div className={`min-h-20 whitespace-pre-wrap rounded-lg bg-gray-50 px-4 py-3 font-mono text-xs ${spec.startupInstructions?.trim() ? 'text-gray-700' : emptyValueCls}`}>
+            {spec.startupInstructions?.trim() || 'Not set'}
+          </div>
+        </div>
+
+        <hr className="border-gray-200" />
+
+        <div className="space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h4 className="text-sm font-semibold text-gray-900">Deployment</h4>
@@ -332,7 +338,7 @@ export function TeamOverview({
   }
 
   return (
-    <div className="max-w-xl space-y-5 py-6 px-6">
+    <div className="max-w-2xl mx-auto space-y-5 py-6 px-6">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-gray-900">Edit team</h3>

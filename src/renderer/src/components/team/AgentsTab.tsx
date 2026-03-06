@@ -4,12 +4,7 @@ import { useSettings } from '../../hooks/useSettings'
 import { AgentCard } from './AgentCard'
 import { ChatPane } from '../chat/ChatPane'
 import { FileBrowser } from '../files/FileBrowser'
-import {
-  FileText,
-  MessageSquareText,
-  Plus,
-  SlidersHorizontal,
-} from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import type { TeamSpec, AgentSpec } from '../../../../shared/types'
 import {
@@ -21,11 +16,12 @@ interface Props {
   spec: TeamSpec
   onSpecChange: (spec: TeamSpec) => void
   onSave: () => Promise<void>
+  onSaveSpec: (spec: TeamSpec) => Promise<void>
   isSaving: boolean
   envSlug?: string
 }
 
-export function AgentsTab({ spec, onSpecChange, onSave, isSaving, envSlug }: Props) {
+export function AgentsTab({ spec, onSpecChange, onSave, onSaveSpec, isSaving, envSlug }: Props) {
   const { data: providers } = useProviders()
   const { data: settings } = useSettings()
   const providerSlugs = (providers ?? []).map((p) => p.slug)
@@ -66,7 +62,10 @@ export function AgentsTab({ spec, onSpecChange, onSave, isSaving, envSlug }: Pro
   }
 
   const deleteAgent = (i: number) => {
-    applyAgents(spec.agents.filter((_, j) => j !== i))
+    const newAgents = spec.agents.filter((_, j) => j !== i)
+    const newSpec = { ...spec, agents: newAgents, leadAgent: newAgents[0]?.slug || undefined }
+    onSpecChange(newSpec)
+    void onSaveSpec(newSpec)
   }
 
   useEffect(() => {
@@ -89,9 +88,9 @@ export function AgentsTab({ spec, onSpecChange, onSave, isSaving, envSlug }: Pro
   )
   const activeAgent = spec.agents[selectedAgentIndex] ?? spec.agents[0]
   const compactModes = [
-    { id: 'details', label: 'Details', icon: SlidersHorizontal },
-    { id: 'chat', label: 'Chat', icon: MessageSquareText },
-    { id: 'files', label: 'Files', icon: FileText },
+    { id: 'details', label: 'Details' },
+    { id: 'chat', label: 'Chat' },
+    { id: 'files', label: 'Files' },
   ] as const
 
   return (
@@ -127,22 +126,16 @@ export function AgentsTab({ spec, onSpecChange, onSave, isSaving, envSlug }: Pro
                   : 'text-gray-600 hover:bg-white/80 hover:text-gray-900',
               )}
             >
-              <div className="flex items-center gap-2">
-                {agent.emoji ? (
-                  <span className="text-[13px]">{agent.emoji}</span>
-                ) : (
-                  <div className="w-5 h-5 rounded-full bg-blue-50 flex items-center justify-center text-[10px] font-semibold text-blue-600">
-                    {(agent.name || '?').charAt(0).toUpperCase()}
+              <div className="min-w-0">
+                <div className="text-[12px] font-medium truncate">
+                  {agent.name || agent.slug}
+                  {index === 0 && <span className="text-gray-400 font-normal"> (Lead)</span>}
+                </div>
+                {agent.role && (
+                  <div className="text-[10px] text-gray-400 truncate">
+                    {agent.role}
                   </div>
                 )}
-                <div className="min-w-0">
-                  <div className="text-[12px] font-medium truncate">
-                    {agent.name || agent.slug}
-                  </div>
-                  <div className="text-[10px] text-gray-400 truncate font-mono">
-                    {index === 0 ? 'Lead' : 'Direct'} · {agent.slug}
-                  </div>
-                </div>
               </div>
             </button>
           ))}
@@ -150,36 +143,25 @@ export function AgentsTab({ spec, onSpecChange, onSave, isSaving, envSlug }: Pro
       </div>
 
       <div className="flex-1 min-w-0 overflow-hidden flex flex-col bg-white">
-        <div className="border-b border-gray-100 px-6 py-3 shrink-0">
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-gray-900 truncate">
-                {activeAgent?.name || 'Agent details'}
-              </div>
-              <div className="text-[11px] text-gray-400 font-mono truncate">
-                {activeAgent ? activeAgent.slug : 'Select an agent'}
-              </div>
-            </div>
-            <div className="inline-flex rounded-xl border border-gray-200 bg-gray-50 p-1">
-              {compactModes.map((mode) => {
-                const Icon = mode.icon
-                return (
-                  <button
-                    key={mode.id}
-                    onClick={() => setPanelMode(mode.id)}
-                    className={cn(
-                      'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium transition-colors',
-                      panelMode === mode.id
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700',
-                    )}
-                  >
-                    <Icon className="w-3.5 h-3.5 shrink-0" />
-                    {mode.label}
-                  </button>
-                )
-              })}
-            </div>
+        <div className="border-b border-gray-100 shrink-0">
+          <div className="flex justify-center gap-6 px-6 py-2">
+            {compactModes.map((mode) => (
+              <button
+                key={mode.id}
+                onClick={() => setPanelMode(mode.id)}
+                className={cn(
+                  'text-[13px] font-medium py-1.5 transition-colors relative',
+                  panelMode === mode.id
+                    ? 'text-gray-900'
+                    : 'text-gray-400 hover:text-gray-600',
+                )}
+              >
+                {mode.label}
+                {panelMode === mode.id && (
+                  <span className="absolute -bottom-2 left-0 right-0 h-[2px] bg-gray-900 rounded-t" />
+                )}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -194,12 +176,6 @@ export function AgentsTab({ spec, onSpecChange, onSave, isSaving, envSlug }: Pro
             </div>
           ) : panelMode === 'details' ? (
             <div className="py-6 px-6 max-w-2xl space-y-4 h-full overflow-y-auto">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-gray-900">
-                  Agents ({spec.agents.length})
-                </span>
-              </div>
-
               <AgentCard
                 key={activeAgent.slug}
                 teamSlug={spec.slug}
