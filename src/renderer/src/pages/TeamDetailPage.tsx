@@ -103,6 +103,8 @@ export function TeamDetailPage({ teamSlug }: Props) {
             onEdit={() => setIsEditingOverview(true)}
             onSave={handleOverviewSave}
             isSaving={saveTeam.isPending}
+            deployEnvSlug={selectedEnvSlug || undefined}
+            deployEnvName={environments?.find(env => env.slug === selectedEnvSlug)?.name}
           />
         )}
 

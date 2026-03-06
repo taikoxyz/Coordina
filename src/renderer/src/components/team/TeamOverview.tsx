@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AlertCircle, Check, Loader2, Rocket, X } from 'lucide-react'
 import type { AgentSpec, TeamSpec } from '../../../../shared/types'
 
 interface Props {
@@ -8,6 +9,8 @@ interface Props {
   onEdit: () => void
   onSave: () => Promise<void>
   isSaving: boolean
+  deployEnvSlug?: string
+  deployEnvName?: string
 }
 
 const inputCls = 'w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
@@ -44,9 +47,15 @@ function ReadField({ label, value, monospace = false }: { label: string; value?:
   )
 }
 
-export function TeamOverview({ spec, onSpecChange, isEditing, onEdit, onSave, isSaving }: Props) {
+type OverviewDeployState = 'idle' | 'preparing' | 'deploying' | 'done' | 'error'
+
+export function TeamOverview({ spec, onSpecChange, isEditing, onEdit, onSave, isSaving, deployEnvSlug, deployEnvName }: Props) {
   const [selectedAgentSlug, setSelectedAgentSlug] = useState(spec.agents[0]?.slug ?? '')
   const [isEditingMember, setIsEditingMember] = useState(false)
+  const [isDeployDrawerOpen, setIsDeployDrawerOpen] = useState(false)
+  const [deployFiles, setDeployFiles] = useState<string[]>([])
+  const [deployLogs, setDeployLogs] = useState<string[]>([])
+  const [deployState, setDeployState] = useState<OverviewDeployState>('idle')
 
   const set = useCallback((key: keyof TeamSpec) => (value: unknown) => {
     onSpecChange({ ...spec, [key]: value })
@@ -81,6 +90,55 @@ export function TeamOverview({ spec, onSpecChange, isEditing, onEdit, onSave, is
     setIsEditingMember(false)
   }
 
+  useEffect(() => {
+    return window.api.on?.('deploy:status', (data: unknown) => {
+      const d = data as { resource: string; status: string; message?: string }
+      const line = `${d.status.toUpperCase().padEnd(8)} ${d.resource}${d.message ? ` — ${d.message}` : ''}`
+      setDeployLogs(prev => [...prev, line])
+    })
+  }, [])
+
+  const handleDeploy = async () => {
+    if (!deployEnvSlug) return
+
+    setIsDeployDrawerOpen(true)
+    setDeployState('preparing')
+    setDeployFiles([])
+    setDeployLogs([])
+
+    try {
+      await onSave()
+      const preview = await window.api.invoke('deploy:preview', { teamSlug: spec.slug, envSlug: deployEnvSlug }) as {
+        ok: boolean
+        reason?: string
+        files?: Array<{ path: string }>
+      }
+
+      if (!preview.ok) {
+        setDeployState('error')
+        setDeployLogs([`ERROR: ${preview.reason}`])
+        return
+      }
+
+      setDeployFiles((preview.files ?? []).map(file => file.path))
+      setDeployState('deploying')
+
+      const result = await window.api.invoke('deploy:team', {
+        teamSlug: spec.slug,
+        envSlug: deployEnvSlug,
+        options: { keepDisks: true, forceRecreate: false },
+      }) as { ok: boolean; reason?: string }
+
+      setDeployState(result.ok ? 'done' : 'error')
+      if (!result.ok) {
+        setDeployLogs(prev => [...prev, `ERROR: ${result.reason}`])
+      }
+    } catch (error) {
+      setDeployState('error')
+      setDeployLogs([`ERROR: ${error instanceof Error ? error.message : String(error)}`])
+    }
+  }
+
   if (!isEditing) {
     return (
       <div className="max-w-3xl space-y-5 py-6 px-6">
@@ -89,12 +147,26 @@ export function TeamOverview({ spec, onSpecChange, isEditing, onEdit, onSave, is
             <h3 className="text-sm font-semibold text-gray-900">Team overview</h3>
             <p className="text-sm text-gray-500 mt-1">Review the current team configuration before making changes.</p>
           </div>
-          <button
-            onClick={onEdit}
-            className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-          >
-            Edit team
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDeploy}
+              disabled={!deployEnvSlug || isSaving || deployState === 'preparing' || deployState === 'deploying'}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 transition-colors"
+            >
+              {(deployState === 'preparing' || deployState === 'deploying') ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Rocket className="w-3.5 h-3.5" />
+              )}
+              Deploy
+            </button>
+            <button
+              onClick={onEdit}
+              className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            >
+              Edit team
+            </button>
+          </div>
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-5">
@@ -358,6 +430,108 @@ export function TeamOverview({ spec, onSpecChange, isEditing, onEdit, onSave, is
               )}
             </div>
           )}
+        </div>
+
+        <div
+          className={`fixed inset-0 z-40 transition-colors duration-200 ${
+            isDeployDrawerOpen ? 'pointer-events-auto bg-black/20' : 'pointer-events-none bg-transparent'
+          }`}
+          onClick={() => setIsDeployDrawerOpen(false)}
+        />
+        <div
+          className={`fixed inset-x-0 bottom-0 z-50 mx-auto w-full max-w-5xl transform transition-transform duration-200 ${
+            isDeployDrawerOpen ? 'translate-y-0' : 'translate-y-full'
+          }`}
+        >
+          <div className="mx-4 mb-4 overflow-hidden rounded-t-2xl border border-gray-200 bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-gray-200 px-5 py-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-semibold text-gray-900">Deploy preview</h4>
+                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-gray-500">
+                    {deployEnvName || deployEnvSlug || 'No target'}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-500 mt-1">Derived file list appears first, followed by the live deploy log.</p>
+              </div>
+              <button
+                onClick={() => setIsDeployDrawerOpen(false)}
+                className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="border-b border-gray-200 bg-gray-50">
+              <div className="border-b border-gray-200 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h5 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Derived files</h5>
+                  <span className="text-xs text-gray-400">{deployFiles.length}</span>
+                </div>
+                <div className="max-h-56 overflow-auto rounded-lg border border-gray-200 bg-white p-3">
+                  {deployFiles.length === 0 ? (
+                    <div className="text-xs text-gray-400">
+                      {deployState === 'preparing' ? 'Deriving and validating deployment files…' : 'No derived files yet'}
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {deployFiles.map(path => (
+                        <div key={path} className="text-xs font-mono text-gray-600 truncate">{path}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h5 className="text-xs font-semibold uppercase tracking-wider text-gray-500">Deploy log</h5>
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
+                    deployState === 'done'
+                      ? 'bg-green-50 text-green-700'
+                      : deployState === 'error'
+                      ? 'bg-red-50 text-red-700'
+                      : deployState === 'preparing' || deployState === 'deploying'
+                      ? 'bg-yellow-50 text-yellow-700'
+                      : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {deployState === 'done' && <Check className="w-3 h-3" />}
+                    {deployState === 'error' && <AlertCircle className="w-3 h-3" />}
+                    {(deployState === 'preparing' || deployState === 'deploying') && <Loader2 className="w-3 h-3 animate-spin" />}
+                    {deployState === 'idle' ? 'Idle' :
+                     deployState === 'preparing' ? 'Preparing' :
+                     deployState === 'deploying' ? 'Deploying' :
+                     deployState === 'done' ? 'Deployed' : 'Failed'}
+                  </span>
+                </div>
+                <div className="max-h-56 overflow-auto rounded-lg border border-gray-200 bg-white p-3 space-y-1">
+                  {deployLogs.length === 0 ? (
+                    <div className="text-xs text-gray-400">
+                      {deployState === 'preparing'
+                        ? 'Waiting for deploy to start…'
+                        : deployState === 'deploying'
+                        ? 'Collecting deploy logs…'
+                        : 'No deploy logs yet'}
+                    </div>
+                  ) : (
+                    deployLogs.map((line, index) => (
+                      <div
+                        key={`${index}:${line}`}
+                        className={`text-xs font-mono ${
+                          line.startsWith('ERROR') ? 'text-red-600' :
+                          line.startsWith('CREATED') ? 'text-green-600' :
+                          line.startsWith('EXISTS') ? 'text-yellow-600' :
+                          'text-gray-600'
+                        }`}
+                      >
+                        {line}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )

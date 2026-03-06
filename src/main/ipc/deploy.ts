@@ -21,6 +21,40 @@ export function registerDeployHandlers(): void {
     const summary = errors.slice(0, 3).map(error => `${error.field}: ${error.message}`).join('; ')
     return errors.length > 3 ? `${prefix}: ${summary}; and ${errors.length - 3} more` : `${prefix}: ${summary}`
   }
+  const deriveValidatedDeployFiles = async (teamSlug: string, envSlug: string) => {
+    const [spec, env] = await Promise.all([getTeam(teamSlug), getEnvironment(envSlug)])
+    if (!spec) throw new Error('Team not found')
+    if (!env) throw new Error('Environment not found')
+
+    const providerRecords = await listProviders()
+    const specValidation = validateTeamSpec(spec, providerRecords)
+    if (!specValidation.valid) {
+      throw new Error(formatValidationFailure('Team spec validation failed', specValidation.errors))
+    }
+
+    const providersMap = new Map(
+      await Promise.all(providerRecords.map(async (p) => {
+        const apiKey = await getProviderApiKey(p.slug)
+        return [p.slug, { ...p, apiKey: apiKey ?? undefined }] as const
+      }))
+    )
+
+    const telegramTokens = Object.fromEntries(await Promise.all(
+      spec.agents.map(async (agent) => {
+        const token = await getSecret(telegramAccount(spec.slug, agent.slug), 'agent-telegram-token')
+        return [agent.slug, token ?? undefined] as const
+      })
+    ))
+
+    const deriver = getDeriver(env.type)
+    const specFiles = await deriver.derive(spec, providersMap, env.config, { agentTelegramTokens: telegramTokens })
+    const deployValidation = validateDerivedSpecFiles(specFiles)
+    if (!deployValidation.valid) {
+      throw new Error(formatValidationFailure('Deployment file validation failed', deployValidation.errors))
+    }
+
+    return { spec, env, specFiles }
+  }
 
   ipcMain.handle('environments:list', () => listEnvironments())
 
@@ -48,36 +82,26 @@ export function registerDeployHandlers(): void {
     }
   })
 
-  ipcMain.handle('deploy:team', async (event, { teamSlug, envSlug, options }: { teamSlug: string; envSlug: string; options: DeployOptions }) => {
-    const [spec, env] = await Promise.all([getTeam(teamSlug), getEnvironment(envSlug)])
-    if (!spec) return { ok: false, reason: 'Team not found' }
-    if (!env) return { ok: false, reason: 'Environment not found' }
-
-    const providerRecords = await listProviders()
-    const specValidation = validateTeamSpec(spec, providerRecords)
-    if (!specValidation.valid) {
-      return { ok: false, reason: formatValidationFailure('Team spec validation failed', specValidation.errors) }
+  ipcMain.handle('deploy:preview', async (_event, { teamSlug, envSlug }: { teamSlug: string; envSlug: string }) => {
+    try {
+      const { specFiles } = await deriveValidatedDeployFiles(teamSlug, envSlug)
+      return { ok: true, files: specFiles.map(file => ({ path: file.path })) }
+    } catch (error) {
+      return { ok: false, reason: error instanceof Error ? error.message : String(error) }
     }
+  })
 
-    const providersMap = new Map(
-      await Promise.all(providerRecords.map(async (p) => {
-        const apiKey = await getProviderApiKey(p.slug)
-        return [p.slug, { ...p, apiKey: apiKey ?? undefined }] as const
-      }))
-    )
-
-    const telegramTokens = Object.fromEntries(await Promise.all(
-      spec.agents.map(async (agent) => {
-        const token = await getSecret(telegramAccount(spec.slug, agent.slug), 'agent-telegram-token')
-        return [agent.slug, token ?? undefined] as const
-      })
-    ))
-
-    const deriver = getDeriver(env.type)
-    const specFiles = await deriver.derive(spec, providersMap, env.config, { agentTelegramTokens: telegramTokens })
-    const deployValidation = validateDerivedSpecFiles(specFiles)
-    if (!deployValidation.valid) {
-      return { ok: false, reason: formatValidationFailure('Deployment file validation failed', deployValidation.errors) }
+  ipcMain.handle('deploy:team', async (event, { teamSlug, envSlug, options }: { teamSlug: string; envSlug: string; options: DeployOptions }) => {
+    let spec
+    let env
+    let specFiles
+    try {
+      const prepared = await deriveValidatedDeployFiles(teamSlug, envSlug)
+      spec = prepared.spec
+      env = prepared.env
+      specFiles = prepared.specFiles
+    } catch (error) {
+      return { ok: false, reason: error instanceof Error ? error.message : String(error) }
     }
 
     const win = BrowserWindow.fromWebContents(event.sender)
