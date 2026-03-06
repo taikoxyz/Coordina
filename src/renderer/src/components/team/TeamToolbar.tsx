@@ -1,7 +1,7 @@
 import { useSpecStatus } from '../../hooks/useSpecStatus'
 import { useSaveTeam } from '../../hooks/useTeams'
 import { useNav } from '../../store/nav'
-import { ChevronRight, Check, AlertCircle, Loader2 } from 'lucide-react'
+import { ChevronRight, Check, AlertCircle } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import type { TeamSpec } from '../../../../shared/types'
 
@@ -49,23 +49,6 @@ export function TeamToolbar({ spec }: Props) {
             ? <><AlertCircle className="w-3 h-3" /> {status.validationErrors.length} error{status.validationErrors.length !== 1 ? 's' : ''}</>
             : 'Validating...'
           }
-        </span>
-
-        {/* Derivation badge */}
-        <span className={cn(
-          'inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded',
-          status.derivationStatus === 'success'
-            ? 'text-green-700 bg-green-50'
-            : status.derivationStatus === 'error'
-            ? 'text-red-700 bg-red-50'
-            : status.derivationStatus === 'running'
-            ? 'text-yellow-700 bg-yellow-50'
-            : 'text-gray-500 bg-gray-100'
-        )}>
-          {status.derivationStatus === 'success' && <><Check className="w-3 h-3" /> Derived</>}
-          {status.derivationStatus === 'running' && <><Loader2 className="w-3 h-3 animate-spin" /> Deriving</>}
-          {status.derivationStatus === 'error' && <><AlertCircle className="w-3 h-3" /> Derive failed</>}
-          {status.derivationStatus === 'idle' && '—'}
         </span>
 
         {/* Save button */}

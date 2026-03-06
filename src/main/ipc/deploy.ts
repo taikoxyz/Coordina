@@ -8,13 +8,19 @@ import { getSecret } from '../keychain'
 import { saveTeamDeployment, deleteTeamDeployment } from '../store/deployments'
 import { getDeriver } from '../specs/base'
 import '../specs/gke'
+import { validateDerivedSpecFiles } from '../specs/validate'
 import { deployTeam, undeployTeam, getTeamStatus } from '../environments/gke/deploy'
 import { authenticateGke } from '../environments/gke/auth'
 import { resolveGatewayMode } from '../gateway/mode'
 import type { EnvironmentRecord, DeployOptions } from '../../shared/types'
+import { validateTeamSpec } from '../validation/teamSpec'
 
 export function registerDeployHandlers(): void {
   const telegramAccount = (teamSlug: string, agentSlug: string) => `team:${teamSlug}:agent:${agentSlug}`
+  const formatValidationFailure = (prefix: string, errors: { field: string; message: string }[]): string => {
+    const summary = errors.slice(0, 3).map(error => `${error.field}: ${error.message}`).join('; ')
+    return errors.length > 3 ? `${prefix}: ${summary}; and ${errors.length - 3} more` : `${prefix}: ${summary}`
+  }
 
   ipcMain.handle('environments:list', () => listEnvironments())
 
@@ -48,6 +54,11 @@ export function registerDeployHandlers(): void {
     if (!env) return { ok: false, reason: 'Environment not found' }
 
     const providerRecords = await listProviders()
+    const specValidation = validateTeamSpec(spec, providerRecords)
+    if (!specValidation.valid) {
+      return { ok: false, reason: formatValidationFailure('Team spec validation failed', specValidation.errors) }
+    }
+
     const providersMap = new Map(
       await Promise.all(providerRecords.map(async (p) => {
         const apiKey = await getProviderApiKey(p.slug)
@@ -64,6 +75,10 @@ export function registerDeployHandlers(): void {
 
     const deriver = getDeriver(env.type)
     const specFiles = await deriver.derive(spec, providersMap, env.config, { agentTelegramTokens: telegramTokens })
+    const deployValidation = validateDerivedSpecFiles(specFiles)
+    if (!deployValidation.valid) {
+      return { ok: false, reason: formatValidationFailure('Deployment file validation failed', deployValidation.errors) }
+    }
 
     const win = BrowserWindow.fromWebContents(event.sender)
     const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof deployTeam>[2]

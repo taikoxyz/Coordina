@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useEnvironments } from '../../hooks/useEnvironments'
 import { useSpecStatus } from '../../hooks/useSpecStatus'
-import { Rocket, GitCommit, AlertCircle, Check, Loader2, RefreshCw } from 'lucide-react'
+import { Rocket, GitCommit, AlertCircle, Check, Loader2 } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import type { TeamSpec, DeployOptions } from '../../../../shared/types'
 
@@ -12,12 +12,6 @@ interface Props {
 }
 
 type DeployState = 'idle' | 'deploying' | 'done' | 'error'
-type DeriveState = 'idle' | 'running' | 'done' | 'error'
-
-interface DeployFile {
-  path: string
-  content: string
-}
 
 export function DeployTab({ spec, onSave, isSaving }: Props) {
   const status = useSpecStatus(spec.slug)
@@ -26,11 +20,9 @@ export function DeployTab({ spec, onSave, isSaving }: Props) {
   const [keepDisks, setKeepDisks] = useState(true)
   const [forceRecreate, setForceRecreate] = useState(false)
   const [deployState, setDeployState] = useState<DeployState>('idle')
-  const [deriveState, setDeriveState] = useState<DeriveState>('idle')
   const [deployLogs, setDeployLogs] = useState<string[]>([])
   const [gitMessage, setGitMessage] = useState('')
   const [gitStatus, setGitStatus] = useState<{ dirty: boolean; files: string[] }>({ dirty: false, files: [] })
-  const [deployFiles, setDeployFiles] = useState<DeployFile[]>([])
 
   useEffect(() => {
     if (environments?.length && !selectedEnvSlug) setSelectedEnvSlug(environments[0].slug)
@@ -51,25 +43,19 @@ export function DeployTab({ spec, onSave, isSaving }: Props) {
     })
   }, [])
 
-  const loadDeployFiles = useCallback(async () => {
-    if (!spec.slug || !selectedEnvSlug) return
-    const env = environments?.find(e => e.slug === selectedEnvSlug)
-    if (!env) return
-    const files = await window.api.invoke('teams:getDeployFiles', { teamSlug: spec.slug, envType: env.type }) as DeployFile[]
-    setDeployFiles(files)
-  }, [spec.slug, selectedEnvSlug, environments])
-
-  useEffect(() => {
-    if (status.derivationStatus === 'success') loadDeployFiles()
-  }, [status.derivationStatus, loadDeployFiles])
-
   const handleDeploy = async () => {
     setDeployState('deploying')
     setDeployLogs([])
-    const options: DeployOptions = { keepDisks, forceRecreate }
-    const result = await window.api.invoke('deploy:team', { teamSlug: spec.slug, envSlug: selectedEnvSlug, options }) as { ok: boolean; reason?: string }
-    setDeployState(result.ok ? 'done' : 'error')
-    if (!result.ok) setDeployLogs(prev => [...prev, `ERROR: ${result.reason}`])
+    try {
+      await onSave()
+      const options: DeployOptions = { keepDisks, forceRecreate }
+      const result = await window.api.invoke('deploy:team', { teamSlug: spec.slug, envSlug: selectedEnvSlug, options }) as { ok: boolean; reason?: string }
+      setDeployState(result.ok ? 'done' : 'error')
+      if (!result.ok) setDeployLogs(prev => [...prev, `ERROR: ${result.reason}`])
+    } catch (error) {
+      setDeployState('error')
+      setDeployLogs([`ERROR: ${error instanceof Error ? error.message : String(error)}`])
+    }
   }
 
   const handleCommit = async () => {
@@ -80,19 +66,12 @@ export function DeployTab({ spec, onSave, isSaving }: Props) {
     if (gs.enabled) setGitStatus({ dirty: gs.dirty, files: gs.files })
   }
 
-  const handleDerive = async () => {
-    setDeriveState('running')
-    await onSave()
-    const result = await window.api.invoke('teams:derive', spec.slug) as { ok: boolean; reason?: string }
-    setDeriveState(result.ok ? 'done' : 'error')
-  }
-
   const inputCls = 'w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
   const labelCls = 'block text-xs font-medium text-gray-600 mb-1'
 
   return (
     <div className="py-6 px-6 max-w-2xl space-y-6">
-      {/* Pipeline: Save → Derive → Deploy */}
+      {/* Pipeline: Save → Deploy */}
       <div>
         <h3 className="text-sm font-semibold text-gray-900 mb-3">Deployment pipeline</h3>
         <div className="flex items-center gap-2">
@@ -105,32 +84,8 @@ export function DeployTab({ spec, onSave, isSaving }: Props) {
           </button>
           <span className="text-gray-300">→</span>
           <button
-            onClick={handleDerive}
-            disabled={deriveState === 'running' || status.derivationStatus === 'running'}
-            className={cn(
-              'px-4 py-2 text-sm font-medium rounded-md transition-colors',
-              status.derivationStatus === 'success'
-                ? 'bg-green-50 text-green-700 hover:bg-green-100'
-                : status.derivationStatus === 'error'
-                ? 'bg-red-50 text-red-700 hover:bg-red-100'
-                : status.derivationStatus === 'running' || deriveState === 'running'
-                ? 'bg-yellow-50 text-yellow-700'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            )}
-          >
-            <span className="flex items-center gap-1.5">
-              {(status.derivationStatus === 'running' || deriveState === 'running') && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              {status.derivationStatus === 'success' && <Check className="w-3.5 h-3.5" />}
-              {status.derivationStatus === 'error' && <AlertCircle className="w-3.5 h-3.5" />}
-              {status.derivationStatus === 'running' || deriveState === 'running' ? 'Deriving...' :
-               status.derivationStatus === 'success' ? 'Derived' :
-               status.derivationStatus === 'error' ? 'Derive failed' : 'Derive'}
-            </span>
-          </button>
-          <span className="text-gray-300">→</span>
-          <button
             onClick={handleDeploy}
-            disabled={!status.isReady || !selectedEnvSlug || deployState === 'deploying'}
+            disabled={!status.isValid || !selectedEnvSlug || deployState === 'deploying' || isSaving}
             className={cn(
               'px-4 py-2 text-sm font-medium rounded-md transition-colors',
               deployState === 'done'
@@ -139,7 +94,7 @@ export function DeployTab({ spec, onSave, isSaving }: Props) {
                 ? 'bg-red-600 text-white hover:bg-red-700'
                 : deployState === 'deploying'
                 ? 'bg-yellow-500 text-white'
-                : status.isReady
+                : status.isValid
                 ? 'bg-blue-600 text-white hover:bg-blue-700'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             )}
@@ -180,7 +135,7 @@ export function DeployTab({ spec, onSave, isSaving }: Props) {
             <label className={labelCls}>Target</label>
             <select
               value={selectedEnvSlug}
-              onChange={e => { setSelectedEnvSlug(e.target.value); setDeployFiles([]) }}
+              onChange={e => setSelectedEnvSlug(e.target.value)}
               className={inputCls}
             >
               {(environments ?? []).map(e => <option key={e.slug} value={e.slug}>{e.name}</option>)}
@@ -232,28 +187,6 @@ export function DeployTab({ spec, onSave, isSaving }: Props) {
             {gitStatus.files.length > 10 && (
               <div className="text-xs text-gray-400">...and {gitStatus.files.length - 10} more</div>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* Generated files preview */}
-      {deployFiles.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-900">
-              Generated files ({deployFiles.length})
-            </h3>
-            <button
-              onClick={loadDeployFiles}
-              className="p-1 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-            </button>
-          </div>
-          <div className="space-y-1">
-            {deployFiles.map(f => (
-              <div key={f.path} className="text-xs text-gray-500 font-mono truncate">{f.path}</div>
-            ))}
           </div>
         </div>
       )}
