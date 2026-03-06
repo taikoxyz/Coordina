@@ -1,12 +1,12 @@
 export interface AgentIdentity {
   name: string
   role: string
-  soul?: string
+  persona?: string
   emoji?: string
   avatar?: string
   teamName?: string
   teamSlug?: string
-  leadAgentSlug?: string
+  leadAgent?: string
   teamSize?: number
 }
 
@@ -40,12 +40,12 @@ export function generateIdentityMd(agent: AgentIdentity): string {
     `Name: ${agent.name}`,
     `Creature: ${agent.role}`,
   ]
-  if (agent.soul) lines.push(`Vibe: ${agent.soul}`)
+  if (agent.persona) lines.push(`Vibe: ${agent.persona}`)
   if (agent.emoji) lines.push(`Emoji: ${agent.emoji}`)
   if (agent.avatar) lines.push(`Avatar: ${agent.avatar}`)
   if (agent.teamName) lines.push(`Team: ${agent.teamName}`)
   if (agent.teamSlug) lines.push(`Team slug: ${agent.teamSlug}`)
-  if (agent.leadAgentSlug) lines.push(`Team lead: ${agent.leadAgentSlug}`)
+  if (agent.leadAgent) lines.push(`Team lead: ${agent.leadAgent}`)
   if (typeof agent.teamSize === 'number') lines.push(`Team members: ${agent.teamSize}`)
   lines.push('Team lookup: read `$OPENCLAW_WORKSPACE_DIR/TEAM.md` for team/agent queries')
   return lines.join('\n') + '\n'
@@ -79,31 +79,31 @@ export function generateSkillsMd(skills: string[]): string {
 export function generateTeamMd(team: {
   name: string
   slug: string
-  telegramGroupChatId?: string
-  telegramOwnerUserId?: string
-  image?: string
-  leadAgentSlug?: string
-  storageGi?: number
-  agents: { slug: string; name: string; role: string; telegramBotId?: string; email?: string; slackHandle?: string; githubId?: string; cpu?: number; isLead?: boolean; gatewayUrl?: string; gatewayToken?: string }[]
+  telegramGroupId?: string
+  telegramAdminId?: string
+  defaultImage?: string
+  leadAgent?: string
+  defaultDiskGi?: number
+  agents: { slug: string; name: string; role: string; telegramBot?: string; email?: string; slack?: string; githubUsername?: string; cpu?: number; isLead?: boolean; gatewayUrl?: string; gatewayToken?: string }[]
 }): string {
   const hasGateways = team.agents.some(a => a.gatewayUrl)
   const lines: string[] = ['## TEAM', '', '## About']
   lines.push(`- name: ${team.name}`)
   lines.push(`- slug: ${team.slug}`)
-  if (team.telegramGroupChatId) lines.push(`- telegram_group_chat_id: ${team.telegramGroupChatId}`)
-  if (team.telegramOwnerUserId) lines.push(`- telegram_owner_user_id: ${team.telegramOwnerUserId}`)
-  if (team.image) lines.push(`- image: ${team.image}`)
-  if (team.leadAgentSlug) lines.push(`- lead: ${team.leadAgentSlug}`)
-  if (team.storageGi) lines.push(`- storage: ${team.storageGi}Gi`)
+  if (team.telegramGroupId) lines.push(`- telegram_group_chat_id: ${team.telegramGroupId}`)
+  if (team.telegramAdminId) lines.push(`- telegram_owner_user_id: ${team.telegramAdminId}`)
+  if (team.defaultImage) lines.push(`- image: ${team.defaultImage}`)
+  if (team.leadAgent) lines.push(`- lead: ${team.leadAgent}`)
+  if (team.defaultDiskGi) lines.push(`- storage: ${team.defaultDiskGi}Gi`)
   lines.push('', '## Members')
   for (const a of team.agents) {
     lines.push(`### ${a.slug}`)
     lines.push(`- name: ${a.name}`)
     lines.push(`- role: ${a.role}`)
-    if (team.telegramGroupChatId && team.telegramOwnerUserId && a.telegramBotId) lines.push(`- telegram_bot_id: ${a.telegramBotId}`)
+    if (team.telegramGroupId && team.telegramAdminId && a.telegramBot) lines.push(`- telegram_bot_id: ${a.telegramBot}`)
     if (a.email) lines.push(`- email: ${a.email}`)
-    if (a.slackHandle) lines.push(`- slack: ${a.slackHandle}`)
-    if (a.githubId) lines.push(`- github: @${a.githubId}`)
+    if (a.slack) lines.push(`- slack: ${a.slack}`)
+    if (a.githubUsername) lines.push(`- github: @${a.githubUsername}`)
     if (a.cpu) lines.push(`- cpu: ${a.cpu}`)
     if (a.gatewayUrl) lines.push(`- gateway: ${a.gatewayUrl}`)
     if (a.gatewayToken) lines.push(`- gateway_token: ${a.gatewayToken}`)

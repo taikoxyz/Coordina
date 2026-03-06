@@ -18,29 +18,28 @@ export interface AgentSpec {
   role: string
   emoji?: string
   avatar?: string
-  telegramBotId?: string
+  telegramBot?: string
   email?: string
-  slackHandle?: string
-  githubId?: string
+  slack?: string
+  githubUsername?: string
   skills: string[]
-  soul: string
-  providerSlug: string
+  persona: string
+  provider: string
   image?: string
-  isLead: boolean
   cpu?: number
-  storageGi?: number
+  diskGi?: number
 }
 
 export interface TeamSpec {
   slug: string
   name: string
-  telegramGroupChatId?: string
-  telegramOwnerUserId?: string
-  image?: string
-  storageGi?: number
-  leadAgentSlug?: string
-  bootstrapInstructions?: string
-  tokenSeed?: string
+  telegramGroupId?: string
+  telegramAdminId?: string
+  defaultImage?: string
+  defaultDiskGi?: number
+  leadAgent?: string
+  startupInstructions?: string
+  signingKey?: string
   agents: AgentSpec[]
 }
 

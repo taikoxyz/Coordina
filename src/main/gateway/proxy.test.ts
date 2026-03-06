@@ -35,7 +35,7 @@ describe('gateway proxy', () => {
     vi.mocked(getTeamDeployment).mockResolvedValue({
       teamSlug: 'eng',
       envSlug: 'gke-prod',
-      leadAgentSlug: 'lead',
+      leadAgent: 'lead',
       gatewayBaseUrl: 'https://eng.example.com',
       deployedAt: Date.now(),
     })

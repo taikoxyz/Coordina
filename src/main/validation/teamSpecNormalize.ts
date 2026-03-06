@@ -20,46 +20,45 @@ function normalizeAgent(agent: AgentSpec): AgentSpec {
     role: normalizeOptional(agent.role) ?? '',
     emoji: normalizeOptional(agent.emoji),
     avatar: normalizeOptional(agent.avatar),
-    telegramBotId: normalizeOptional(agent.telegramBotId),
+    telegramBot: normalizeOptional(agent.telegramBot),
     email: normalizeOptional(agent.email),
-    slackHandle: normalizeOptional(agent.slackHandle),
-    githubId: normalizeOptional(agent.githubId),
+    slack: normalizeOptional(agent.slack),
+    githubUsername: normalizeOptional(agent.githubUsername),
     skills: Array.isArray(agent.skills)
       ? agent.skills.map(s => s.trim()).filter(Boolean)
       : [],
-    soul: agent.soul ?? '',
-    providerSlug: normalizeOptional(agent.providerSlug) ?? '',
+    persona: agent.persona ?? '',
+    provider: normalizeOptional(agent.provider) ?? '',
     image: normalizeOptional(agent.image),
-    isLead: Boolean(agent.isLead),
     cpu: normalizePositiveNumber(agent.cpu),
-    storageGi: normalizePositiveInt(agent.storageGi),
+    diskGi: normalizePositiveInt(agent.diskGi),
   }
 }
 
 export function normalizeTeamSpec(spec: TeamSpec): TeamSpec {
   const normalizedAgents = Array.isArray(spec.agents) ? spec.agents.map(normalizeAgent) : []
-  const normalizedLead = normalizeOptional(spec.leadAgentSlug)
+  const normalizedLead = normalizeOptional(spec.leadAgent)
 
   return {
     slug: normalizeOptional(spec.slug) ?? '',
     name: normalizeOptional(spec.name) ?? '',
-    telegramGroupChatId: normalizeOptional(spec.telegramGroupChatId),
-    telegramOwnerUserId: normalizeOptional(spec.telegramOwnerUserId),
-    image: normalizeOptional(spec.image),
-    storageGi: normalizePositiveInt(spec.storageGi),
-    leadAgentSlug: normalizedLead && normalizedAgents.some(a => a.slug === normalizedLead) ? normalizedLead : undefined,
-    bootstrapInstructions: normalizeOptional(spec.bootstrapInstructions),
-    tokenSeed: normalizeOptional(spec.tokenSeed),
+    telegramGroupId: normalizeOptional(spec.telegramGroupId),
+    telegramAdminId: normalizeOptional(spec.telegramAdminId),
+    defaultImage: normalizeOptional(spec.defaultImage),
+    defaultDiskGi: normalizePositiveInt(spec.defaultDiskGi),
+    leadAgent: normalizedLead && normalizedAgents.some(a => a.slug === normalizedLead) ? normalizedLead : undefined,
+    startupInstructions: normalizeOptional(spec.startupInstructions),
+    signingKey: normalizeOptional(spec.signingKey),
     agents: normalizedAgents,
   }
 }
 
 export function validateTelegramPair(spec: TeamSpec): void {
-  const groupChatId = normalizeOptional(spec.telegramGroupChatId)
-  const ownerUserId = normalizeOptional(spec.telegramOwnerUserId)
-  const hasGroup = Boolean(groupChatId)
-  const hasOwner = Boolean(ownerUserId)
-  if (hasGroup !== hasOwner) {
-    throw new Error('telegramGroupChatId and telegramOwnerUserId must both be set or both be empty')
+  const groupId = normalizeOptional(spec.telegramGroupId)
+  const adminId = normalizeOptional(spec.telegramAdminId)
+  const hasGroup = Boolean(groupId)
+  const hasAdmin = Boolean(adminId)
+  if (hasGroup !== hasAdmin) {
+    throw new Error('telegramGroupId and telegramAdminId must both be set or both be empty')
   }
 }

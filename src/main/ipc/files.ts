@@ -48,7 +48,7 @@ export function registerFileHandlers() {
         return { content: `# ${agent.name}\n\n**Role:** ${agent.role}\n`, offline: true }
       }
       if (filePath === 'SOUL.md') {
-        return { content: agent.soul || '(no soul description)', offline: true }
+        return { content: agent.persona || '(no persona description)', offline: true }
       }
       return { content: null, offline: true, error: 'File not in local spec' }
     }

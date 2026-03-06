@@ -72,17 +72,17 @@ export function registerDeployHandlers(): void {
       for await (const status of deployTeam(specFiles, teamSlug, deployConfig, options)) {
         win?.webContents.send('deploy:status', status)
       }
-      const leadAgentSlug = spec.agents[0]?.slug
+      const leadAgent = spec.agents[0]?.slug
       const envDomain = (env.config as { domain?: string }).domain
       const mode = resolveGatewayMode(env.config)
-      if (leadAgentSlug) {
+      if (leadAgent) {
         if (mode === 'ingress' && (!envDomain || envDomain.trim().length === 0)) {
           return { ok: false, reason: 'Environment domain is required when gateway mode is ingress' }
         }
         await saveTeamDeployment({
           teamSlug,
           envSlug,
-          leadAgentSlug,
+          leadAgent,
           gatewayBaseUrl: mode === 'ingress'
             ? `https://${teamSlug}.${envDomain}`.replace(/\/+$/, '')
             : 'http://127.0.0.1',

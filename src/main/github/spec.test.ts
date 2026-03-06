@@ -8,8 +8,8 @@ describe('generateIdentityMd', () => {
     expect(md).toContain('Creature: Engineer')
   })
 
-  it('includes soul, emoji, avatar on single lines when present', () => {
-    const md = generateIdentityMd({ name: 'Alice', role: 'Engineer', soul: 'Sharp and curious.', emoji: '🤖', avatar: '/avatar.png' })
+  it('includes persona, emoji, avatar on single lines when present', () => {
+    const md = generateIdentityMd({ name: 'Alice', role: 'Engineer', persona: 'Sharp and curious.', emoji: '🤖', avatar: '/avatar.png' })
     expect(md).toContain('Vibe: Sharp and curious.')
     expect(md).toContain('Emoji: 🤖')
     expect(md).toContain('Avatar: /avatar.png')
@@ -34,7 +34,7 @@ describe('generateIdentityMd', () => {
       role: 'Engineer',
       teamName: 'Team Phoenix',
       teamSlug: 'team-phoenix',
-      leadAgentSlug: 'lead-agent',
+      leadAgent: 'lead-agent',
       teamSize: 5,
     })
     expect(md).toContain('Team: Team Phoenix')
@@ -133,10 +133,10 @@ describe('generateTeamMd telegram', () => {
     const md = generateTeamMd({
       name: 'My Team',
       slug: 'my-team',
-      telegramGroupChatId: '-1001234567890',
-      telegramOwnerUserId: '222222222',
+      telegramGroupId: '-1001234567890',
+      telegramAdminId: '222222222',
       agents: [
-        { slug: 'alpha', name: 'Alpha', role: 'Lead', telegramBotId: '111111111' },
+        { slug: 'alpha', name: 'Alpha', role: 'Lead', telegramBot: '111111111' },
         { slug: 'beta', name: 'Beta', role: 'Engineer' },
       ],
     })
@@ -152,7 +152,7 @@ describe('generateTeamMd telegram', () => {
       name: 'My Team',
       slug: 'my-team',
       agents: [
-        { slug: 'alpha', name: 'Alpha', role: 'Lead', telegramBotId: '111111111' },
+        { slug: 'alpha', name: 'Alpha', role: 'Lead', telegramBot: '111111111' },
       ],
     })
 
@@ -160,13 +160,13 @@ describe('generateTeamMd telegram', () => {
     expect(md).not.toContain('telegram_bot_id')
   })
 
-  it('omits per-agent telegram ids when owner user id is not set', () => {
+  it('omits per-agent telegram ids when admin id is not set', () => {
     const md = generateTeamMd({
       name: 'My Team',
       slug: 'my-team',
-      telegramGroupChatId: '-1001234567890',
+      telegramGroupId: '-1001234567890',
       agents: [
-        { slug: 'alpha', name: 'Alpha', role: 'Lead', telegramBotId: '111111111' },
+        { slug: 'alpha', name: 'Alpha', role: 'Lead', telegramBot: '111111111' },
       ],
     })
 

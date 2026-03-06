@@ -153,7 +153,7 @@ async function resolveUpstreamTarget(teamSlug: string, deployment: TeamDeploymen
   }
 }
 
-function resolveTargetAgentSlug(pathname: string, leadAgentSlug: string, agentSlugs: Set<string>): string {
+function resolveTargetAgentSlug(pathname: string, leadAgent: string, agentSlugs: Set<string>): string {
   const path = pathname || '/'
   const directWithPrefix = path.match(/^\/agents\/([^/]+)(\/.*)?$/)
   if (directWithPrefix && agentSlugs.has(directWithPrefix[1])) {
@@ -165,12 +165,12 @@ function resolveTargetAgentSlug(pathname: string, leadAgentSlug: string, agentSl
     return legacyDirect[1]
   }
 
-  return leadAgentSlug
+  return leadAgent
 }
 
-function resolveIngressUpstreamPath(pathname: string, leadAgentSlug: string, agentSlugs: Set<string>): string {
+function resolveIngressUpstreamPath(pathname: string, leadAgent: string, agentSlugs: Set<string>): string {
   const path = pathname || '/'
-  const targetAgentSlug = resolveTargetAgentSlug(path, leadAgentSlug, agentSlugs)
+  const targetAgentSlug = resolveTargetAgentSlug(path, leadAgent, agentSlugs)
   const directWithPrefix = path.match(/^\/agents\/([^/]+)(\/.*)?$/)
   if (directWithPrefix && agentSlugs.has(directWithPrefix[1])) {
     return `/agents/${targetAgentSlug}${directWithPrefix[2] ?? ''}`
@@ -226,8 +226,8 @@ async function buildDeploymentRecord(params: {
 
   const mode = resolveGatewayMode(env.config)
   const domain = (env.config as { domain?: string }).domain
-  const leadAgentSlug = params.teamSpec.agents[0]?.slug
-  if (!leadAgentSlug) return null
+  const leadAgent = params.teamSpec.agents[0]?.slug
+  if (!leadAgent) return null
   if (mode === 'ingress' && (!domain || domain.trim().length === 0)) return null
 
   const gatewayBaseUrl = mode === 'ingress'
@@ -237,7 +237,7 @@ async function buildDeploymentRecord(params: {
   return {
     teamSlug: params.teamSlug,
     envSlug: env.slug,
-    leadAgentSlug,
+    leadAgent,
     gatewayBaseUrl,
     deployedAt: Date.now(),
   }
@@ -276,8 +276,8 @@ async function buildProxyRequestContext(req: IncomingMessage, getToken: TokenFet
     throw new ProxyRequestError(404, `Team '${teamSlug}' is not deployed`)
   }
 
-  const leadAgentSlug = deployment.leadAgentSlug || teamSpec.agents[0]?.slug
-  if (!leadAgentSlug) {
+  const leadAgent = deployment.leadAgent || teamSpec.agents[0]?.slug
+  if (!leadAgent) {
     throw new ProxyRequestError(404, `Team '${teamSlug}' has no agents`)
   }
 
@@ -288,13 +288,13 @@ async function buildProxyRequestContext(req: IncomingMessage, getToken: TokenFet
 
   const mode = resolveGatewayMode(env.config)
   const agentSlugs = new Set(teamSpec.agents.map(a => a.slug))
-  const targetAgentSlug = resolveTargetAgentSlug(requestedPath, leadAgentSlug, agentSlugs)
+  const targetAgentSlug = resolveTargetAgentSlug(requestedPath, leadAgent, agentSlugs)
   const rewrittenPath = mode === 'port-forward'
     ? resolvePortForwardPath(requestedPath, agentSlugs)
-    : resolveIngressUpstreamPath(requestedPath, leadAgentSlug, agentSlugs)
+    : resolveIngressUpstreamPath(requestedPath, leadAgent, agentSlugs)
   const token = mode === 'ingress'
     ? await getToken(deployment.envSlug)
-    : (teamSpec.tokenSeed ? deriveAgentToken(teamSpec.tokenSeed, teamSlug) : null)
+    : (teamSpec.signingKey ? deriveAgentToken(teamSpec.signingKey, teamSlug) : null)
 
   const upstream = await (async (): Promise<UpstreamTarget> => {
     if (mode === 'port-forward') {
