@@ -31,7 +31,7 @@ function TeamRow({ team, isActive }: { team: TeamSpec; isActive: boolean }) {
       </div>
       {expanded && team.agents.map(a => (
         <div key={a.slug} className={`pl-4 py-0.5 text-[10px] flex items-center gap-1 ${isActive ? 'text-blue-200/60' : 'text-gray-600'}`}>
-          <span>{a.isLead ? '●' : '·'}</span>
+          <span>{a.slug === team.leadAgent ? '●' : '·'}</span>
           <span className="truncate">{a.name}</span>
         </div>
       ))}

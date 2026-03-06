@@ -16,9 +16,8 @@ const baseSpec: TeamSpec = {
       name: 'Alpha',
       role: 'Lead',
       skills: [],
-      soul: 'Pragmatic',
-      providerSlug: 'anthropic',
-      isLead: true,
+      persona: 'Pragmatic',
+      provider: 'anthropic',
     },
   ],
 }
@@ -31,25 +30,25 @@ describe('validateTelegramPair', () => {
   it('passes when both fields are provided', () => {
     expect(() => validateTelegramPair({
       ...baseSpec,
-      telegramGroupChatId: '-1001234567890',
-      telegramOwnerUserId: '222222222',
+      telegramGroupId: '-1001234567890',
+      telegramAdminId: '222222222',
     })).not.toThrow()
   })
 
-  it('fails when group chat id exists without owner user id', () => {
+  it('fails when group id exists without admin id', () => {
     expect(() => validateTelegramPair({
       ...baseSpec,
-      telegramGroupChatId: '-1001234567890',
-      telegramOwnerUserId: '  ',
-    })).toThrow('telegramGroupChatId and telegramOwnerUserId must both be set or both be empty')
+      telegramGroupId: '-1001234567890',
+      telegramAdminId: '  ',
+    })).toThrow('telegramGroupId and telegramAdminId must both be set or both be empty')
   })
 
-  it('fails when owner user id exists without group chat id', () => {
+  it('fails when admin id exists without group id', () => {
     expect(() => validateTelegramPair({
       ...baseSpec,
-      telegramGroupChatId: '',
-      telegramOwnerUserId: '222222222',
-    })).toThrow('telegramGroupChatId and telegramOwnerUserId must both be set or both be empty')
+      telegramGroupId: '',
+      telegramAdminId: '222222222',
+    })).toThrow('telegramGroupId and telegramAdminId must both be set or both be empty')
   })
 })
 
@@ -60,21 +59,21 @@ describe('normalizeTeamSpec', () => {
       slug: ' team-a ',
       name: ' Team A ',
       domain: 'legacy.example.com',
-      telegramGroupChatId: ' -1001234567890 ',
-      telegramOwnerUserId: ' 222222222 ',
-      image: ' ghcr.io/org/openclaw:latest ',
-      storageGi: -1,
-      leadAgentSlug: 'missing-agent',
+      telegramGroupId: ' -1001234567890 ',
+      telegramAdminId: ' 222222222 ',
+      defaultImage: ' ghcr.io/org/openclaw:latest ',
+      defaultDiskGi: -1,
+      leadAgent: 'missing-agent',
       agents: [{
         ...baseSpec.agents[0],
         slug: ' alpha ',
         name: ' Alpha ',
         role: ' Lead ',
-        providerSlug: ' anthropic ',
-        telegramBotId: ' 111111111 ',
+        provider: ' anthropic ',
+        telegramBot: ' 111111111 ',
         skills: [' research ', ' ', 'write'],
         cpu: -1,
-        storageGi: 0,
+        diskGi: 0,
       }],
     } as TeamSpec & { domain?: string }
 
@@ -83,16 +82,16 @@ describe('normalizeTeamSpec', () => {
     expect((normalized as TeamSpec & { domain?: string }).domain).toBeUndefined()
     expect(normalized.slug).toBe('team-a')
     expect(normalized.name).toBe('Team A')
-    expect(normalized.telegramGroupChatId).toBe('-1001234567890')
-    expect(normalized.telegramOwnerUserId).toBe('222222222')
-    expect(normalized.image).toBe('ghcr.io/org/openclaw:latest')
-    expect(normalized.storageGi).toBeUndefined()
-    expect(normalized.leadAgentSlug).toBeUndefined()
+    expect(normalized.telegramGroupId).toBe('-1001234567890')
+    expect(normalized.telegramAdminId).toBe('222222222')
+    expect(normalized.defaultImage).toBe('ghcr.io/org/openclaw:latest')
+    expect(normalized.defaultDiskGi).toBeUndefined()
+    expect(normalized.leadAgent).toBeUndefined()
     expect(normalized.agents[0].slug).toBe('alpha')
-    expect(normalized.agents[0].providerSlug).toBe('anthropic')
-    expect(normalized.agents[0].telegramBotId).toBe('111111111')
+    expect(normalized.agents[0].provider).toBe('anthropic')
+    expect(normalized.agents[0].telegramBot).toBe('111111111')
     expect(normalized.agents[0].skills).toEqual(['research', 'write'])
     expect(normalized.agents[0].cpu).toBeUndefined()
-    expect(normalized.agents[0].storageGi).toBeUndefined()
+    expect(normalized.agents[0].diskGi).toBeUndefined()
   })
 })

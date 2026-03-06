@@ -77,15 +77,15 @@ export interface AgentManifestInput {
   podAnnotations?: Record<string, string>
 }
 
-export function generateAgentPv(input: { teamSlug: string; agentSlug: string; projectId: string; zone: string; storageGi?: number }): string {
-  const { teamSlug, agentSlug, projectId, zone, storageGi = 10 } = input
+export function generateAgentPv(input: { teamSlug: string; agentSlug: string; projectId: string; zone: string; diskGi?: number }): string {
+  const { teamSlug, agentSlug, projectId, zone, diskGi = 10 } = input
   const name = `${teamSlug}-agent-${agentSlug}`
   const manifest = {
     apiVersion: 'v1',
     kind: 'PersistentVolume',
     metadata: { name, labels: { 'coordina.team': teamSlug, 'coordina.agent': agentSlug } },
     spec: {
-      capacity: { storage: `${storageGi}Gi` },
+      capacity: { storage: `${diskGi}Gi` },
       accessModes: ['ReadWriteOnce'],
       persistentVolumeReclaimPolicy: 'Retain',
       storageClassName: '',
@@ -104,8 +104,8 @@ export function generateAgentPv(input: { teamSlug: string; agentSlug: string; pr
   return yaml.dump(manifest)
 }
 
-export function generateAgentPvc(input: { teamSlug: string; agentSlug: string; namespace: string; storageGi?: number }): string {
-  const { teamSlug, agentSlug, namespace, storageGi = 10 } = input
+export function generateAgentPvc(input: { teamSlug: string; agentSlug: string; namespace: string; diskGi?: number }): string {
+  const { teamSlug, agentSlug, namespace, diskGi = 10 } = input
   const name = `${teamSlug}-agent-${agentSlug}`
   const manifest = {
     apiVersion: 'v1',
@@ -115,7 +115,7 @@ export function generateAgentPvc(input: { teamSlug: string; agentSlug: string; n
       accessModes: ['ReadWriteOnce'],
       storageClassName: '',
       volumeName: name,
-      resources: { requests: { storage: `${storageGi}Gi` } },
+      resources: { requests: { storage: `${diskGi}Gi` } },
     },
   }
   return yaml.dump(manifest)

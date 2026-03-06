@@ -31,8 +31,7 @@ export function SpecForm({ spec, onSpecChange }: Props) {
   }, [spec, onSpecChange])
 
   const applyAgents = (agents: AgentSpec[]) => {
-    const normalized = agents.map((agent, i) => ({ ...agent, isLead: i === 0 }))
-    onSpecChange({ ...spec, agents: normalized, leadAgentSlug: normalized[0]?.slug || undefined })
+    onSpecChange({ ...spec, agents, leadAgent: agents[0]?.slug || undefined })
   }
 
   const addAutoAgents = (count: number) => {
@@ -43,10 +42,9 @@ export function SpecForm({ spec, onSpecChange }: Props) {
       slug: identity.slug,
       name: identity.name,
       role: '',
-      providerSlug: '',
+      provider: '',
       skills: [],
-      soul: '',
-      isLead: false
+      persona: '',
     }))
 
     applyAgents([...spec.agents, ...newAgents])
@@ -91,21 +89,21 @@ export function SpecForm({ spec, onSpecChange }: Props) {
         </div>
 
         <div>
-          <label className={labelCls}>telegram group chat id</label>
+          <label className={labelCls}>telegram group id</label>
           <input
             className={inputCls}
-            value={spec.telegramGroupChatId ?? ''}
-            onChange={e => set('telegramGroupChatId')(e.target.value || undefined)}
+            value={spec.telegramGroupId ?? ''}
+            onChange={e => set('telegramGroupId')(e.target.value || undefined)}
             placeholder="-1001234567890"
           />
         </div>
 
         <div>
-          <label className={labelCls}>telegram owner user id</label>
+          <label className={labelCls}>telegram admin id</label>
           <input
             className={inputCls}
-            value={spec.telegramOwnerUserId ?? ''}
-            onChange={e => set('telegramOwnerUserId')(e.target.value || undefined)}
+            value={spec.telegramAdminId ?? ''}
+            onChange={e => set('telegramAdminId')(e.target.value || undefined)}
             placeholder="123456789"
           />
         </div>
@@ -113,7 +111,7 @@ export function SpecForm({ spec, onSpecChange }: Props) {
         <div className="grid grid-cols-2 gap-2">
           <div>
             <label className={labelCls}>default image</label>
-            <input className={inputCls} value={spec.image ?? ''} onChange={e => set('image')(e.target.value || undefined)} placeholder="ghcr.io/org/openclaw:latest" />
+            <input className={inputCls} value={spec.defaultImage ?? ''} onChange={e => set('defaultImage')(e.target.value || undefined)} placeholder="ghcr.io/org/openclaw:latest" />
           </div>
           <div>
             <label className={labelCls}>storage (Gi)</label>
@@ -121,20 +119,20 @@ export function SpecForm({ spec, onSpecChange }: Props) {
               type="number"
               min={1}
               className={inputCls}
-              value={spec.storageGi ?? ''}
-              onChange={e => set('storageGi')(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+              value={spec.defaultDiskGi ?? ''}
+              onChange={e => set('defaultDiskGi')(e.target.value ? parseInt(e.target.value, 10) : undefined)}
               placeholder="100"
             />
           </div>
         </div>
 
         <div>
-          <label className={labelCls}>bootstrap instructions</label>
+          <label className={labelCls}>startup instructions</label>
           <textarea
             className="bg-gray-800 border border-gray-700 rounded px-1.5 py-0.5 text-[11px] text-gray-200 focus:outline-none focus:border-blue-600 w-full resize-none font-mono"
             rows={3}
-            value={spec.bootstrapInstructions ?? ''}
-            onChange={e => set('bootstrapInstructions')(e.target.value || undefined)}
+            value={spec.startupInstructions ?? ''}
+            onChange={e => set('startupInstructions')(e.target.value || undefined)}
             placeholder="Custom startup instructions..."
           />
         </div>

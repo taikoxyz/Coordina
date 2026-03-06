@@ -91,7 +91,7 @@ export function AgentRow({ teamSlug, agent, isFirst, providerSlugs, onChange, on
       <div className="flex items-center gap-2 px-2 py-1">
         <span className="text-[10px] text-gray-500">{isFirst ? '●' : '·'}</span>
         <span className="text-[11px] text-gray-200 flex-1 truncate">{agent.name || 'Unnamed agent'}</span>
-        <span className="text-[10px] text-gray-600 font-mono truncate max-w-[80px]">{agent.providerSlug}</span>
+        <span className="text-[10px] text-gray-600 font-mono truncate max-w-[80px]">{agent.provider}</span>
         {tokenMasked && (
           <span className="text-[9px] px-1.5 py-0.5 rounded border border-green-800/60 text-green-300">
             tg token ✓
@@ -121,7 +121,7 @@ export function AgentRow({ teamSlug, agent, isFirst, providerSlugs, onChange, on
           {fieldRow('role', agent.role, set('role'), { placeholder: 'Researcher' })}
           {fieldRow('emoji', agent.emoji ?? '', v => set('emoji')(v || undefined), { placeholder: '🤖' })}
           {fieldRow('avatar', agent.avatar ?? '', v => set('avatar')(v || undefined), { placeholder: '/avatar.png or https://…' })}
-          {fieldRow('telegram id', agent.telegramBotId ?? '', v => set('telegramBotId')(v || undefined), { mono: true, placeholder: '123456789' })}
+          {fieldRow('telegram id', agent.telegramBot ?? '', v => set('telegramBot')(v || undefined), { mono: true, placeholder: '123456789' })}
           <div className="flex items-start gap-2">
             <label className="text-[10px] text-gray-500 w-20 shrink-0 pt-0.5">telegram token</label>
             <div className="flex-1 min-w-0 space-y-1">
@@ -157,8 +157,8 @@ export function AgentRow({ teamSlug, agent, isFirst, providerSlugs, onChange, on
           <div className="flex items-center gap-2">
             <label className="text-[10px] text-gray-500 w-20 shrink-0">provider</label>
             <select
-              value={agent.providerSlug}
-              onChange={e => set('providerSlug')(e.target.value)}
+              value={agent.provider}
+              onChange={e => set('provider')(e.target.value)}
               className="flex-1 bg-gray-800 border border-gray-700 rounded px-1.5 py-0.5 text-[11px] text-gray-200 focus:outline-none focus:border-blue-600"
             >
               <option value="">— select —</option>
@@ -185,14 +185,14 @@ export function AgentRow({ teamSlug, agent, isFirst, providerSlugs, onChange, on
               type="number"
               min={1}
               step={1}
-              value={agent.storageGi ?? ''}
-              onChange={e => set('storageGi')(e.target.value ? parseInt(e.target.value) : undefined)}
+              value={agent.diskGi ?? ''}
+              onChange={e => set('diskGi')(e.target.value ? parseInt(e.target.value) : undefined)}
               placeholder="10 (default)"
               className="w-24 bg-gray-800 border border-gray-700 rounded px-1.5 py-0.5 text-[11px] text-gray-200 focus:outline-none focus:border-blue-600"
             />
             <span className="text-[10px] text-gray-600">Gi</span>
           </div>
-          {fieldRow('soul', agent.soul, set('soul'), { multiline: true, placeholder: "Describe this agent's personality..." })}
+          {fieldRow('persona', agent.persona, set('persona'), { multiline: true, placeholder: "Describe this agent's personality..." })}
           <div className="flex items-center gap-2">
             <label className="text-[10px] text-gray-500 w-20 shrink-0">skills</label>
             <input

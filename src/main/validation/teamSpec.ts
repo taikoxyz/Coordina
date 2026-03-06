@@ -20,23 +20,23 @@ export const validateTeamSpec = (
     if (!agent.slug?.trim()) errors.push({ field: prefix, message: 'Agent slug is required' })
     if (!agent.name?.trim()) errors.push({ field: `${prefix}.name`, message: 'Agent name is required' })
     if (!agent.role?.trim()) errors.push({ field: `${prefix}.role`, message: 'Agent role is required' })
-    if (!agent.soul?.trim()) errors.push({ field: `${prefix}.soul`, message: 'Agent soul is required' })
+    if (!agent.persona?.trim()) errors.push({ field: `${prefix}.persona`, message: 'Agent persona is required' })
 
-    if (!agent.providerSlug?.trim()) {
-      errors.push({ field: `${prefix}.providerSlug`, message: 'Provider slug is required' })
+    if (!agent.provider?.trim()) {
+      errors.push({ field: `${prefix}.provider`, message: 'Provider is required' })
       continue
     }
 
-    const record = providersBySlug.get(agent.providerSlug)
+    const record = providersBySlug.get(agent.provider)
     if (!record) {
-      errors.push({ field: `${prefix}.providerSlug`, message: `Provider "${agent.providerSlug}" not found` })
+      errors.push({ field: `${prefix}.provider`, message: `Provider "${agent.provider}" not found` })
       continue
     }
 
     try {
       getProvider(record.type)
     } catch {
-      errors.push({ field: `${prefix}.providerSlug`, message: `Unknown provider type "${record.type}"` })
+      errors.push({ field: `${prefix}.provider`, message: `Unknown provider type "${record.type}"` })
     }
   }
 

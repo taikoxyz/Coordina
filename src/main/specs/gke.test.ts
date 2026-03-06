@@ -19,11 +19,11 @@ vi.mock('../providers/base', () => ({
 const teamSpec: TeamSpec = {
   slug: 'my-team',
   name: 'My Team',
-  tokenSeed: 'fixed-seed-for-testing-1234567890abcdef',
+  signingKey: 'fixed-seed-for-testing-1234567890abcdef',
   agents: [
-    { slug: 'alpha', name: 'Alpha', role: 'Lead', skills: [], soul: 'Alpha soul', providerSlug: 'anthropic', isLead: true },
-    { slug: 'beta', name: 'Beta', role: 'Engineer', skills: [], soul: 'Beta soul', providerSlug: 'anthropic', isLead: false },
-    { slug: 'gamma', name: 'Gamma', role: 'Designer', skills: [], soul: 'Gamma soul', providerSlug: 'anthropic', isLead: false },
+    { slug: 'alpha', name: 'Alpha', role: 'Lead', skills: [], persona: 'Alpha persona', provider: 'anthropic' },
+    { slug: 'beta', name: 'Beta', role: 'Engineer', skills: [], persona: 'Beta persona', provider: 'anthropic' },
+    { slug: 'gamma', name: 'Gamma', role: 'Designer', skills: [], persona: 'Gamma persona', provider: 'anthropic' },
   ],
 }
 
@@ -118,10 +118,10 @@ describe('gkeDeriver telegram config', () => {
   it('does not include telegram top-level config', async () => {
     const withTelegram: TeamSpec = {
       ...teamSpec,
-      telegramGroupChatId: '-1001234567890',
-      telegramOwnerUserId: '222222222',
+      telegramGroupId: '-1001234567890',
+      telegramAdminId: '222222222',
       agents: teamSpec.agents.map((agent) => (
-        agent.slug === 'alpha' ? { ...agent, telegramBotId: '111111111' } : agent
+        agent.slug === 'alpha' ? { ...agent, telegramBot: '111111111' } : agent
       )),
     }
 
@@ -135,10 +135,10 @@ describe('gkeDeriver telegram config', () => {
   it('injects TELEGRAM_BOT_TOKEN into credentials secret when telegram is fully configured', async () => {
     const withTelegram: TeamSpec = {
       ...teamSpec,
-      telegramGroupChatId: '-1001234567890',
-      telegramOwnerUserId: '222222222',
+      telegramGroupId: '-1001234567890',
+      telegramAdminId: '222222222',
       agents: teamSpec.agents.map((agent) => (
-        agent.slug === 'alpha' ? { ...agent, telegramBotId: '111111111' } : agent
+        agent.slug === 'alpha' ? { ...agent, telegramBot: '111111111' } : agent
       )),
     }
     const files = await gkeDeriver.derive(withTelegram, providers, envConfig, {
