@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useTeam, useSaveTeam } from '../hooks/useTeams'
 import { useNav, type TeamTab } from '../store/nav'
-import { TeamToolbar } from '../components/team/TeamToolbar'
 import { TeamOverview } from '../components/team/TeamOverview'
 import { AgentsTab } from '../components/team/AgentsTab'
 import { useEnvironments } from '../hooks/useEnvironments'
@@ -54,13 +53,6 @@ export function TeamDetailPage({ teamSlug }: Props) {
 
   return (
     <div className="h-full flex flex-col bg-white">
-      <TeamToolbar
-        spec={localSpec}
-        showSaveButton={false}
-        onSave={handleSave}
-        isSaving={saveTeam.isPending}
-      />
-
       {/* Tab bar */}
       <div className="flex gap-1 px-6 border-b border-gray-200 shrink-0">
         {tabs.map(tab => (
