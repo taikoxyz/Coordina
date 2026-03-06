@@ -1,5 +1,4 @@
 import { useSpecStatus } from '../../hooks/useSpecStatus'
-import { useSaveTeam } from '../../hooks/useTeams'
 import { useNav } from '../../store/nav'
 import { ChevronRight, Check, AlertCircle } from 'lucide-react'
 import { cn } from '../../lib/utils'
@@ -7,14 +6,14 @@ import type { TeamSpec } from '../../../../shared/types'
 
 interface Props {
   spec: TeamSpec
+  showSaveButton?: boolean
+  onSave?: () => void | Promise<void>
+  isSaving?: boolean
 }
 
-export function TeamToolbar({ spec }: Props) {
+export function TeamToolbar({ spec, showSaveButton = true, onSave, isSaving = false }: Props) {
   const { setPage } = useNav()
   const status = useSpecStatus(spec.slug)
-  const saveTeam = useSaveTeam()
-
-  const handleSave = () => saveTeam.mutate(spec)
 
   return (
     <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-white shrink-0">
@@ -51,14 +50,15 @@ export function TeamToolbar({ spec }: Props) {
           }
         </span>
 
-        {/* Save button */}
-        <button
-          onClick={handleSave}
-          disabled={saveTeam.isPending}
-          className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-        >
-          {saveTeam.isPending ? 'Saving...' : 'Save'}
-        </button>
+        {showSaveButton && (
+          <button
+            onClick={onSave}
+            disabled={isSaving}
+            className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            {isSaving ? 'Saving...' : 'Save'}
+          </button>
+        )}
       </div>
     </div>
   )

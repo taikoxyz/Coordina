@@ -26,6 +26,7 @@ const tabs: { id: TeamTab; label: string }[] = [
 export function TeamDetailPage({ teamSlug }: Props) {
   const { data: savedSpec, isLoading } = useTeam(teamSlug)
   const [localSpec, setLocalSpec] = useState<TeamSpec | null>(null)
+  const [isEditingOverview, setIsEditingOverview] = useState(false)
   const { teamTab, setTeamTab } = useNav()
   const saveTeam = useSaveTeam()
   const { data: environments } = useEnvironments()
@@ -34,7 +35,10 @@ export function TeamDetailPage({ teamSlug }: Props) {
   const [selectedEnvSlug, setSelectedEnvSlug] = useState('')
 
   useEffect(() => {
-    if (savedSpec) setLocalSpec(savedSpec)
+    if (savedSpec) {
+      setLocalSpec(savedSpec)
+      setIsEditingOverview(false)
+    }
   }, [savedSpec])
 
   useEffect(() => {
@@ -52,11 +56,20 @@ export function TeamDetailPage({ teamSlug }: Props) {
   if (!localSpec) return <div className="p-6 text-sm text-gray-500">Team not found.</div>
 
   const handleSave = () => saveTeam.mutateAsync(localSpec).then(() => undefined)
+  const handleOverviewSave = async () => {
+    await handleSave()
+    setIsEditingOverview(false)
+  }
   const activeAgent = localSpec.agents.find(a => a.slug === selectedAgentSlug) || localSpec.agents[0]
 
   return (
     <div className="h-full flex flex-col bg-white">
-      <TeamToolbar spec={localSpec} />
+      <TeamToolbar
+        spec={localSpec}
+        showSaveButton={teamTab !== 'overview'}
+        onSave={handleSave}
+        isSaving={saveTeam.isPending}
+      />
 
       {/* Tab bar */}
       <div className="flex gap-1 px-6 border-b border-gray-200 shrink-0">
@@ -83,7 +96,14 @@ export function TeamDetailPage({ teamSlug }: Props) {
       {/* Tab content */}
       <div className="flex-1 overflow-y-auto min-h-0">
         {teamTab === 'overview' && (
-          <TeamOverview spec={localSpec} onSpecChange={setLocalSpec} />
+          <TeamOverview
+            spec={localSpec}
+            onSpecChange={setLocalSpec}
+            isEditing={isEditingOverview}
+            onEdit={() => setIsEditingOverview(true)}
+            onSave={handleOverviewSave}
+            isSaving={saveTeam.isPending}
+          />
         )}
 
         {teamTab === 'agents' && (
