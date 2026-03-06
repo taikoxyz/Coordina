@@ -3,11 +3,13 @@ import { useQuery } from '@tanstack/react-query'
 import { FileTree } from './FileTree'
 import { FileTab } from './FileTab'
 import { MarkdownViewer } from './MarkdownViewer'
+import type { TeamSpec } from '../../../../shared/types'
 
 interface Props {
   teamSlug: string
   agentSlug: string
   agentName?: string
+  teamSnapshot?: TeamSpec
 }
 
 interface FileEntry {
@@ -22,7 +24,7 @@ interface OpenTab {
   loading: boolean
 }
 
-export function FileBrowser({ teamSlug, agentSlug, agentName }: Props) {
+export function FileBrowser({ teamSlug, agentSlug, agentName, teamSnapshot }: Props) {
   const [openTabs, setOpenTabs] = useState<OpenTab[]>([])
   const [activeTab, setActiveTab] = useState<string | null>(null)
 
@@ -32,7 +34,7 @@ export function FileBrowser({ teamSlug, agentSlug, agentName }: Props) {
     error?: string
   }>({
     queryKey: ['files:list', teamSlug, agentSlug],
-    queryFn: () => window.api.invoke('files:list', teamSlug, agentSlug) as Promise<{ files: FileEntry[]; offline: boolean; error?: string }>,
+    queryFn: () => window.api.invoke('files:list', teamSlug, agentSlug, teamSnapshot ?? null) as Promise<{ files: FileEntry[]; offline: boolean; error?: string }>,
   })
 
   async function openFile(filePath: string) {
@@ -46,7 +48,7 @@ export function FileBrowser({ teamSlug, agentSlug, agentName }: Props) {
     setOpenTabs(prev => [...prev, { path: filePath, content: null, loading: true }])
     setActiveTab(filePath)
 
-    const result = await window.api.invoke('files:get', teamSlug, agentSlug, filePath) as { content: string | null }
+    const result = await window.api.invoke('files:get', teamSlug, agentSlug, filePath, teamSnapshot ?? null) as { content: string | null }
     setOpenTabs(prev => prev.map(t =>
       t.path === filePath ? { ...t, content: result.content, loading: false } : t
     ))
@@ -79,6 +81,8 @@ export function FileBrowser({ teamSlug, agentSlug, agentName }: Props) {
         </div>
         {listLoading ? (
           <div className="px-3 py-4 text-xs text-gray-400">Loading…</div>
+        ) : fileList?.error ? (
+          <div className="px-3 py-4 text-xs text-red-600">{fileList.error}</div>
         ) : (
           <FileTree files={files} onSelect={openFile} activeFile={activeTab ?? undefined} />
         )}

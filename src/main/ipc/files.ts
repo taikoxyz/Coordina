@@ -10,6 +10,7 @@ import {
   generateTeamMd,
 } from '../github/spec'
 import { DEFAULT_BOOTSTRAP_INSTRUCTIONS } from '../specs/bootstrap'
+import type { TeamSpec } from '../../shared/types'
 
 const LOCAL_PORT = 19876
 
@@ -26,8 +27,9 @@ async function fetchFromGateway(teamSlug: string, agentSlug: string, endpoint: s
 }
 
 export function registerFileHandlers() {
-  ipcMain.handle('files:list', async (_event, teamSlug: string, agentSlug: string) => {
-    const [team, deployment] = await Promise.all([getTeam(teamSlug), getTeamDeployment(teamSlug)])
+  ipcMain.handle('files:list', async (_event, teamSlug: string, agentSlug: string, teamSnapshot?: TeamSpec | null) => {
+    const [storedTeam, deployment] = await Promise.all([getTeam(teamSlug), getTeamDeployment(teamSlug)])
+    const team = teamSnapshot ?? storedTeam
 
     if (!deployment) {
       const agent = team?.agents.find(a => a.slug === agentSlug)
@@ -46,8 +48,9 @@ export function registerFileHandlers() {
     }
   })
 
-  ipcMain.handle('files:get', async (_event, teamSlug: string, agentSlug: string, filePath: string) => {
-    const [team, deployment] = await Promise.all([getTeam(teamSlug), getTeamDeployment(teamSlug)])
+  ipcMain.handle('files:get', async (_event, teamSlug: string, agentSlug: string, filePath: string, teamSnapshot?: TeamSpec | null) => {
+    const [storedTeam, deployment] = await Promise.all([getTeam(teamSlug), getTeamDeployment(teamSlug)])
+    const team = teamSnapshot ?? storedTeam
 
     if (!deployment) {
       const agent = team?.agents.find(a => a.slug === agentSlug)

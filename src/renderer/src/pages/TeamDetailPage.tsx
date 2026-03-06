@@ -173,9 +173,11 @@ export function TeamDetailPage({ teamSlug }: Props) {
             <div className="flex-1 min-w-0">
               {activeAgent && (
                 <FileBrowser
-                  teamSlug={localSpec.slug}
+                  key={`${teamSlug}:${activeAgent.slug}`}
+                  teamSlug={teamSlug}
                   agentSlug={activeAgent.slug}
                   agentName={activeAgent.name}
+                  teamSnapshot={localSpec}
                 />
               )}
             </div>
