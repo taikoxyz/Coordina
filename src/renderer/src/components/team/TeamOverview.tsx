@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AlertCircle, Check, Loader2, Rocket, X } from 'lucide-react'
-import type { TeamSpec } from '../../../../shared/types'
+import type { EnvironmentRecord, TeamSpec } from '../../../../shared/types'
 
 interface Props {
   spec: TeamSpec
@@ -9,8 +9,10 @@ interface Props {
   onEdit: () => void
   onSave: () => Promise<void>
   isSaving: boolean
+  deployEnvironments: EnvironmentRecord[]
   deployEnvSlug?: string
   deployEnvName?: string
+  onDeployEnvChange: (slug: string) => void
 }
 
 const inputCls = 'w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
@@ -33,7 +35,18 @@ function ReadField({ label, value, monospace = false }: { label: string; value?:
 
 type OverviewDeployState = 'idle' | 'preparing' | 'deploying' | 'done' | 'error'
 
-export function TeamOverview({ spec, onSpecChange, isEditing, onEdit, onSave, isSaving, deployEnvSlug, deployEnvName }: Props) {
+export function TeamOverview({
+  spec,
+  onSpecChange,
+  isEditing,
+  onEdit,
+  onSave,
+  isSaving,
+  deployEnvironments,
+  deployEnvSlug,
+  deployEnvName,
+  onDeployEnvChange,
+}: Props) {
   const [isDeployDrawerOpen, setIsDeployDrawerOpen] = useState(false)
   const [deployFiles, setDeployFiles] = useState<string[]>([])
   const [deployLogs, setDeployLogs] = useState<string[]>([])
@@ -100,26 +113,12 @@ export function TeamOverview({ spec, onSpecChange, isEditing, onEdit, onSave, is
             <h3 className="text-sm font-semibold text-gray-900">Team overview</h3>
             <p className="text-sm text-gray-500 mt-1">Review the current team configuration before making changes.</p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleDeploy}
-              disabled={!deployEnvSlug || isSaving || deployState === 'preparing' || deployState === 'deploying'}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 transition-colors"
-            >
-              {(deployState === 'preparing' || deployState === 'deploying') ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Rocket className="w-3.5 h-3.5" />
-              )}
-              Deploy
-            </button>
-            <button
-              onClick={onEdit}
-              className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-            >
-              Edit team
-            </button>
-          </div>
+          <button
+            onClick={onEdit}
+            className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+          >
+            Edit team
+          </button>
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-5">
@@ -153,6 +152,77 @@ export function TeamOverview({ spec, onSpecChange, isEditing, onEdit, onSave, is
               {spec.startupInstructions?.trim() || 'Not set'}
             </div>
           </div>
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900">Deployment</h4>
+              <p className="text-sm text-gray-500 mt-1">
+                Select a target environment and deploy from the Overview page.
+              </p>
+            </div>
+            <button
+              onClick={handleDeploy}
+              disabled={!deployEnvSlug || isSaving || deployState === 'preparing' || deployState === 'deploying'}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 transition-colors"
+            >
+              {(deployState === 'preparing' || deployState === 'deploying') ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Rocket className="w-3.5 h-3.5" />
+              )}
+              Deploy
+            </button>
+          </div>
+
+          {deployEnvironments.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>Target environment</label>
+                <select
+                  className={inputCls}
+                  value={deployEnvSlug ?? ''}
+                  onChange={e => onDeployEnvChange(e.target.value)}
+                >
+                  {deployEnvironments.map((environment) => (
+                    <option key={environment.slug} value={environment.slug}>
+                      {environment.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>Status</label>
+                <div className={`${valueCls} flex items-center justify-between gap-3`}>
+                  <span className="truncate">
+                    {deployEnvName || deployEnvSlug || 'No target selected'}
+                  </span>
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
+                    deployState === 'done'
+                      ? 'bg-green-50 text-green-700'
+                      : deployState === 'error'
+                      ? 'bg-red-50 text-red-700'
+                      : deployState === 'preparing' || deployState === 'deploying'
+                      ? 'bg-yellow-50 text-yellow-700'
+                      : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {deployState === 'done' && <Check className="w-3 h-3" />}
+                    {deployState === 'error' && <AlertCircle className="w-3 h-3" />}
+                    {(deployState === 'preparing' || deployState === 'deploying') && <Loader2 className="w-3 h-3 animate-spin" />}
+                    {deployState === 'idle' ? 'Idle' :
+                     deployState === 'preparing' ? 'Preparing' :
+                     deployState === 'deploying' ? 'Deploying' :
+                     deployState === 'done' ? 'Deployed' : 'Failed'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
+              No deployment environments configured. Add one in Settings before deploying.
+            </div>
+          )}
         </div>
 
         <div

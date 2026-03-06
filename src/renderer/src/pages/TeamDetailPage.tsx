@@ -4,7 +4,6 @@ import { useNav, type TeamTab } from '../store/nav'
 import { TeamToolbar } from '../components/team/TeamToolbar'
 import { TeamOverview } from '../components/team/TeamOverview'
 import { AgentsTab } from '../components/team/AgentsTab'
-import { DeployTab } from '../components/team/DeployTab'
 import { useEnvironments } from '../hooks/useEnvironments'
 import { cn } from '../lib/utils'
 import type { TeamSpec } from '../../../shared/types'
@@ -16,7 +15,6 @@ interface Props {
 const tabs: { id: TeamTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'agents', label: 'Agents' },
-  { id: 'deploy', label: 'Deploy' },
 ]
 
 export function TeamDetailPage({ teamSlug }: Props) {
@@ -40,6 +38,10 @@ export function TeamDetailPage({ teamSlug }: Props) {
     if (environments?.length && !selectedEnvSlug) setSelectedEnvSlug(environments[0].slug)
   }, [environments, selectedEnvSlug])
 
+  useEffect(() => {
+    if (teamTab === 'deploy') setTeamTab('overview')
+  }, [teamTab, setTeamTab])
+
   if (isLoading) return <div className="p-6 text-sm text-gray-500">Loading...</div>
   if (!localSpec) return <div className="p-6 text-sm text-gray-500">Team not found.</div>
 
@@ -53,7 +55,7 @@ export function TeamDetailPage({ teamSlug }: Props) {
     <div className="h-full flex flex-col bg-white">
       <TeamToolbar
         spec={localSpec}
-        showSaveButton={teamTab === 'agents' || teamTab === 'deploy'}
+        showSaveButton={teamTab === 'agents'}
         onSave={handleSave}
         isSaving={saveTeam.isPending}
       />
@@ -90,8 +92,10 @@ export function TeamDetailPage({ teamSlug }: Props) {
             onEdit={() => setIsEditingOverview(true)}
             onSave={handleOverviewSave}
             isSaving={saveTeam.isPending}
+            deployEnvironments={environments ?? []}
             deployEnvSlug={selectedEnvSlug || undefined}
             deployEnvName={environments?.find(env => env.slug === selectedEnvSlug)?.name}
+            onDeployEnvChange={setSelectedEnvSlug}
           />
         )}
 
@@ -101,10 +105,6 @@ export function TeamDetailPage({ teamSlug }: Props) {
             onSpecChange={setLocalSpec}
             envSlug={selectedEnvSlug || undefined}
           />
-        )}
-
-        {teamTab === 'deploy' && (
-          <DeployTab spec={localSpec} onSave={handleSave} isSaving={saveTeam.isPending} />
         )}
       </div>
 
