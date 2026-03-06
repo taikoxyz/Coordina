@@ -19,14 +19,15 @@ const inputCls = 'w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 
 const monoInputCls = inputCls + ' font-mono'
 const labelCls = 'block text-xs font-medium text-gray-600 mb-1'
 const valueCls = 'min-h-10 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700'
+const readLabelCls = 'text-[11px] font-medium uppercase tracking-[0.16em] text-gray-400'
 const emptyValueCls = 'text-gray-400'
 
 function ReadField({ label, value, monospace = false }: { label: string; value?: string | number; monospace?: boolean }) {
   const hasValue = value !== undefined && value !== null && `${value}`.trim().length > 0
   return (
-    <div>
-      <label className={labelCls}>{label}</label>
-      <div className={`${valueCls} ${monospace ? 'font-mono text-xs' : ''} ${hasValue ? '' : emptyValueCls}`}>
+    <div className="space-y-1.5">
+      <div className={readLabelCls}>{label}</div>
+      <div className={`${monospace ? 'font-mono text-xs' : 'text-sm'} ${hasValue ? 'text-gray-900' : emptyValueCls}`}>
         {hasValue ? value : 'Not set'}
       </div>
     </div>
@@ -124,7 +125,7 @@ export function TeamOverview({
         <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-5">
           <div>
             <h4 className="text-sm font-semibold text-gray-900 mb-3">Team details</h4>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-x-8 gap-y-5">
               <ReadField label="Name" value={spec.name} />
               <ReadField label="Slug" value={spec.slug} monospace />
             </div>
@@ -132,7 +133,7 @@ export function TeamOverview({
 
           <div>
             <h4 className="text-sm font-semibold text-gray-900 mb-3">Telegram integration</h4>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-x-8 gap-y-5">
               <ReadField label="Group ID" value={spec.telegramGroupId} monospace />
               <ReadField label="Admin ID" value={spec.telegramAdminId} monospace />
             </div>
@@ -140,15 +141,15 @@ export function TeamOverview({
 
           <div>
             <h4 className="text-sm font-semibold text-gray-900 mb-3">Infrastructure defaults</h4>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-x-8 gap-y-5">
               <ReadField label="Default container image" value={spec.defaultImage} monospace />
               <ReadField label="Storage (Gi)" value={spec.defaultDiskGi} />
             </div>
           </div>
 
-          <div>
-            <label className={labelCls}>Startup instructions</label>
-            <div className={`${valueCls} min-h-28 whitespace-pre-wrap font-mono text-xs ${spec.startupInstructions?.trim() ? '' : emptyValueCls}`}>
+          <div className="space-y-1.5">
+            <div className={readLabelCls}>Startup instructions</div>
+            <div className={`min-h-20 whitespace-pre-wrap rounded-lg bg-gray-50 px-4 py-3 font-mono text-xs ${spec.startupInstructions?.trim() ? 'text-gray-700' : emptyValueCls}`}>
               {spec.startupInstructions?.trim() || 'Not set'}
             </div>
           </div>
