@@ -76,7 +76,7 @@ export function TeamDetailPage({ teamSlug }: Props) {
       </div>
 
       {/* Tab content */}
-      <div className="flex-1 overflow-y-auto min-h-0">
+      <div className="flex-1 flex flex-col min-h-0">
         {teamTab === 'overview' && (
           <TeamOverview
             spec={localSpec}
@@ -93,14 +93,16 @@ export function TeamDetailPage({ teamSlug }: Props) {
         )}
 
         {teamTab === 'agents' && (
-          <AgentsTab
-            spec={localSpec}
-            onSpecChange={setLocalSpec}
-            onSave={handleSave}
-            onSaveSpec={handleSaveSpec}
-            isSaving={saveTeam.isPending}
-            envSlug={selectedEnvSlug || undefined}
-          />
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <AgentsTab
+              spec={localSpec}
+              onSpecChange={setLocalSpec}
+              onSave={handleSave}
+              onSaveSpec={handleSaveSpec}
+              isSaving={saveTeam.isPending}
+              envSlug={selectedEnvSlug || undefined}
+            />
+          </div>
         )}
       </div>
 

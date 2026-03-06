@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Trash2, Check, Shield } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { deriveSlug } from '../../../../shared/slug'
 import type { AgentSpec } from '../../../../shared/types'
+import { PERSONA_CATALOG, getPersonasByDivision } from '../../../../shared/personaCatalog'
 
 interface Props {
   teamSlug: string
@@ -53,6 +54,21 @@ export function AgentCard({
   const [tokenError, setTokenError] = useState<string | null>(null)
   const set = (key: keyof AgentSpec) => (value: unknown) =>
     onChange({ ...agent, [key]: value })
+
+  const personasByDivision = useMemo(() => getPersonasByDivision(), [])
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('')
+
+  const applyTemplate = (templateId: string) => {
+    setSelectedTemplate(templateId)
+    if (templateId === 'custom') {
+      onChange({ ...agent, role: '', emoji: undefined, persona: '', skills: [] })
+      return
+    }
+    if (!templateId) return
+    const tmpl = PERSONA_CATALOG.find(p => p.id === templateId)
+    if (!tmpl) return
+    onChange({ ...agent, role: tmpl.role, emoji: tmpl.emoji, persona: tmpl.persona, skills: tmpl.skills })
+  }
 
   const handleNameChange = (name: string) => {
     onChange({ ...agent, name, slug: name ? deriveSlug(name) : '' })
@@ -181,6 +197,25 @@ export function AgentCard({
       <div className="px-4 pb-4 pt-1 border-t border-gray-100 space-y-3">
         {isEditing ? (
           <>
+            <div>
+              <label className={labelCls}>Persona Template</label>
+              <select
+                value={selectedTemplate}
+                onChange={(e) => applyTemplate(e.target.value)}
+                className={inputCls}
+              >
+                <option value="">— select persona —</option>
+                <option value="custom">✏️ Custom (manual entry)</option>
+                {Array.from(personasByDivision.entries()).map(([division, templates]) => (
+                  <optgroup key={division} label={division}>
+                    {templates.map((t) => (
+                      <option key={t.id} value={t.id}>{t.emoji} {t.name}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={labelCls}>Name</label>
@@ -197,36 +232,6 @@ export function AgentCard({
                 )}
               </div>
               <div>
-                <label className={labelCls}>Role</label>
-                <input
-                  className={inputCls}
-                  value={agent.role}
-                  onChange={(e) => set('role')(e.target.value)}
-                  placeholder="Researcher"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className={labelCls}>Emoji</label>
-                <input
-                  className={inputCls}
-                  value={agent.emoji ?? ''}
-                  onChange={(e) => set('emoji')(e.target.value || undefined)}
-                  placeholder="🤖"
-                />
-              </div>
-              <div>
-                <label className={labelCls}>Avatar URL</label>
-                <input
-                  className={inputCls + ' font-mono'}
-                  value={agent.avatar ?? ''}
-                  onChange={(e) => set('avatar')(e.target.value || undefined)}
-                  placeholder="https://..."
-                />
-              </div>
-              <div>
                 <label className={labelCls}>Provider</label>
                 <select
                   value={agent.provider}
@@ -241,6 +246,69 @@ export function AgentCard({
                   ))}
                 </select>
               </div>
+            </div>
+
+            {selectedTemplate && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelCls}>Role</label>
+                    <input
+                      className={inputCls}
+                      value={agent.role}
+                      onChange={(e) => set('role')(e.target.value)}
+                      placeholder="Researcher"
+                    />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Emoji</label>
+                    <input
+                      className={inputCls}
+                      value={agent.emoji ?? ''}
+                      onChange={(e) => set('emoji')(e.target.value || undefined)}
+                      placeholder="🤖"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className={labelCls}>Persona</label>
+                  <textarea
+                    className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    rows={3}
+                    value={agent.persona}
+                    onChange={(e) => set('persona')(e.target.value)}
+                    placeholder="Describe this agent's personality..."
+                  />
+                </div>
+
+                <div>
+                  <label className={labelCls}>Skills (comma-separated)</label>
+                  <input
+                    className={inputCls}
+                    value={agent.skills.join(', ')}
+                    onChange={(e) =>
+                      set('skills')(
+                        e.target.value
+                          .split(',')
+                          .map((s) => s.trim())
+                          .filter(Boolean),
+                      )
+                    }
+                    placeholder="research, writing"
+                  />
+                </div>
+              </>
+            )}
+
+            <div>
+              <label className={labelCls}>Avatar URL</label>
+              <input
+                className={inputCls + ' font-mono'}
+                value={agent.avatar ?? ''}
+                onChange={(e) => set('avatar')(e.target.value || undefined)}
+                placeholder="https://..."
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -333,34 +401,6 @@ export function AgentCard({
                   placeholder="10"
                 />
               </div>
-            </div>
-
-            <div>
-              <label className={labelCls}>Persona</label>
-              <textarea
-                className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                rows={3}
-                value={agent.persona}
-                onChange={(e) => set('persona')(e.target.value)}
-                placeholder="Describe this agent's personality..."
-              />
-            </div>
-
-            <div>
-              <label className={labelCls}>Skills (comma-separated)</label>
-              <input
-                className={inputCls}
-                value={agent.skills.join(', ')}
-                onChange={(e) =>
-                  set('skills')(
-                    e.target.value
-                      .split(',')
-                      .map((s) => s.trim())
-                      .filter(Boolean),
-                  )
-                }
-                placeholder="research, writing"
-              />
             </div>
           </>
         ) : (
