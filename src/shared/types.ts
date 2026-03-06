@@ -1,3 +1,5 @@
+import type { AgentNameTheme } from './agentNames'
+
 export interface ChatAttachment {
   name: string
   mimeType: string
@@ -41,6 +43,8 @@ export interface TeamSpec {
   startupInstructions?: string
   signingKey?: string
   agents: AgentSpec[]
+  deployedEnvSlug?: string
+  lastDeployedAt?: number
 }
 
 export interface ProviderRecord {
@@ -60,6 +64,7 @@ export interface EnvironmentRecord {
 export interface AppSettings {
   gitEnabled?: boolean
   gitRepoPath?: string
+  agentNameTheme?: AgentNameTheme
 }
 
 export interface SpecFile {

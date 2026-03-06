@@ -2,19 +2,59 @@
 // FEATURE: Deployment IPC layer replacing SQLite and kubectl with async APIs
 import { ipcMain, BrowserWindow } from 'electron'
 import { listEnvironments, getEnvironment, saveEnvironment, deleteEnvironment } from '../store/environments'
-import { getTeam } from '../store/teams'
+import { getTeam, saveTeam } from '../store/teams'
 import { listProviders, getProviderApiKey } from '../store/providers'
 import { getSecret } from '../keychain'
 import { saveTeamDeployment, deleteTeamDeployment } from '../store/deployments'
 import { getDeriver } from '../specs/base'
 import '../specs/gke'
+import { validateDerivedSpecFiles } from '../specs/validate'
 import { deployTeam, undeployTeam, getTeamStatus } from '../environments/gke/deploy'
 import { authenticateGke } from '../environments/gke/auth'
 import { resolveGatewayMode } from '../gateway/mode'
 import type { EnvironmentRecord, DeployOptions } from '../../shared/types'
+import { validateTeamSpec } from '../validation/teamSpec'
 
 export function registerDeployHandlers(): void {
   const telegramAccount = (teamSlug: string, agentSlug: string) => `team:${teamSlug}:agent:${agentSlug}`
+  const formatValidationFailure = (prefix: string, errors: { field: string; message: string }[]): string => {
+    const summary = errors.slice(0, 3).map(error => `${error.field}: ${error.message}`).join('; ')
+    return errors.length > 3 ? `${prefix}: ${summary}; and ${errors.length - 3} more` : `${prefix}: ${summary}`
+  }
+  const deriveValidatedDeployFiles = async (teamSlug: string, envSlug: string) => {
+    const [spec, env] = await Promise.all([getTeam(teamSlug), getEnvironment(envSlug)])
+    if (!spec) throw new Error('Team not found')
+    if (!env) throw new Error('Environment not found')
+
+    const providerRecords = await listProviders()
+    const specValidation = validateTeamSpec(spec, providerRecords)
+    if (!specValidation.valid) {
+      throw new Error(formatValidationFailure('Team spec validation failed', specValidation.errors))
+    }
+
+    const providersMap = new Map(
+      await Promise.all(providerRecords.map(async (p) => {
+        const apiKey = await getProviderApiKey(p.slug)
+        return [p.slug, { ...p, apiKey: apiKey ?? undefined }] as const
+      }))
+    )
+
+    const telegramTokens = Object.fromEntries(await Promise.all(
+      spec.agents.map(async (agent) => {
+        const token = await getSecret(telegramAccount(spec.slug, agent.slug), 'agent-telegram-token')
+        return [agent.slug, token ?? undefined] as const
+      })
+    ))
+
+    const deriver = getDeriver(env.type)
+    const specFiles = await deriver.derive(spec, providersMap, env.config, { agentTelegramTokens: telegramTokens })
+    const deployValidation = validateDerivedSpecFiles(specFiles)
+    if (!deployValidation.valid) {
+      throw new Error(formatValidationFailure('Deployment file validation failed', deployValidation.errors))
+    }
+
+    return { spec, env, specFiles }
+  }
 
   ipcMain.handle('environments:list', () => listEnvironments())
 
@@ -42,28 +82,27 @@ export function registerDeployHandlers(): void {
     }
   })
 
+  ipcMain.handle('deploy:preview', async (_event, { teamSlug, envSlug }: { teamSlug: string; envSlug: string }) => {
+    try {
+      const { specFiles } = await deriveValidatedDeployFiles(teamSlug, envSlug)
+      return { ok: true, files: specFiles.map(file => ({ path: file.path })) }
+    } catch (error) {
+      return { ok: false, reason: error instanceof Error ? error.message : String(error) }
+    }
+  })
+
   ipcMain.handle('deploy:team', async (event, { teamSlug, envSlug, options }: { teamSlug: string; envSlug: string; options: DeployOptions }) => {
-    const [spec, env] = await Promise.all([getTeam(teamSlug), getEnvironment(envSlug)])
-    if (!spec) return { ok: false, reason: 'Team not found' }
-    if (!env) return { ok: false, reason: 'Environment not found' }
-
-    const providerRecords = await listProviders()
-    const providersMap = new Map(
-      await Promise.all(providerRecords.map(async (p) => {
-        const apiKey = await getProviderApiKey(p.slug)
-        return [p.slug, { ...p, apiKey: apiKey ?? undefined }] as const
-      }))
-    )
-
-    const telegramTokens = Object.fromEntries(await Promise.all(
-      spec.agents.map(async (agent) => {
-        const token = await getSecret(telegramAccount(spec.slug, agent.slug), 'agent-telegram-token')
-        return [agent.slug, token ?? undefined] as const
-      })
-    ))
-
-    const deriver = getDeriver(env.type)
-    const specFiles = await deriver.derive(spec, providersMap, env.config, { agentTelegramTokens: telegramTokens })
+    let spec
+    let env
+    let specFiles
+    try {
+      const prepared = await deriveValidatedDeployFiles(teamSlug, envSlug)
+      spec = prepared.spec
+      env = prepared.env
+      specFiles = prepared.specFiles
+    } catch (error) {
+      return { ok: false, reason: error instanceof Error ? error.message : String(error) }
+    }
 
     const win = BrowserWindow.fromWebContents(event.sender)
     const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof deployTeam>[2]
@@ -79,6 +118,7 @@ export function registerDeployHandlers(): void {
         if (mode === 'ingress' && (!envDomain || envDomain.trim().length === 0)) {
           return { ok: false, reason: 'Environment domain is required when gateway mode is ingress' }
         }
+        const deployedAt = Date.now()
         await saveTeamDeployment({
           teamSlug,
           envSlug,
@@ -86,8 +126,10 @@ export function registerDeployHandlers(): void {
           gatewayBaseUrl: mode === 'ingress'
             ? `https://${teamSlug}.${envDomain}`.replace(/\/+$/, '')
             : 'http://127.0.0.1',
-          deployedAt: Date.now(),
+          deployedAt,
         })
+        const currentSpec = await getTeam(teamSlug)
+        if (currentSpec) await saveTeam({ ...currentSpec, deployedEnvSlug: envSlug, lastDeployedAt: deployedAt })
       }
       return { ok: true }
     } catch (e) {
@@ -107,6 +149,8 @@ export function registerDeployHandlers(): void {
         win?.webContents.send('deploy:status', status)
       }
       await deleteTeamDeployment(teamSlug)
+      const currentSpec = await getTeam(teamSlug)
+      if (currentSpec) await saveTeam({ ...currentSpec, deployedEnvSlug: undefined, lastDeployedAt: undefined })
       return { ok: true }
     } catch (e) {
       return { ok: false, reason: e instanceof Error ? e.message : String(e) }

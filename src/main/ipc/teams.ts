@@ -1,46 +1,12 @@
 // IPC handlers for team spec CRUD replacing SQLite with file-based storage
 // FEATURE: Team management IPC layer using ~/.coordina/teams/{slug}.json files
 import { ipcMain } from 'electron'
-import fs from 'fs/promises'
-import path from 'path'
-import os from 'os'
 import { listTeams, getTeam, saveTeam, deleteTeam } from '../store/teams'
 import { deleteTeamDeployment } from '../store/deployments'
 import { runPipeline } from '../watcher'
 import type { TeamSpec } from '../../shared/types'
 import { getSecret, setSecret, deleteSecret } from '../keychain'
 import { normalizeTeamSpec, validateTelegramPair } from '../validation/teamSpecNormalize'
-
-function isSkippableFsError(error: unknown): boolean {
-  const code = (error as NodeJS.ErrnoException | undefined)?.code
-  return code === 'ENOENT' || code === 'ENOTDIR' || code === 'EISDIR'
-}
-
-async function readDirRecursive(dir: string, base = ''): Promise<{ path: string; content: string }[]> {
-  let entries
-  try { entries = await fs.readdir(dir, { withFileTypes: true }) } catch { return [] }
-  const results: { path: string; content: string }[] = []
-  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-    const rel = base ? `${base}/${entry.name}` : entry.name
-    if (entry.isDirectory()) {
-      try {
-        results.push(...await readDirRecursive(path.join(dir, entry.name), rel))
-      } catch (error) {
-        if (isSkippableFsError(error)) continue
-        throw error
-      }
-    } else {
-      try {
-        const content = await fs.readFile(path.join(dir, entry.name), 'utf-8')
-        results.push({ path: rel, content })
-      } catch (error) {
-        if (isSkippableFsError(error)) continue
-        throw error
-      }
-    }
-  }
-  return results
-}
 
 export function registerTeamHandlers(): void {
   const telegramAccount = (teamSlug: string, agentSlug: string) => `team:${teamSlug}:agent:${agentSlug}`
@@ -82,11 +48,6 @@ export function registerTeamHandlers(): void {
     }
     await setSecret(telegramAccount(data.teamSlug, data.agentSlug), 'agent-telegram-token', token)
     return { ok: true, cleared: false }
-  })
-
-  ipcMain.handle('teams:getDeployFiles', async (_e, { teamSlug, envType }: { teamSlug: string; envType: string }) => {
-    const deployDir = path.join(os.homedir(), '.coordina', 'teams', teamSlug, '.deploy', envType)
-    return readDirRecursive(deployDir)
   })
 
   ipcMain.handle('teams:derive', async (_e, slug: string) => {

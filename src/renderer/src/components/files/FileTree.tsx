@@ -72,7 +72,7 @@ function TreeNodeView({ node, onSelect, activeFile, depth }: {
     return (
       <div>
         <button
-          className="flex items-center gap-1 w-full text-left px-2 py-0.5 hover:bg-gray-700/50 text-gray-400 text-xs"
+          className="flex items-center gap-1 w-full text-left px-2 py-0.5 hover:bg-gray-100 text-gray-600 text-xs"
           style={{ paddingLeft: `${8 + depth * 12}px` }}
           onClick={() => setExpanded(e => !e)}
         >
@@ -90,14 +90,14 @@ function TreeNodeView({ node, onSelect, activeFile, depth }: {
   return (
     <button
       className={`flex items-center justify-between w-full text-left px-2 py-0.5 text-xs group ${
-        isActive ? 'bg-blue-600/30 text-blue-300' : 'hover:bg-gray-700/50 text-gray-300'
+        isActive ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-100 text-gray-700'
       }`}
       style={{ paddingLeft: `${8 + depth * 12}px` }}
       onClick={() => onSelect(node.path)}
     >
       <span className="truncate">{node.name}</span>
       {node.size !== null && (
-        <span className="text-gray-600 ml-1 flex-shrink-0 text-xs">{formatSize(node.size)}</span>
+        <span className="text-gray-400 ml-1 flex-shrink-0 text-xs">{formatSize(node.size)}</span>
       )}
     </button>
   )
@@ -117,14 +117,14 @@ export function FileTree({ files, onSelect, activeFile }: Props) {
       <div className="px-2 py-1.5">
         <input
           type="text"
-          className="w-full bg-gray-700/50 border border-gray-600 rounded px-2 py-1 text-xs text-white placeholder-gray-500"
-          placeholder="Search files…"
+          className="w-full border border-gray-200 rounded-md px-2 py-1 text-xs text-gray-900 placeholder-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          placeholder="Search files..."
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
       </div>
       {tree.length === 0 ? (
-        <p className="text-xs text-gray-600 px-3 py-2">No files</p>
+        <p className="text-xs text-gray-400 px-3 py-2">No files</p>
       ) : (
         tree.map(node => (
           <TreeNodeView key={node.path} node={node} onSelect={onSelect} activeFile={activeFile} depth={0} />
