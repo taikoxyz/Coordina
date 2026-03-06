@@ -177,7 +177,6 @@ export function TeamDetailPage({ teamSlug }: Props) {
                   teamSlug={teamSlug}
                   agentSlug={activeAgent.slug}
                   agentName={activeAgent.name}
-                  teamSnapshot={localSpec}
                 />
               )}
             </div>

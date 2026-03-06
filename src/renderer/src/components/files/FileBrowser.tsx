@@ -3,13 +3,10 @@ import { useQuery } from '@tanstack/react-query'
 import { FileTree } from './FileTree'
 import { FileTab } from './FileTab'
 import { MarkdownViewer } from './MarkdownViewer'
-import type { TeamSpec } from '../../../../shared/types'
-
 interface Props {
   teamSlug: string
   agentSlug: string
   agentName?: string
-  teamSnapshot?: TeamSpec
 }
 
 interface FileEntry {
@@ -24,17 +21,16 @@ interface OpenTab {
   loading: boolean
 }
 
-export function FileBrowser({ teamSlug, agentSlug, agentName, teamSnapshot }: Props) {
+export function FileBrowser({ teamSlug, agentSlug, agentName }: Props) {
   const [openTabs, setOpenTabs] = useState<OpenTab[]>([])
   const [activeTab, setActiveTab] = useState<string | null>(null)
 
   const { data: fileList, isLoading: listLoading } = useQuery<{
     files: FileEntry[]
-    offline: boolean
     error?: string
   }>({
     queryKey: ['files:list', teamSlug, agentSlug],
-    queryFn: () => window.api.invoke('files:list', teamSlug, agentSlug, teamSnapshot ?? null) as Promise<{ files: FileEntry[]; offline: boolean; error?: string }>,
+    queryFn: () => window.api.invoke('files:list', teamSlug, agentSlug) as Promise<{ files: FileEntry[]; error?: string }>,
   })
 
   async function openFile(filePath: string) {
@@ -48,7 +44,7 @@ export function FileBrowser({ teamSlug, agentSlug, agentName, teamSnapshot }: Pr
     setOpenTabs(prev => [...prev, { path: filePath, content: null, loading: true }])
     setActiveTab(filePath)
 
-    const result = await window.api.invoke('files:get', teamSlug, agentSlug, filePath, teamSnapshot ?? null) as { content: string | null }
+    const result = await window.api.invoke('files:get', teamSlug, agentSlug, filePath) as { content: string | null }
     setOpenTabs(prev => prev.map(t =>
       t.path === filePath ? { ...t, content: result.content, loading: false } : t
     ))
@@ -76,10 +72,7 @@ export function FileBrowser({ teamSlug, agentSlug, agentName, teamSnapshot }: Pr
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
             {agentName ?? agentSlug}
           </p>
-          {fileList?.offline && (
-            <p className="text-xs text-yellow-600 mt-0.5">Preview — showing files that will be seeded on deploy</p>
-          )}
-          {!fileList?.offline && fileListError && (
+          {fileListError && (
             <p className="text-xs text-red-600 mt-0.5">{fileListError}</p>
           )}
         </div>
