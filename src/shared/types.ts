@@ -41,6 +41,8 @@ export interface TeamSpec {
   startupInstructions?: string
   signingKey?: string
   agents: AgentSpec[]
+  deployedEnvSlug?: string
+  lastDeployedAt?: number
 }
 
 export interface ProviderRecord {

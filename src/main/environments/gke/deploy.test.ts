@@ -127,7 +127,7 @@ describe('deployTeam', () => {
       { path: 'namespace.yaml', content: 'apiVersion: v1\nkind: Namespace\nmetadata:\n  name: team-alpha\n' },
     ]
     const statuses: DeployStatus[] = []
-    for await (const s of deployTeam(files, 'alpha', config, { keepDisks: true })) {
+    for await (const s of deployTeam(files, 'alpha', config, { keepDisks: true, forceRecreate: false })) {
       statuses.push(s)
     }
     expect(statuses.length).toBeGreaterThanOrEqual(1)
@@ -154,7 +154,7 @@ describe('deployTeam', () => {
     ]
 
     const statuses: DeployStatus[] = []
-    for await (const s of deployTeam(files, 'alpha', config, { keepDisks: true })) {
+    for await (const s of deployTeam(files, 'alpha', config, { keepDisks: true, forceRecreate: false })) {
       statuses.push(s)
     }
 
@@ -170,7 +170,7 @@ describe('deployTeam', () => {
       { path: 'agents/alice/statefulset.yaml', content: 'apiVersion: apps/v1\nkind: StatefulSet\nmetadata:\n  name: agent-alice\n  namespace: alpha\n' },
     ]
 
-    for await (const status of deployTeam(files, 'alpha', config, { keepDisks: false })) {
+    for await (const status of deployTeam(files, 'alpha', config, { keepDisks: false, forceRecreate: false })) {
       void status
     }
 

@@ -2,7 +2,7 @@
 // FEATURE: Deployment IPC layer replacing SQLite and kubectl with async APIs
 import { ipcMain, BrowserWindow } from 'electron'
 import { listEnvironments, getEnvironment, saveEnvironment, deleteEnvironment } from '../store/environments'
-import { getTeam } from '../store/teams'
+import { getTeam, saveTeam } from '../store/teams'
 import { listProviders, getProviderApiKey } from '../store/providers'
 import { getSecret } from '../keychain'
 import { saveTeamDeployment, deleteTeamDeployment } from '../store/deployments'
@@ -79,6 +79,7 @@ export function registerDeployHandlers(): void {
         if (mode === 'ingress' && (!envDomain || envDomain.trim().length === 0)) {
           return { ok: false, reason: 'Environment domain is required when gateway mode is ingress' }
         }
+        const deployedAt = Date.now()
         await saveTeamDeployment({
           teamSlug,
           envSlug,
@@ -86,8 +87,10 @@ export function registerDeployHandlers(): void {
           gatewayBaseUrl: mode === 'ingress'
             ? `https://${teamSlug}.${envDomain}`.replace(/\/+$/, '')
             : 'http://127.0.0.1',
-          deployedAt: Date.now(),
+          deployedAt,
         })
+        const currentSpec = await getTeam(teamSlug)
+        if (currentSpec) await saveTeam({ ...currentSpec, deployedEnvSlug: envSlug, lastDeployedAt: deployedAt })
       }
       return { ok: true }
     } catch (e) {
@@ -107,6 +110,8 @@ export function registerDeployHandlers(): void {
         win?.webContents.send('deploy:status', status)
       }
       await deleteTeamDeployment(teamSlug)
+      const currentSpec = await getTeam(teamSlug)
+      if (currentSpec) await saveTeam({ ...currentSpec, deployedEnvSlug: undefined, lastDeployedAt: undefined })
       return { ok: true }
     } catch (e) {
       return { ok: false, reason: e instanceof Error ? e.message : String(e) }

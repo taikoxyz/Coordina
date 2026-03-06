@@ -66,19 +66,19 @@ export function FileBrowser({ teamSlug, agentSlug, agentName }: Props) {
   const files = fileList?.files ?? []
 
   return (
-    <div className="flex h-full bg-gray-900">
+    <div className="flex h-full bg-white">
       {/* Left: file tree */}
-      <div className="w-56 flex-shrink-0 border-r border-gray-700 flex flex-col">
-        <div className="px-3 py-2 border-b border-gray-700">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+      <div className="w-56 flex-shrink-0 border-r border-gray-200 flex flex-col bg-gray-50">
+        <div className="px-3 py-2 border-b border-gray-200">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
             {agentName ?? agentSlug}
           </p>
           {fileList?.offline && (
-            <p className="text-xs text-yellow-400 mt-0.5">Showing last committed state</p>
+            <p className="text-xs text-yellow-600 mt-0.5">Preview — showing files that will be seeded on deploy</p>
           )}
         </div>
         {listLoading ? (
-          <div className="px-3 py-4 text-xs text-gray-500">Loading…</div>
+          <div className="px-3 py-4 text-xs text-gray-400">Loading…</div>
         ) : (
           <FileTree files={files} onSelect={openFile} activeFile={activeTab ?? undefined} />
         )}
@@ -87,7 +87,7 @@ export function FileBrowser({ teamSlug, agentSlug, agentName }: Props) {
       {/* Right: tabs + viewer */}
       <div className="flex-1 flex flex-col min-w-0">
         {openTabs.length > 0 && (
-          <div className="flex border-b border-gray-700 overflow-x-auto flex-shrink-0 bg-gray-800">
+          <div className="flex border-b border-gray-200 overflow-x-auto flex-shrink-0 bg-gray-50">
             {openTabs.map(tab => (
               <FileTab
                 key={tab.path}
@@ -102,15 +102,15 @@ export function FileBrowser({ teamSlug, agentSlug, agentName }: Props) {
 
         <div className="flex-1 overflow-auto">
           {!activeTabData ? (
-            <div className="flex items-center justify-center h-full text-gray-600 text-sm">
+            <div className="flex items-center justify-center h-full text-gray-400 text-sm">
               Select a file to view
             </div>
           ) : activeTabData.loading ? (
-            <div className="flex items-center justify-center h-full text-gray-500 text-sm">
+            <div className="flex items-center justify-center h-full text-gray-400 text-sm">
               Loading…
             </div>
           ) : activeTabData.content === null ? (
-            <div className="flex items-center justify-center h-full text-red-400 text-sm">
+            <div className="flex items-center justify-center h-full text-red-500 text-sm">
               Failed to load file
             </div>
           ) : (

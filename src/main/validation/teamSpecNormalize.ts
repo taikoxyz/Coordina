@@ -50,6 +50,8 @@ export function normalizeTeamSpec(spec: TeamSpec): TeamSpec {
     startupInstructions: normalizeOptional(spec.startupInstructions),
     signingKey: normalizeOptional(spec.signingKey),
     agents: normalizedAgents,
+    deployedEnvSlug: normalizeOptional(spec.deployedEnvSlug),
+    lastDeployedAt: typeof spec.lastDeployedAt === 'number' && spec.lastDeployedAt > 0 ? spec.lastDeployedAt : undefined,
   }
 }
 
