@@ -26,7 +26,26 @@ function createWindow(): void {
     }
   })
 
+  const resetZoom = () => {
+    mainWindow.webContents.setZoomFactor(1)
+    mainWindow.webContents.setZoomLevel(0)
+  }
+
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    const isZoomShortcut = ['Equal', 'Minus', 'Digit0', 'NumpadAdd', 'NumpadSubtract', 'Numpad0'].includes(input.code)
+
+    if ((input.control || input.meta) && isZoomShortcut) {
+      event.preventDefault()
+      resetZoom()
+    }
+  })
+
+  mainWindow.webContents.on('zoom-changed', () => {
+    resetZoom()
+  })
+
   mainWindow.on('ready-to-show', () => {
+    resetZoom()
     mainWindow.show()
   })
 
@@ -42,6 +61,10 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    resetZoom()
+  })
 }
 
 // This method will be called when Electron has finished

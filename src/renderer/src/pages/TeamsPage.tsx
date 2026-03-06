@@ -24,6 +24,24 @@ export function TeamsPage() {
     }
   }
 
+  if (!isLoading && !teams?.length && !newSpec) {
+    return (
+      <div className="flex h-full items-center justify-center px-6">
+        <div className="max-w-sm text-center">
+          <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+          <p className="text-sm font-medium text-gray-400">No team found</p>
+          <p className="text-xs text-gray-400 mt-1">Create your first team to get started.</p>
+          <button
+            onClick={() => setNewSpec(emptySpec())}
+            className="mt-4 px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+          >
+            Create team
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-2xl mx-auto px-6 py-6 space-y-5">
@@ -75,21 +93,6 @@ export function TeamsPage() {
 
         {/* Loading */}
         {isLoading && <p className="text-sm text-gray-400">Loading...</p>}
-
-        {/* Empty state */}
-        {!isLoading && !teams?.length && !newSpec && (
-          <div className="rounded-lg border border-dashed border-gray-200 p-12 text-center">
-            <Users className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm font-medium text-gray-600">No teams yet</p>
-            <p className="text-xs text-gray-400 mt-1">Create your first team to get started.</p>
-            <button
-              onClick={() => setNewSpec(emptySpec())}
-              className="mt-4 px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-            >
-              Create team
-            </button>
-          </div>
-        )}
 
         {/* Team cards */}
         <div className="space-y-2">
