@@ -1,20 +1,20 @@
-import { useTeams } from "../hooks/useTeams";
-import { useNav } from "../store/nav";
-import { Settings, Plus, Users, ChevronRight } from "lucide-react";
-import { cn } from "../lib/utils";
-import type { TeamSpec } from "../../../shared/types";
+import { useTeams } from '../hooks/useTeams'
+import { useNav } from '../store/nav'
+import { Settings, Plus, Users, ChevronRight } from 'lucide-react'
+import { cn } from '../lib/utils'
+import type { TeamSpec } from '../../../shared/types'
 
 function TeamRow({ team, isActive }: { team: TeamSpec; isActive: boolean }) {
-  const { setPage } = useNav();
+  const { setPage } = useNav()
 
   return (
     <button
-      onClick={() => setPage("teams", team.slug)}
+      onClick={() => setPage('teams', team.slug)}
       className={cn(
-        "w-full flex items-center gap-2.5 border-b border-[var(--color-sidebar-border)] px-4 py-2.5 text-left transition-colors",
+        'w-full flex items-center gap-2.5 border-b border-[var(--color-sidebar-border)] px-4 py-2.5 text-left transition-colors',
         isActive
-          ? "bg-white text-gray-900"
-          : "text-gray-600 hover:bg-white/60 hover:text-gray-900",
+          ? 'bg-white text-gray-900'
+          : 'text-gray-600 hover:bg-white/60 hover:text-gray-900',
       )}
     >
       <div className="flex items-center justify-center w-7 h-7 rounded-md bg-blue-50 text-blue-600 text-xs font-semibold shrink-0">
@@ -23,7 +23,7 @@ function TeamRow({ team, isActive }: { team: TeamSpec; isActive: boolean }) {
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium truncate">{team.name}</div>
         <div className="text-xs text-gray-400 truncate">
-          {team.agents.length} agent{team.agents.length !== 1 ? "s" : ""}
+          {team.agents.length} agent{team.agents.length !== 1 ? 's' : ''}
           {team.lastDeployedAt && (
             <span className="ml-1.5 text-green-500">deployed</span>
           )}
@@ -31,12 +31,12 @@ function TeamRow({ team, isActive }: { team: TeamSpec; isActive: boolean }) {
       </div>
       <ChevronRight className="w-3.5 h-3.5 text-gray-300 shrink-0" />
     </button>
-  );
+  )
 }
 
 export function Sidebar() {
-  const { data: teams } = useTeams();
-  const { page, teamSlug, setPage } = useNav();
+  const { data: teams } = useTeams()
+  const { page, teamSlug, setPage, openTeamCreator } = useNav()
 
   return (
     <aside className="w-60 shrink-0 bg-[var(--color-sidebar)] border-r border-[var(--color-sidebar-border)] h-full flex flex-col">
@@ -55,7 +55,7 @@ export function Sidebar() {
             Teams
           </div>
           <button
-            onClick={() => setPage("teams")}
+            onClick={openTeamCreator}
             className="p-0.5 rounded text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
             title="New team"
           >
@@ -68,7 +68,7 @@ export function Sidebar() {
             <TeamRow
               key={team.slug}
               team={team}
-              isActive={page === "teams" && teamSlug === team.slug}
+              isActive={page === 'teams' && teamSlug === team.slug}
             />
           ))}
           {!teams?.length && (
@@ -82,12 +82,12 @@ export function Sidebar() {
       {/* Bottom settings */}
       <div className="shrink-0 border-t border-[var(--color-sidebar-border)] px-2 py-2">
         <button
-          onClick={() => setPage("settings")}
+          onClick={() => setPage('settings')}
           className={cn(
-            "w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-left text-sm transition-colors",
-            page === "settings"
-              ? "bg-white shadow-sm text-gray-900"
-              : "text-gray-500 hover:bg-white/60 hover:text-gray-900",
+            'w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-left text-sm transition-colors',
+            page === 'settings'
+              ? 'bg-white shadow-sm text-gray-900'
+              : 'text-gray-500 hover:bg-white/60 hover:text-gray-900',
           )}
         >
           <Settings className="w-4 h-4" />
@@ -95,5 +95,5 @@ export function Sidebar() {
         </button>
       </div>
     </aside>
-  );
+  )
 }

@@ -11,12 +11,12 @@ import './assets/main.css'
 const queryClient = new QueryClient()
 
 function AppContent() {
-  const { page, teamSlug, setPage } = useNav()
-  const { data: teams, isLoading } = useTeams()
+  const { page, teamSlug, teamsView, setPage } = useNav()
+  const { data: teams, isFetched } = useTeams()
   const [hasResolvedInitialTeam, setHasResolvedInitialTeam] = useState(false)
 
   useEffect(() => {
-    if (hasResolvedInitialTeam || page !== 'teams' || isLoading) return
+    if (hasResolvedInitialTeam || page !== 'teams' || !isFetched) return
 
     if (teamSlug) {
       setHasResolvedInitialTeam(true)
@@ -30,16 +30,19 @@ function AppContent() {
     }
 
     setHasResolvedInitialTeam(true)
-  }, [hasResolvedInitialTeam, isLoading, page, setPage, teamSlug, teams])
+  }, [hasResolvedInitialTeam, isFetched, page, setPage, teamSlug, teams])
 
   const isResolvingInitialTeam = page === 'teams' && !teamSlug && !hasResolvedInitialTeam
+  const shouldShowTeamsPage = page === 'teams' && !teamSlug && hasResolvedInitialTeam && teamsView !== 'empty'
+  const shouldShowEmptyMainView = page === 'teams' && !teamSlug && hasResolvedInitialTeam && teamsView === 'empty'
 
   return (
     <div className="flex h-screen bg-[var(--color-background)] text-[var(--color-foreground)]">
       <Sidebar />
       <main className="flex-1 overflow-hidden flex flex-col">
         {isResolvingInitialTeam && <div className="flex-1 bg-[var(--color-background)]" />}
-        {page === 'teams' && !teamSlug && hasResolvedInitialTeam && <TeamsPage />}
+        {shouldShowEmptyMainView && <div className="flex-1 bg-[var(--color-background)]" />}
+        {shouldShowTeamsPage && <TeamsPage startCreating={teamsView === 'create'} />}
         {page === 'teams' && teamSlug && <TeamDetailPage teamSlug={teamSlug} />}
         {page === 'settings' && <SettingsPage />}
       </main>

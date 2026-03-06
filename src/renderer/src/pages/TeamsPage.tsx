@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTeams, useDeleteTeam, useSaveTeam } from '../hooks/useTeams'
 import { useNav } from '../store/nav'
 import { Plus, Trash2, Users, ChevronRight } from 'lucide-react'
@@ -7,13 +7,22 @@ import type { TeamSpec } from '../../../shared/types'
 const emptySpec = (): TeamSpec => ({ slug: '', name: '', agents: [] })
 const toSlug = (name: string) => 'team-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
-export function TeamsPage() {
+interface Props {
+  startCreating?: boolean
+}
+
+export function TeamsPage({ startCreating = false }: Props) {
   const { data: teams, isLoading } = useTeams()
   const deleteTeam = useDeleteTeam()
   const saveTeam = useSaveTeam()
   const { setPage } = useNav()
-  const [newSpec, setNewSpec] = useState<TeamSpec | null>(null)
+  const [newSpec, setNewSpec] = useState<TeamSpec | null>(() => startCreating ? emptySpec() : null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!startCreating) return
+    setNewSpec(prev => prev ?? emptySpec())
+  }, [startCreating])
 
   const handleCreate = async () => {
     if (!newSpec?.slug || !newSpec?.name) return
