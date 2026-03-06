@@ -1,6 +1,7 @@
 import { deriveSlug } from './slug'
 
 export type AgentNameTheme = 'sci-fi' | 'movies' | 'mixed'
+export const DEFAULT_AGENT_NAME_THEME: AgentNameTheme = 'sci-fi'
 
 export interface AgentIdentity {
   name: string

@@ -1,3 +1,5 @@
+import type { AgentNameTheme } from './agentNames'
+
 export interface ChatAttachment {
   name: string
   mimeType: string
@@ -62,6 +64,7 @@ export interface EnvironmentRecord {
 export interface AppSettings {
   gitEnabled?: boolean
   gitRepoPath?: string
+  agentNameTheme?: AgentNameTheme
 }
 
 export interface SpecFile {

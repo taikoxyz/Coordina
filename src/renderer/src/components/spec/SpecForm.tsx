@@ -1,11 +1,15 @@
 // Structured form for editing team spec fields inline without dialogs
 // FEATURE: Team spec editor left panel with agents list and inline field editing
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback } from 'react'
 import { useSaveTeam } from '../../hooks/useTeams'
 import { useProviders } from '../../hooks/useProviders'
+import { useSettings } from '../../hooks/useSettings'
 import { AgentRow } from './AgentRow'
 import type { TeamSpec, AgentSpec } from '../../../../shared/types'
-import { generateAutoAgentIdentities, type AgentNameTheme } from '../../../../shared/agentNames'
+import {
+  DEFAULT_AGENT_NAME_THEME,
+  generateAutoAgentIdentities,
+} from '../../../../shared/agentNames'
 
 interface Props {
   spec: TeamSpec
@@ -14,17 +18,12 @@ interface Props {
 
 const inputCls = 'bg-gray-800 border border-gray-700 rounded px-1.5 py-0.5 text-[11px] text-gray-200 focus:outline-none focus:border-blue-600 w-full font-mono'
 const labelCls = 'text-[10px] text-gray-500 block mb-0.5'
-const nameThemeOptions: Array<{ value: AgentNameTheme; label: string }> = [
-  { value: 'sci-fi', label: 'Sci-Fi' },
-  { value: 'movies', label: 'Movies' },
-  { value: 'mixed', label: 'Mixed' }
-]
 
 export function SpecForm({ spec, onSpecChange }: Props) {
   const saveTeam = useSaveTeam()
   const { data: providers } = useProviders()
+  const { data: settings } = useSettings()
   const providerSlugs = (providers ?? []).map(p => p.slug)
-  const [nameTheme, setNameTheme] = useState<AgentNameTheme>('sci-fi')
 
   const set = useCallback((key: keyof TeamSpec) => (value: unknown) => {
     onSpecChange({ ...spec, [key]: value })
@@ -35,7 +34,11 @@ export function SpecForm({ spec, onSpecChange }: Props) {
   }
 
   const addAutoAgents = (count: number) => {
-    const generated = generateAutoAgentIdentities(spec.agents, count, nameTheme)
+    const generated = generateAutoAgentIdentities(
+      spec.agents,
+      count,
+      settings?.agentNameTheme ?? DEFAULT_AGENT_NAME_THEME,
+    )
     if (!generated.length) return
 
     const newAgents: AgentSpec[] = generated.map((identity) => ({
@@ -61,7 +64,6 @@ export function SpecForm({ spec, onSpecChange }: Props) {
   }
 
   const handleSave = () => saveTeam.mutate(spec)
-  const [nextAutoName] = useMemo(() => generateAutoAgentIdentities(spec.agents, 1, nameTheme), [spec.agents, nameTheme])
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -155,28 +157,6 @@ export function SpecForm({ spec, onSpecChange }: Props) {
                   +10 auto
                 </button>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] text-gray-600">name pack</span>
-              <div role="tablist" aria-label="Agent name pack" className="inline-flex rounded-md border border-gray-700 bg-gray-900/40 p-0.5">
-                {nameThemeOptions.map((option) => {
-                  const active = nameTheme === option.value
-                  return (
-                    <button
-                      key={option.value}
-                      role="tab"
-                      aria-selected={active}
-                      onClick={() => setNameTheme(option.value)}
-                      className={`text-[10px] px-2 py-0.5 rounded transition-colors ${active ? 'bg-gray-700 text-gray-100' : 'text-gray-500 hover:text-gray-300'}`}
-                    >
-                      {option.label}
-                    </button>
-                  )
-                })}
-              </div>
-              {nextAutoName && (
-                <span className="text-[10px] text-gray-600 truncate">next: {nextAutoName.name}</span>
-              )}
             </div>
           </div>
           <div className="space-y-1">

@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useProviders } from '../../hooks/useProviders'
+import { useSettings } from '../../hooks/useSettings'
 import { AgentCard } from './AgentCard'
 import { ChatPane } from '../chat/ChatPane'
 import { FileBrowser } from '../files/FileBrowser'
@@ -12,8 +13,8 @@ import {
 import { cn } from '../../lib/utils'
 import type { TeamSpec, AgentSpec } from '../../../../shared/types'
 import {
+  DEFAULT_AGENT_NAME_THEME,
   generateAutoAgentIdentities,
-  type AgentNameTheme,
 } from '../../../../shared/agentNames'
 
 interface Props {
@@ -24,16 +25,10 @@ interface Props {
   envSlug?: string
 }
 
-const nameThemeOptions: Array<{ value: AgentNameTheme; label: string }> = [
-  { value: 'sci-fi', label: 'Sci-Fi' },
-  { value: 'movies', label: 'Movies' },
-  { value: 'mixed', label: 'Mixed' },
-]
-
 export function AgentsTab({ spec, onSpecChange, onSave, isSaving, envSlug }: Props) {
   const { data: providers } = useProviders()
+  const { data: settings } = useSettings()
   const providerSlugs = (providers ?? []).map((p) => p.slug)
-  const [nameTheme, setNameTheme] = useState<AgentNameTheme>('sci-fi')
   const [selectedAgentSlug, setSelectedAgentSlug] = useState(
     spec.agents[0]?.slug ?? '',
   )
@@ -47,7 +42,11 @@ export function AgentsTab({ spec, onSpecChange, onSave, isSaving, envSlug }: Pro
   }
 
   const addAutoAgents = (count: number) => {
-    const generated = generateAutoAgentIdentities(spec.agents, count, nameTheme)
+    const generated = generateAutoAgentIdentities(
+      spec.agents,
+      count,
+      settings?.agentNameTheme ?? DEFAULT_AGENT_NAME_THEME,
+    )
     if (!generated.length) return
     const newAgents: AgentSpec[] = generated.map((identity) => ({
       slug: identity.slug,
@@ -69,11 +68,6 @@ export function AgentsTab({ spec, onSpecChange, onSave, isSaving, envSlug }: Pro
   const deleteAgent = (i: number) => {
     applyAgents(spec.agents.filter((_, j) => j !== i))
   }
-
-  const [nextAutoName] = useMemo(
-    () => generateAutoAgentIdentities(spec.agents, 1, nameTheme),
-    [spec.agents, nameTheme],
-  )
 
   useEffect(() => {
     if (!spec.agents.length) {
@@ -201,37 +195,9 @@ export function AgentsTab({ spec, onSpecChange, onSave, isSaving, envSlug }: Pro
           ) : panelMode === 'details' ? (
             <div className="py-6 px-6 max-w-2xl space-y-4 h-full overflow-y-auto">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold text-gray-900">
-                    Agents ({spec.agents.length})
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-gray-400">Name pack</span>
-                    <div className="inline-flex rounded-md border border-gray-200 bg-gray-50 p-0.5">
-                      {nameThemeOptions.map((option) => {
-                        const active = nameTheme === option.value
-                        return (
-                          <button
-                            key={option.value}
-                            onClick={() => setNameTheme(option.value)}
-                            className={`text-xs px-2 py-0.5 rounded transition-colors ${
-                              active
-                                ? 'bg-white text-gray-900 shadow-sm'
-                                : 'text-gray-500 hover:text-gray-700'
-                            }`}
-                          >
-                            {option.label}
-                          </button>
-                        )
-                      })}
-                    </div>
-                    {nextAutoName && (
-                      <span className="text-xs text-gray-400 truncate">
-                        next: {nextAutoName.name}
-                      </span>
-                    )}
-                  </div>
-                </div>
+                <span className="text-sm font-semibold text-gray-900">
+                  Agents ({spec.agents.length})
+                </span>
               </div>
 
               <AgentCard

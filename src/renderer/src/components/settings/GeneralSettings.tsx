@@ -1,19 +1,31 @@
 import { useState, useEffect } from 'react'
 import type { AppSettings } from '../../../../shared/types'
+import {
+  DEFAULT_AGENT_NAME_THEME,
+  type AgentNameTheme,
+} from '../../../../shared/agentNames'
+import { useSaveSettings, useSettings } from '../../hooks/useSettings'
+
+const agentNameThemeOptions: Array<{ value: AgentNameTheme; label: string }> = [
+  { value: 'sci-fi', label: 'Sci-Fi' },
+  { value: 'movies', label: 'Movies' },
+  { value: 'mixed', label: 'Mixed' },
+]
 
 export function GeneralSettings() {
   const [settings, setSettings] = useState<AppSettings>({})
-  const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const { data: storedSettings } = useSettings()
+  const saveSettings = useSaveSettings()
 
   useEffect(() => {
-    (window.api.invoke('settings:get') as Promise<AppSettings>).then(setSettings)
-  }, [])
+    if (storedSettings) {
+      setSettings(storedSettings)
+    }
+  }, [storedSettings])
 
   const handleSave = async () => {
-    setSaving(true)
-    await window.api.invoke('settings:save', settings)
-    setSaving(false)
+    await saveSettings.mutateAsync(settings)
     setSaved(true)
     setTimeout(() => setSaved(false), 1500)
   }
@@ -50,13 +62,46 @@ export function GeneralSettings() {
         )}
       </div>
 
+      <div className="rounded-lg border border-[var(--color-border)] bg-white p-5">
+        <div className="space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Agent names</h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Choose the global name pack for automatically added agents.
+            </p>
+          </div>
+          <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1">
+            {agentNameThemeOptions.map((option) => {
+              const active =
+                (settings.agentNameTheme ?? DEFAULT_AGENT_NAME_THEME) ===
+                option.value
+              return (
+                <button
+                  key={option.value}
+                  onClick={() =>
+                    setSettings({ ...settings, agentNameTheme: option.value })
+                  }
+                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                    active
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+
       {/* Save button */}
       <button
         onClick={handleSave}
-        disabled={saving}
+        disabled={saveSettings.isPending}
         className="px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
       >
-        {saving ? 'Saving...' : saved ? 'Saved' : 'Save changes'}
+        {saveSettings.isPending ? 'Saving...' : saved ? 'Saved' : 'Save changes'}
       </button>
     </div>
   )
