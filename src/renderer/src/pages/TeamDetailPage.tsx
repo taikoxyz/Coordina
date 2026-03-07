@@ -78,6 +78,8 @@ export function TeamDetailPage({ teamSlug }: Props) {
             spec={localSpec}
             onSave={handleSave}
             isSaving={saveTeam.isPending}
+            selectedEnvSlug={selectedEnvSlug}
+            onEnvChange={setSelectedEnvSlug}
           />
         )}
         {teamTab === 'chat' && (

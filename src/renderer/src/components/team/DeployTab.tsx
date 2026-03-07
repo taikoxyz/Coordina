@@ -9,14 +9,15 @@ interface Props {
   spec: TeamSpec
   onSave: () => Promise<void>
   isSaving: boolean
+  selectedEnvSlug: string
+  onEnvChange: (slug: string) => void
 }
 
 type DeployState = 'idle' | 'preparing' | 'deploying' | 'done' | 'error'
 
-export function DeployTab({ spec, onSave, isSaving }: Props) {
+export function DeployTab({ spec, onSave, isSaving, selectedEnvSlug, onEnvChange }: Props) {
   const status = useSpecStatus(spec.slug)
   const { data: environments } = useEnvironments()
-  const [selectedEnvSlug, setSelectedEnvSlug] = useState('')
   const [keepDisks, setKeepDisks] = useState(true)
   const [forceRecreate, setForceRecreate] = useState(false)
   const [deployState, setDeployState] = useState<DeployState>('idle')
@@ -24,10 +25,6 @@ export function DeployTab({ spec, onSave, isSaving }: Props) {
   const [deployLogs, setDeployLogs] = useState<string[]>([])
   const [gitMessage, setGitMessage] = useState('')
   const [gitStatus, setGitStatus] = useState<{ dirty: boolean; files: string[] }>({ dirty: false, files: [] })
-
-  useEffect(() => {
-    if (environments?.length && !selectedEnvSlug) setSelectedEnvSlug(environments[0].slug)
-  }, [environments, selectedEnvSlug])
 
   useEffect(() => {
     window.api.invoke('git:status').then((s: unknown) => {
@@ -121,7 +118,7 @@ export function DeployTab({ spec, onSave, isSaving }: Props) {
                 <label className={labelCls}>Target</label>
                 <select
                   value={selectedEnvSlug}
-                  onChange={e => setSelectedEnvSlug(e.target.value)}
+                  onChange={e => onEnvChange(e.target.value)}
                   className={inputCls}
                 >
                   {(environments ?? []).map(e => <option key={e.slug} value={e.slug}>{e.name}</option>)}
