@@ -85,8 +85,6 @@ export function TeamDetailPage({ teamSlug }: Props) {
         {teamTab === 'chat' && (
           <ChatTab
             spec={localSpec}
-            onSpecChange={setLocalSpec}
-            onSaveSpec={handleSaveSpec}
             envSlug={selectedEnvSlug || undefined}
           />
         )}

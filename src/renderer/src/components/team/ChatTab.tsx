@@ -1,19 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useSettings } from '../../hooks/useSettings'
 import { ChatPane } from '../chat/ChatPane'
 import { FileBrowser } from '../files/FileBrowser'
-import { Plus } from 'lucide-react'
 import { cn } from '../../lib/utils'
-import type { TeamSpec, AgentSpec } from '../../../../shared/types'
-import {
-  DEFAULT_AGENT_NAME_THEME,
-  generateAutoAgentIdentities,
-} from '../../../../shared/agentNames'
+import type { TeamSpec } from '../../../../shared/types'
 
 interface Props {
   spec: TeamSpec
-  onSpecChange: (spec: TeamSpec) => void
-  onSaveSpec: (spec: TeamSpec) => Promise<void>
   envSlug?: string
 }
 
@@ -23,33 +15,11 @@ const modes = [
 ] as const
 type PanelMode = 'chat' | 'files'
 
-export function ChatTab({ spec, onSpecChange, onSaveSpec, envSlug }: Props) {
-  const { data: settings } = useSettings()
+export function ChatTab({ spec, envSlug }: Props) {
   const [selectedAgentSlug, setSelectedAgentSlug] = useState(
     spec.agents[0]?.slug ?? '',
   )
   const [panelMode, setPanelMode] = useState<PanelMode>('chat')
-
-  const addAutoAgents = (count: number) => {
-    const generated = generateAutoAgentIdentities(
-      spec.agents,
-      count,
-      settings?.agentNameTheme ?? DEFAULT_AGENT_NAME_THEME,
-    )
-    if (!generated.length) return
-    const newAgents: AgentSpec[] = generated.map((identity) => ({
-      slug: identity.slug,
-      name: identity.name,
-      role: '',
-      provider: '',
-      skills: [],
-      persona: '',
-    }))
-    const updated = [...spec.agents, ...newAgents]
-    const newSpec = { ...spec, agents: updated, leadAgent: updated[0]?.slug || undefined }
-    onSpecChange(newSpec)
-    void onSaveSpec(newSpec)
-  }
 
   useEffect(() => {
     if (!spec.agents.length) {
@@ -73,17 +43,8 @@ export function ChatTab({ spec, onSpecChange, onSaveSpec, envSlug }: Props) {
     <div className="flex h-full overflow-hidden">
       <div className="w-52 shrink-0 border-r border-gray-100 bg-[#f6f5f3] flex flex-col">
         <div className="px-3 py-3 border-b border-gray-100">
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400">
-              Agents
-            </div>
-            <button
-              onClick={() => addAutoAgents(1)}
-              className="inline-flex h-6 w-6 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-white hover:text-gray-700"
-              title="Add agent"
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400">
+            Agents
           </div>
         </div>
 
@@ -143,7 +104,7 @@ export function ChatTab({ spec, onSpecChange, onSaveSpec, envSlug }: Props) {
             <div className="py-6 px-6 max-w-2xl space-y-4 h-full overflow-y-auto">
               <div className="rounded-lg border border-dashed border-gray-200 p-8 text-center">
                 <p className="text-base text-gray-500">
-                  No agents yet. Add agents to get started.
+                  No agents yet. Add agents in Team Specifications.
                 </p>
               </div>
             </div>
