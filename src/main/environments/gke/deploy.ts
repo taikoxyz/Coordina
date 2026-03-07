@@ -86,54 +86,12 @@ async function tryDelete(fn: () => Promise<unknown>): Promise<void> {
   try { await fn() } catch { /* resource may not exist */ }
 }
 
-async function pollGceOperation(opLink: string, headers: Record<string, string>, label: string): Promise<void> {
-  for (let i = 0; i < 30; i++) {
-    await new Promise(r => setTimeout(r, 2000))
-    const poll = await fetch(opLink, { headers })
-    const status = await poll.json() as { status: string; error?: unknown }
-    if (status.status === 'DONE') {
-      if (status.error) throw new Error(`${label} failed: ${JSON.stringify(status.error)}`)
-      return
-    }
-  }
-  throw new Error(`${label} timed out`)
-}
-
-async function deleteGceDisk(token: string, projectId: string, zone: string, diskName: string): Promise<void> {
-  const base = `https://compute.googleapis.com/compute/v1/projects/${projectId}/zones/${zone}`
-  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-  const del = await fetch(`${base}/disks/${diskName}`, { method: 'DELETE', headers })
-  if (!del.ok && del.status !== 404) throw new Error(`Failed to delete GCE disk: ${await del.text()}`)
-  if (del.ok) await pollGceOperation((await del.json() as { selfLink: string }).selfLink, headers, `GCE disk delete ${diskName}`)
-}
-
-async function ensureGceDisk(token: string, projectId: string, zone: string, diskName: string, sizeGb: number): Promise<'created' | 'updated' | 'exists'> {
-  const base = `https://compute.googleapis.com/compute/v1/projects/${projectId}/zones/${zone}`
-  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-  const check = await fetch(`${base}/disks/${diskName}`, { headers })
-  if (check.ok) {
-    const existing = await check.json() as { sizeGb: string }
-    if (parseInt(existing.sizeGb) === sizeGb) return 'exists'
-    await deleteGceDisk(token, projectId, zone, diskName)
-  }
-  const create = await fetch(`${base}/disks`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ name: diskName, sizeGb, type: `${base}/diskTypes/pd-balanced` }),
-  })
-  if (!create.ok) throw new Error(`Failed to create GCE disk: ${await create.text()}`)
-  await pollGceOperation((await create.json() as { selfLink: string }).selfLink, headers, `GCE disk creation ${diskName}`)
-  return check.ok ? 'updated' : 'created'
-}
-
 export async function* deployTeam(
   specFiles: SpecFile[],
   teamSlug: string,
   config: GkeDeployConfig,
   options: DeployOptions
 ): AsyncGenerator<DeployStatus> {
-  const auth = await getOAuth2Client(config.slug, { clientId: config.clientId, clientSecret: config.clientSecret })
-  const token = (await auth.getAccessToken()).token ?? ''
   const kc = await buildKubeConfig(config)
   const client = k8s.KubernetesObjectApi.makeApiClient(kc)
   const coreApi = kc.makeApiClient(k8s.CoreV1Api)
@@ -206,21 +164,22 @@ export async function* deployTeam(
     }
   }
 
-  const newAgentPvPaths = new Set<string>()
   const newAgentPvcPaths = new Set<string>()
   for (const f of specFiles.filter(f => f.path.endsWith('/pvc.yaml'))) {
     const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata: k8s.V1ObjectMeta }
     if (doc?.metadata?.name && !existingPvcNames.has(doc.metadata.name)) {
       newAgentPvcPaths.add(f.path)
-      const pvPath = f.path.replace('/pvc.yaml', '/pv.yaml')
-      newAgentPvPaths.add(pvPath)
     }
   }
 
-  // keepDisks=false is a destructive reset path; terminate desired StatefulSets first so PVC/PV operations can proceed safely.
+  // keepDisks=false is a destructive reset path; terminate desired StatefulSets first so PVC operations can proceed safely.
   if (!options.keepDisks) {
     for (const name of desiredStatefulSetNames) {
       await tryDelete(() => appsApi.deleteNamespacedStatefulSet({ name, namespace }))
+    }
+    for (const f of specFiles.filter(f => f.path.endsWith('/pvc.yaml'))) {
+      const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata: k8s.V1ObjectMeta }
+      if (doc?.metadata?.name) await tryDelete(() => coreApi.deleteNamespacedPersistentVolumeClaim({ name: doc.metadata.name!, namespace }))
     }
   }
 
@@ -231,52 +190,20 @@ export async function* deployTeam(
     }
   }
 
-  const pvFilesToProcess = options.keepDisks
-    ? specFiles.filter(f => newAgentPvPaths.has(f.path))
-    : specFiles.filter(f => f.path.endsWith('/pv.yaml'))
-
-  if (!options.keepDisks) {
-    // Delete PVCs then PVs so K8s releases disk references before GCE disk operations
-    for (const f of specFiles.filter(f => f.path.endsWith('/pvc.yaml'))) {
-      const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata: k8s.V1ObjectMeta }
-      if (doc?.metadata?.name) await tryDelete(() => coreApi.deleteNamespacedPersistentVolumeClaim({ name: doc.metadata.name!, namespace }))
-    }
-    for (const f of specFiles.filter(f => f.path.endsWith('/pv.yaml'))) {
-      const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata: k8s.V1ObjectMeta }
-      if (doc?.metadata?.name) await tryDelete(() => coreApi.deletePersistentVolume({ name: doc.metadata.name! }))
-    }
-  }
-
-  for (const f of pvFilesToProcess) {
-    const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata: k8s.V1ObjectMeta; spec?: { capacity?: { storage?: string } } }
-    const diskName = doc?.metadata?.name
-    if (!diskName) continue
-    const sizeGb = parseInt(doc.spec?.capacity?.storage ?? '10') || 10
-    try {
-      const diskStatus = await ensureGceDisk(token, config.projectId, config.diskZone ?? config.clusterZone, diskName, sizeGb)
-      yield { resource: `GCEDisk/${diskName}`, status: diskStatus }
-    } catch (e: unknown) {
-      yield { resource: `GCEDisk/${diskName}`, status: 'error', message: String(e) }
-      return
-    }
-  }
-
   // Always delete credentials secrets so API keys are refreshed
   for (const f of specFiles.filter(f => f.path.endsWith('credentials.yaml'))) {
     const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata: k8s.V1ObjectMeta }
     if (doc?.metadata?.name) await tryDelete(() => coreApi.deleteNamespacedSecret({ name: doc.metadata.name!, namespace }))
   }
 
-  const skipDiskPaths = new Set(options.keepDisks ? [
-    ...specFiles.filter(f => f.path.endsWith('/pv.yaml') && !newAgentPvPaths.has(f.path)).map(f => f.path),
-    ...specFiles.filter(f => f.path.endsWith('/pvc.yaml') && !newAgentPvcPaths.has(f.path)).map(f => f.path),
-  ] : [])
+  const skipPvcPaths = new Set(options.keepDisks
+    ? specFiles.filter(f => f.path.endsWith('/pvc.yaml') && !newAgentPvcPaths.has(f.path)).map(f => f.path)
+    : [])
 
   const orderedPaths = [
-    'namespace.yaml', 'configmap-shared.yaml',
+    'namespace.yaml', 'storageclass.yaml', 'configmap-shared.yaml',
     ...specFiles.filter(f => f.path.includes('/configmap.yaml')).map(f => f.path),
     ...specFiles.filter(f => f.path.endsWith('/credentials.yaml')).map(f => f.path),
-    ...specFiles.filter(f => f.path.endsWith('/pv.yaml')).map(f => f.path),
     ...specFiles.filter(f => f.path.endsWith('/pvc.yaml')).map(f => f.path),
     ...specFiles.filter(f => f.path.includes('/statefulset.yaml')).map(f => f.path),
     ...specFiles.filter(f => f.path.includes('/service.yaml')).map(f => f.path),
@@ -284,7 +211,7 @@ export async function* deployTeam(
   ]
 
   for (const path of orderedPaths) {
-    if (skipDiskPaths.has(path)) continue
+    if (skipPvcPaths.has(path)) continue
     const file = specFiles.find(f => f.path === path)
     if (!file) continue
     for (const s of await applyManifest(client, file.content)) yield s

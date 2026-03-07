@@ -5,7 +5,7 @@ import yaml from 'js-yaml'
 import {
   generateNamespace,
   generateTeamConfigMap,
-  generateAgentPv,
+  generateStorageClass,
   generateAgentPvc,
   generateAgentConfigMap,
   generateAgentStatefulSet,
@@ -19,6 +19,8 @@ import {
   generateSoulMd,
   generateSkillsMd,
   generateAgentsMd,
+  generateUserMd,
+  generateToolsMd,
   generateOpenClawJson,
 } from '../github/spec'
 
@@ -89,16 +91,18 @@ const gkeDeriver: DeploymentSpecDeriver = {
     const teamGatewayToken = deriveAgentToken(seed, spec.slug)
 
     files.push({ path: 'namespace.yaml', content: generateNamespace(namespace) })
+    files.push({ path: 'storageclass.yaml', content: generateStorageClass({ teamSlug: spec.slug }) })
 
+    const hasGateways = true
     const teamMd = generateTeamMd({
       ...spec,
       telegramGroupId,
       telegramAdminId,
+      gatewayToken: teamGatewayToken,
       agents: spec.agents.map(a => ({
         ...a,
         isLead: a.slug === spec.leadAgent,
         gatewayUrl: `http://agent-${a.slug}.${namespace}.svc.cluster.local:18789`,
-        gatewayToken: teamGatewayToken,
       })),
     })
     const bootstrapMd = spec.startupInstructions || DEFAULT_BOOTSTRAP_INSTRUCTIONS
@@ -198,7 +202,6 @@ const gkeDeriver: DeploymentSpecDeriver = {
           : {}),
       }
       const credentialSecretName = `${spec.slug}-${agent.slug}-credentials`
-      files.push({ path: `agents/${agent.slug}/pv.yaml`, content: generateAgentPv({ teamSlug: spec.slug, agentSlug: agent.slug, projectId, zone: diskZone ?? clusterZone, diskGi: agent.diskGi }) })
       files.push({ path: `agents/${agent.slug}/pvc.yaml`, content: generateAgentPvc({ teamSlug: spec.slug, agentSlug: agent.slug, namespace, diskGi: agent.diskGi }) })
       files.push({ path: `agents/${agent.slug}/credentials.yaml`, content: generateProviderSecret({ teamSlug: spec.slug, providerSlug: agent.provider, agentSlug: agent.slug, namespace, envVars: envVarsWithTelegram }) })
       const identityMd = generateIdentityMd({
@@ -212,9 +215,32 @@ const gkeDeriver: DeploymentSpecDeriver = {
         teamSize: spec.agents.length,
       })
       const memoryMd = generateMemoryMd()
-      const soulMd = generateSoulMd({ userInput: agent.persona })
+      const soulMd = generateSoulMd({ userInput: agent.persona, tone: agent.tone, boundaries: agent.boundaries, values: agent.values })
       const skillsMd = generateSkillsMd(agent.skills)
-      const agentsMd = generateAgentsMd()
+      const agentsMd = generateAgentsMd({
+        agentName: agent.name,
+        role: agent.role,
+        teamName: spec.name,
+        leadAgent: spec.leadAgent,
+        isLead: agent.slug === spec.leadAgent,
+        hasTelegram: hasTelegramRouting,
+        hasGateways,
+        operatingRules: agent.operatingRules,
+      })
+      const leadAgent = spec.agents.find(a => a.slug === spec.leadAgent)
+      const userMd = generateUserMd({
+        teamName: spec.name,
+        adminName: spec.adminName,
+        adminEmail: spec.adminEmail,
+        telegramAdminId,
+        isLead: agent.slug === spec.leadAgent,
+        leadAgentName: leadAgent?.name,
+        leadAgentSlug: leadAgent?.slug,
+      })
+      const toolsMd = generateToolsMd({
+        hasGateways,
+        toolGuidance: agent.toolGuidance,
+      })
       const openclawJson = generateOpenClawJson(openclawConfigWithGateway)
       const agentConfigMap = generateAgentConfigMap({
         teamSlug: spec.slug,
@@ -225,6 +251,8 @@ const gkeDeriver: DeploymentSpecDeriver = {
         soulMd,
         skillsMd,
         agentsMd,
+        userMd,
+        toolsMd,
         openclawJson,
       })
       const agentConfigHash = createHash('sha256').update(agentConfigMap).digest('hex')
@@ -234,6 +262,8 @@ const gkeDeriver: DeploymentSpecDeriver = {
       files.push({ path: `agents/${agent.slug}/SOUL.md`, content: soulMd })
       files.push({ path: `agents/${agent.slug}/SKILLS.md`, content: skillsMd })
       files.push({ path: `agents/${agent.slug}/AGENTS.md`, content: agentsMd })
+      files.push({ path: `agents/${agent.slug}/USER.md`, content: userMd })
+      files.push({ path: `agents/${agent.slug}/TOOLS.md`, content: toolsMd })
       files.push({ path: `agents/${agent.slug}/openclaw.json`, content: openclawJson })
       files.push({ path: `agents/${agent.slug}/configmap.yaml`, content: agentConfigMap })
       files.push({ path: `agents/${agent.slug}/statefulset.yaml`, content: generateAgentStatefulSet({

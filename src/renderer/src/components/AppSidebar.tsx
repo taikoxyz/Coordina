@@ -68,7 +68,7 @@ function SidebarGroupSection({
           </span>
           <span className="text-sm font-medium truncate min-w-0">{item.label}</span>
           {item.count !== undefined && (
-            <span className="text-xs text-gray-400 shrink-0 ml-auto">{item.count}</span>
+            <span className="inline-flex h-5 w-5 items-center justify-center text-xs text-gray-400 shrink-0 ml-auto">{item.count}</span>
           )}
         </button>
       ))}

@@ -22,6 +22,11 @@ export interface AgentSpec {
   image?: string
   cpu?: number
   diskGi?: number
+  tone?: string
+  boundaries?: string[]
+  values?: string[]
+  operatingRules?: string[]
+  toolGuidance?: string[]
 }
 
 export interface TeamSpec {
@@ -37,6 +42,9 @@ export interface TeamSpec {
   agents: AgentSpec[]
   deployedEnvSlug?: string
   lastDeployedAt?: number
+  adminName?: string
+  adminEmail?: string
+  teamDescription?: string
 }
 
 export interface PersonaTemplate {
