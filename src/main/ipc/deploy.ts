@@ -85,7 +85,7 @@ export function registerDeployHandlers(): void {
   ipcMain.handle('deploy:preview', async (_event, { teamSlug, envSlug }: { teamSlug: string; envSlug: string }) => {
     try {
       const { specFiles } = await deriveValidatedDeployFiles(teamSlug, envSlug)
-      return { ok: true, files: specFiles.map(file => ({ path: file.path })) }
+      return { ok: true, files: specFiles.map(file => ({ path: file.path, content: file.content })) }
     } catch (error) {
       return { ok: false, reason: error instanceof Error ? error.message : String(error) }
     }

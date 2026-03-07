@@ -1,9 +1,19 @@
-import { useCallback, useEffect, useState } from 'react'
-import { AlertCircle, Check, Loader2, Rocket } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
+import { AlertCircle, Check, Loader2, Rocket, X, FileText } from 'lucide-react'
 import { useEnvironments } from '../hooks/useEnvironments'
 import type { TeamSpec } from '../../../shared/types'
 
 type DeployState = 'idle' | 'preparing' | 'deploying' | 'done' | 'error'
+
+interface DeployFile {
+  path: string
+  content: string
+}
+
+type LogEntry =
+  | { type: 'file'; path: string; content: string }
+  | { type: 'status'; line: string; color: string }
 
 export function DeployPanel({
   spec,
@@ -16,9 +26,10 @@ export function DeployPanel({
 }) {
   const { data: environments } = useEnvironments()
   const [selectedEnvSlug, setSelectedEnvSlug] = useState('')
-  const [deployFiles, setDeployFiles] = useState<string[]>([])
-  const [deployLogs, setDeployLogs] = useState<string[]>([])
+  const [logEntries, setLogEntries] = useState<LogEntry[]>([])
   const [deployState, setDeployState] = useState<DeployState>('idle')
+  const [viewingFile, setViewingFile] = useState<DeployFile | null>(null)
+  const logEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (environments?.length && !selectedEnvSlug) {
@@ -30,31 +41,47 @@ export function DeployPanel({
     return window.api.on?.('deploy:status', (data: unknown) => {
       const d = data as { resource: string; status: string; message?: string }
       const line = `${d.status.toUpperCase().padEnd(8)} ${d.resource}${d.message ? ` — ${d.message}` : ''}`
-      setDeployLogs((prev) => [...prev, line])
+      const color = d.status.toUpperCase().startsWith('ERROR') ? 'text-red-600'
+        : d.status.toUpperCase().startsWith('CREATED') ? 'text-green-600'
+          : d.status.toUpperCase().startsWith('EXISTS') ? 'text-yellow-600'
+            : 'text-gray-600'
+      setLogEntries((prev) => [...prev, { type: 'status', line, color }])
     })
   }, [])
+
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [logEntries])
 
   const handleDeploy = useCallback(async () => {
     if (!selectedEnvSlug) return
 
     setDeployState('preparing')
-    setDeployFiles([])
-    setDeployLogs([])
+    setLogEntries([])
 
     try {
       await onSave()
+      setLogEntries([{ type: 'status', line: 'Deriving deploy specs...', color: 'text-gray-500' }])
+
       const preview = (await window.api.invoke('deploy:preview', {
         teamSlug: spec.slug,
         envSlug: selectedEnvSlug,
-      })) as { ok: boolean; reason?: string; files?: Array<{ path: string }> }
+      })) as { ok: boolean; reason?: string; files?: DeployFile[] }
 
       if (!preview.ok) {
         setDeployState('error')
-        setDeployLogs([`ERROR: ${preview.reason}`])
+        setLogEntries((prev) => [...prev, { type: 'status', line: `ERROR: ${preview.reason}`, color: 'text-red-600' }])
         return
       }
 
-      setDeployFiles((preview.files ?? []).map((file) => file.path))
+      const files = preview.files ?? []
+      const fileEntries: LogEntry[] = files.map((f) => ({ type: 'file', path: f.path, content: f.content }))
+      setLogEntries((prev) => [
+        ...prev,
+        { type: 'status', line: `Generated ${files.length} spec file${files.length !== 1 ? 's' : ''}`, color: 'text-gray-500' },
+        ...fileEntries,
+        { type: 'status', line: 'Starting deployment...', color: 'text-gray-500' },
+      ])
       setDeployState('deploying')
 
       const result = (await window.api.invoke('deploy:team', {
@@ -63,13 +90,16 @@ export function DeployPanel({
         options: { keepDisks: true, forceRecreate: false },
       })) as { ok: boolean; reason?: string }
 
-      setDeployState(result.ok ? 'done' : 'error')
-      if (!result.ok) {
-        setDeployLogs((prev) => [...prev, `ERROR: ${result.reason}`])
+      if (result.ok) {
+        setDeployState('done')
+        setLogEntries((prev) => [...prev, { type: 'status', line: 'Deployment complete', color: 'text-green-600' }])
+      } else {
+        setDeployState('error')
+        setLogEntries((prev) => [...prev, { type: 'status', line: `ERROR: ${result.reason}`, color: 'text-red-600' }])
       }
     } catch (error) {
       setDeployState('error')
-      setDeployLogs([`ERROR: ${error instanceof Error ? error.message : String(error)}`])
+      setLogEntries((prev) => [...prev, { type: 'status', line: `ERROR: ${error instanceof Error ? error.message : String(error)}`, color: 'text-red-600' }])
     }
   }, [selectedEnvSlug, spec.slug, onSave])
 
@@ -126,52 +156,58 @@ export function DeployPanel({
         </button>
       </div>
 
-      <div className="flex flex-1 min-h-0 divide-x divide-gray-100">
-        <div className="w-64 shrink-0 flex flex-col p-3 min-h-0">
-          <div className="flex items-center justify-between mb-2 shrink-0">
-            <h5 className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Files</h5>
-            <span className="text-[10px] text-gray-400">{deployFiles.length}</span>
-          </div>
-          <div className="flex-1 overflow-y-auto min-h-0 space-y-0.5">
-            {deployFiles.length === 0 ? (
-              <div className="text-xs text-gray-400">
-                {deployState === 'preparing' ? 'Deriving files...' : 'No files yet'}
-              </div>
-            ) : (
-              deployFiles.map((path) => (
-                <div key={path} className="text-xs font-mono text-gray-600 truncate">{path}</div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="flex-1 flex flex-col p-3 min-h-0">
-          <h5 className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2 shrink-0">Log</h5>
-          <div className="flex-1 overflow-y-auto min-h-0 space-y-0.5">
-            {deployLogs.length === 0 ? (
-              <div className="text-xs text-gray-400">
-                {deployState === 'preparing' ? 'Waiting for deploy to start...'
-                  : deployState === 'deploying' ? 'Collecting logs...'
-                    : 'No logs yet'}
-              </div>
-            ) : (
-              deployLogs.map((line, index) => (
-                <div
-                  key={`${index}:${line}`}
-                  className={`text-xs font-mono ${
-                    line.startsWith('ERROR') ? 'text-red-600'
-                      : line.startsWith('CREATED') ? 'text-green-600'
-                        : line.startsWith('EXISTS') ? 'text-yellow-600'
-                          : 'text-gray-600'
-                  }`}
+      <div className="flex-1 flex flex-col p-4 min-h-0">
+        <h5 className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2 shrink-0">Log</h5>
+        <div className="flex-1 overflow-y-auto min-h-0 space-y-0.5 rounded-lg border border-gray-100 bg-gray-50/50 p-3">
+          {logEntries.length === 0 ? (
+            <div className="text-xs text-gray-400">
+              {deployState === 'preparing' ? 'Preparing deployment...' : 'Click Deploy to start.'}
+            </div>
+          ) : (
+            logEntries.map((entry, index) =>
+              entry.type === 'file' ? (
+                <button
+                  key={`${index}:${entry.path}`}
+                  onClick={() => setViewingFile({ path: entry.path, content: entry.content })}
+                  className="flex items-center gap-1.5 text-xs font-mono text-blue-600 hover:text-blue-800 hover:underline transition-colors w-full text-left py-0.5"
                 >
-                  {line}
+                  <FileText className="w-3 h-3 shrink-0" />
+                  {entry.path}
+                </button>
+              ) : (
+                <div
+                  key={`${index}:${entry.line}`}
+                  className={`text-xs font-mono ${entry.color}`}
+                >
+                  {entry.line}
                 </div>
-              ))
-            )}
-          </div>
+              ),
+            )
+          )}
+          <div ref={logEndRef} />
         </div>
       </div>
+
+      <Dialog.Root open={!!viewingFile} onOpenChange={(open) => { if (!open) setViewingFile(null) }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl max-h-[80vh] rounded-lg bg-white shadow-xl focus:outline-none flex flex-col">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 shrink-0">
+              <Dialog.Title className="text-sm font-semibold text-gray-900 font-mono truncate">
+                {viewingFile?.path}
+              </Dialog.Title>
+              <Dialog.Close className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
+                <X className="w-4 h-4" />
+              </Dialog.Close>
+            </div>
+            <div className="flex-1 overflow-auto p-4 min-h-0">
+              <pre className="text-xs font-mono text-gray-700 whitespace-pre-wrap break-words">
+                {viewingFile?.content}
+              </pre>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   )
 }
