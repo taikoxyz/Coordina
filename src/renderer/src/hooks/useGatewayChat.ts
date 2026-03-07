@@ -200,11 +200,11 @@ export function useGatewayChat(teamSlug: string, agentSlug?: string, envSlug?: s
         }
         contentParts.push({
           type: 'input_file',
+          filename: file.name,
           source: {
             type: 'base64',
             media_type: mimeType,
             data: base64,
-            filename: file.name,
           },
         })
       }
