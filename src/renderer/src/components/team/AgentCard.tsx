@@ -44,7 +44,15 @@ export function AgentCard({
     onChange({ ...agent, [key]: value })
 
   const personasByDivision = useMemo(() => getPersonasByDivision(), [])
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('')
+  const [selectedTemplate, setSelectedTemplate] = useState<string>(() => {
+    if (agent.role || agent.persona || agent.skills.length > 0) {
+      const match = PERSONA_CATALOG.find(
+        (p) => p.role === agent.role && p.persona === agent.persona,
+      )
+      return match?.id ?? 'custom'
+    }
+    return ''
+  })
 
   const applyTemplate = (templateId: string) => {
     setSelectedTemplate(templateId)
