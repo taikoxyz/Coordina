@@ -90,28 +90,24 @@ const gkeDeriver: DeploymentSpecDeriver = {
 
     files.push({ path: 'namespace.yaml', content: generateNamespace(namespace) })
 
-    const teamConfig = generateTeamConfigMap({
-      teamSlug: spec.slug,
-      namespace,
-      teamMd: generateTeamMd({
-        ...spec,
-        telegramGroupId,
-        telegramAdminId,
-        agents: spec.agents.map(a => ({
-          ...a,
-          isLead: a.slug === spec.leadAgent,
-          gatewayUrl: `http://agent-${a.slug}.${namespace}.svc.cluster.local:18789`,
-          gatewayToken: teamGatewayToken,
-        })),
-      }),
-      bootstrapMd: spec.startupInstructions || DEFAULT_BOOTSTRAP_INSTRUCTIONS,
+    const teamMd = generateTeamMd({
+      ...spec,
+      telegramGroupId,
+      telegramAdminId,
+      agents: spec.agents.map(a => ({
+        ...a,
+        isLead: a.slug === spec.leadAgent,
+        gatewayUrl: `http://agent-${a.slug}.${namespace}.svc.cluster.local:18789`,
+        gatewayToken: teamGatewayToken,
+      })),
     })
+    const bootstrapMd = spec.startupInstructions || DEFAULT_BOOTSTRAP_INSTRUCTIONS
+    const teamConfig = generateTeamConfigMap({ teamSlug: spec.slug, namespace, teamMd, bootstrapMd })
     const teamConfigHash = createHash('sha256').update(teamConfig).digest('hex')
 
-    files.push({
-      path: 'configmap-shared.yaml',
-      content: teamConfig,
-    })
+    files.push({ path: 'TEAM.md', content: teamMd })
+    files.push({ path: 'BOOTSTRAP.md', content: bootstrapMd })
+    files.push({ path: 'configmap-shared.yaml', content: teamConfig })
 
     for (const agent of spec.agents) {
       const providerRecord = providers.get(agent.provider)
@@ -215,19 +211,30 @@ const gkeDeriver: DeploymentSpecDeriver = {
         leadAgent: spec.leadAgent,
         teamSize: spec.agents.length,
       })
+      const memoryMd = generateMemoryMd()
+      const soulMd = generateSoulMd({ userInput: agent.persona })
+      const skillsMd = generateSkillsMd(agent.skills)
+      const agentsMd = generateAgentsMd()
+      const openclawJson = generateOpenClawJson(openclawConfigWithGateway)
       const agentConfigMap = generateAgentConfigMap({
         teamSlug: spec.slug,
         agentSlug: agent.slug,
         namespace,
         identityMd,
-        memoryMd: generateMemoryMd(),
-        soulMd: generateSoulMd({ userInput: agent.persona }),
-        skillsMd: generateSkillsMd(agent.skills),
-        agentsMd: generateAgentsMd(),
-        openclawJson: generateOpenClawJson(openclawConfigWithGateway),
+        memoryMd,
+        soulMd,
+        skillsMd,
+        agentsMd,
+        openclawJson,
       })
       const agentConfigHash = createHash('sha256').update(agentConfigMap).digest('hex')
 
+      files.push({ path: `agents/${agent.slug}/IDENTITY.md`, content: identityMd })
+      files.push({ path: `agents/${agent.slug}/MEMORY.md`, content: memoryMd })
+      files.push({ path: `agents/${agent.slug}/SOUL.md`, content: soulMd })
+      files.push({ path: `agents/${agent.slug}/SKILLS.md`, content: skillsMd })
+      files.push({ path: `agents/${agent.slug}/AGENTS.md`, content: agentsMd })
+      files.push({ path: `agents/${agent.slug}/openclaw.json`, content: openclawJson })
       files.push({ path: `agents/${agent.slug}/configmap.yaml`, content: agentConfigMap })
       files.push({ path: `agents/${agent.slug}/statefulset.yaml`, content: generateAgentStatefulSet({
         teamSlug: spec.slug,
