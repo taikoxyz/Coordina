@@ -30,12 +30,28 @@ export function DeployPanel({
   const [deployState, setDeployState] = useState<DeployState>('idle')
   const [viewingFile, setViewingFile] = useState<DeployFile | null>(null)
   const logEndRef = useRef<HTMLDivElement>(null)
+  const logEntriesRef = useRef(logEntries)
+  logEntriesRef.current = logEntries
+
+  const persistLogs = useCallback(() => {
+    window.api.invoke('deploy:saveLogs', { teamSlug: spec.slug, entries: logEntriesRef.current }).catch(() => {})
+  }, [spec.slug])
 
   useEffect(() => {
     if (environments?.length && !selectedEnvSlug) {
       setSelectedEnvSlug(environments[0].slug)
     }
   }, [environments, selectedEnvSlug])
+
+  useEffect(() => {
+    window.api
+      .invoke('deploy:getLogs', { teamSlug: spec.slug })
+      .then((entries) => {
+        const loaded = entries as LogEntry[]
+        if (loaded.length > 0) setLogEntries(loaded)
+      })
+      .catch(() => {})
+  }, [spec.slug])
 
   useEffect(() => {
     return window.api.on?.('deploy:status', (data: unknown) => {
@@ -58,6 +74,7 @@ export function DeployPanel({
 
     setDeployState('preparing')
     setLogEntries([])
+    await window.api.invoke('deploy:clearLogs', { teamSlug: spec.slug }).catch(() => {})
 
     try {
       await onSave()
@@ -71,6 +88,7 @@ export function DeployPanel({
       if (!preview.ok) {
         setDeployState('error')
         setLogEntries((prev) => [...prev, { type: 'status', line: `ERROR: ${preview.reason}`, color: 'text-red-600' }])
+        queueMicrotask(persistLogs)
         return
       }
 
@@ -97,11 +115,13 @@ export function DeployPanel({
         setDeployState('error')
         setLogEntries((prev) => [...prev, { type: 'status', line: `ERROR: ${result.reason}`, color: 'text-red-600' }])
       }
+      queueMicrotask(persistLogs)
     } catch (error) {
       setDeployState('error')
       setLogEntries((prev) => [...prev, { type: 'status', line: `ERROR: ${error instanceof Error ? error.message : String(error)}`, color: 'text-red-600' }])
+      queueMicrotask(persistLogs)
     }
-  }, [selectedEnvSlug, spec.slug, onSave])
+  }, [selectedEnvSlug, spec.slug, onSave, persistLogs])
 
   const statusBadgeCls =
     deployState === 'done'
