@@ -184,7 +184,7 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#dae3ea' }}>
+      <ThreadPrimitive.Root style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#dae3ea' }}>
         {/* Header */}
         <div
           style={{
@@ -421,7 +421,7 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
             </div>
           </ComposerPrimitive.Root>
         </div>
-      </div>
+      </ThreadPrimitive.Root>
     </AssistantRuntimeProvider>
   )
 }
