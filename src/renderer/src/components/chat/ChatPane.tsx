@@ -44,63 +44,35 @@ function Message() {
       style={{
         display: 'flex',
         justifyContent: isUser ? 'flex-end' : 'flex-start',
-        marginBottom: 2,
-        padding: '0 8px',
+        marginBottom: 8,
+        padding: '0 16px',
       }}
     >
-      <div style={{ position: 'relative', maxWidth: '72%' }}>
-        {/* Bubble tail */}
-        {isUser ? (
-          <div
-            style={{
-              position: 'absolute',
-              right: -5,
-              bottom: 0,
-              width: 0,
-              height: 0,
-              borderLeft: '6px solid #effdde',
-              borderTop: '6px solid transparent',
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              position: 'absolute',
-              left: -5,
-              bottom: 0,
-              width: 0,
-              height: 0,
-              borderRight: '6px solid #ffffff',
-              borderTop: '6px solid transparent',
-            }}
-          />
-        )}
+      <div style={{ maxWidth: '72%' }}>
         <div
           style={{
-            background: isUser ? '#effdde' : '#ffffff',
-            color: '#000000',
-            borderRadius: isUser ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
-            padding: '5px 9px 4px',
-            fontSize: 13.5,
-            lineHeight: 1.45,
-            boxShadow: '0 1px 1px rgba(0,0,0,0.10)',
+            background: isUser ? '#d1e8ff' : '#f6f5f3',
+            color: '#1a1a1a',
+            borderRadius: 18,
+            padding: '10px 14px',
+            fontSize: 14,
+            lineHeight: 1.5,
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
           }}
         >
           {text}
-          <span
-            style={{
-              fontSize: 11,
-              color: isUser ? '#6daa5e' : '#aaaaaa',
-              marginLeft: 6,
-              float: 'right',
-              marginTop: 3,
-              lineHeight: 1,
-            }}
-          >
-            {time}
-          </span>
+        </div>
+        <div
+          style={{
+            fontSize: 11,
+            color: '#999',
+            marginTop: 2,
+            textAlign: isUser ? 'right' : 'left',
+            padding: '0 4px',
+          }}
+        >
+          {time}
         </div>
       </div>
     </MessagePrimitive.Root>
@@ -132,94 +104,12 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
     onNew,
   })
 
-  const displayName = agentName ?? `${teamSlug} agent`
-
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <ThreadPrimitive.Root style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#dae3ea' }}>
-        {/* Header */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '8px 12px',
-            background: '#f0f4f8',
-            borderBottom: '1px solid #cdd5de',
-            flexShrink: 0,
-          }}
-        >
-          <div
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #4a9eff 0%, #2266cc 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontSize: 12,
-              fontWeight: 700,
-              flexShrink: 0,
-              letterSpacing: 0.5,
-            }}
-          >
-            {displayName.slice(0, 2).toUpperCase()}
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                fontSize: 14,
-                fontWeight: 600,
-                color: '#1a1a1a',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              {displayName}
-            </div>
-            <div style={{ fontSize: 11.5, color: connected ? '#4daa6e' : '#999999', marginTop: 1 }}>
-              {connected ? 'online' : 'offline'}
-            </div>
-          </div>
-          {agentSlug && (
-            <span
-              style={{
-                fontSize: 11,
-                color: '#917a28',
-                background: '#fef9e0',
-                border: '1px solid #e8d97a',
-                padding: '2px 7px',
-                borderRadius: 10,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              direct
-            </span>
-          )}
-          {onClose && (
-            <button
-              onClick={onClose}
-              style={{
-                color: '#aaaaaa',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: 16,
-                padding: '2px 4px',
-                lineHeight: 1,
-              }}
-            >
-              ✕
-            </button>
-          )}
-        </div>
-
+      <ThreadPrimitive.Root style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#ffffff' }}>
         {/* Messages */}
         <div
-          style={{ flex: 1, overflowY: 'auto', padding: '8px 0 4px' }}
+          style={{ flex: 1, overflowY: 'auto', padding: '16px 0 8px' }}
         >
           {hasMore && (
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
@@ -228,8 +118,8 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
                 disabled={loadingOlder}
                 style={{
                   fontSize: 12,
-                  color: '#5a8db5',
-                  background: 'rgba(255,255,255,0.7)',
+                  color: '#666',
+                  background: '#f7f7f8',
                   border: 'none',
                   borderRadius: 12,
                   padding: '4px 12px',
@@ -299,9 +189,9 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
         {/* Composer */}
         <div
           style={{
-            background: '#f0f4f8',
-            borderTop: '1px solid #cdd5de',
-            padding: '7px 8px',
+            background: '#ffffff',
+            borderTop: 'none',
+            padding: '12px 16px',
             flexShrink: 0,
           }}
         >
@@ -309,11 +199,11 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
-              background: '#ffffff',
-              borderRadius: 22,
-              padding: '4px 4px 4px 10px',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+              gap: 8,
+              background: '#f7f7f8',
+              borderRadius: 24,
+              padding: '4px 4px 4px 16px',
+              border: '1px solid #e5e5e5',
             }}
           >
               <ComposerPrimitive.Input
@@ -321,11 +211,11 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
                   flex: 1,
                   border: 'none',
                   outline: 'none',
-                  fontSize: 13.5,
+                  fontSize: 14,
                   background: 'transparent',
                   resize: 'none',
-                  padding: '3px 0',
-                  lineHeight: 1.4,
+                  padding: '6px 0',
+                  lineHeight: 1.5,
                   color: '#1a1a1a',
                 }}
                 placeholder="Message…"
@@ -334,10 +224,10 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
               />
               <ComposerPrimitive.Send
                 style={{
-                  width: 34,
-                  height: 34,
+                  width: 32,
+                  height: 32,
                   borderRadius: '50%',
-                  background: sending ? '#a0c4e8' : '#2196f3',
+                  background: sending ? '#ccc' : '#1a1a1a',
                   border: 'none',
                   cursor: sending ? 'default' : 'pointer',
                   display: 'flex',
@@ -347,9 +237,9 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
                   transition: 'background 0.15s',
                 }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="22" y1="2" x2="11" y2="13" />
-                  <polygon points="22 2 15 22 11 13 2 9 22 2" fill="white" stroke="none" />
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="19" x2="12" y2="5" />
+                  <polyline points="5 12 12 5 19 12" />
                 </svg>
               </ComposerPrimitive.Send>
           </ComposerPrimitive.Root>

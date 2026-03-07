@@ -23,7 +23,7 @@ import {
 const tabs: { id: TeamTab; label: string }[] = [
   { id: 'specs', label: 'Specs' },
   { id: 'deployment', label: 'Deployment' },
-  { id: 'chat', label: 'Chat' },
+  { id: 'chat', label: 'Agents' },
 ]
 
 type ChatSubPanel = 'chat' | 'files'
