@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 export type Page = 'teams' | 'settings'
-export type TeamTab = 'overview' | 'agents' | 'deploy'
+export type TeamTab = 'specs' | 'deployments' | 'chat'
 export type SettingsTab = 'general' | 'providers' | 'environments'
 export type TeamsView = 'empty' | 'list' | 'create'
 
@@ -20,19 +20,19 @@ interface NavStore {
 export const useNav = create<NavStore>((set) => ({
   page: 'teams',
   teamSlug: null,
-  teamTab: 'overview',
+  teamTab: 'specs',
   settingsTab: 'general',
   teamsView: 'empty',
   setPage: (page, teamSlug = null) => set({
     page,
     teamSlug,
-    teamTab: 'overview',
+    teamTab: 'specs',
     teamsView: page === 'teams' && !teamSlug ? 'list' : 'empty',
   }),
   openTeamCreator: () => set({
     page: 'teams',
     teamSlug: null,
-    teamTab: 'overview',
+    teamTab: 'specs',
     teamsView: 'create',
   }),
   setTeamTab: (teamTab) => set({ teamTab }),
