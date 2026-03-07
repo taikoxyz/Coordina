@@ -105,11 +105,19 @@ export function registerDeployHandlers(): void {
       return { ok: false, reason: error instanceof Error ? error.message : String(error) }
     }
 
+    let filesToDeploy = specFiles
+    const deployOptions = { ...options }
+    if (options.selectedPaths) {
+      const selected = new Set(options.selectedPaths)
+      filesToDeploy = specFiles.filter(f => selected.has(f.path))
+      deployOptions.skipOrphanCleanup = true
+    }
+
     const win = BrowserWindow.fromWebContents(event.sender)
     const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof deployTeam>[2]
 
     try {
-      for await (const status of deployTeam(specFiles, teamSlug, deployConfig, options)) {
+      for await (const status of deployTeam(filesToDeploy, teamSlug, deployConfig, deployOptions)) {
         win?.webContents.send('deploy:status', status)
       }
       const leadAgent = spec.agents[0]?.slug

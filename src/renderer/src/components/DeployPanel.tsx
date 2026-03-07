@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AlertCircle, Check, Loader2, Rocket, FileText, X } from 'lucide-react'
+import { AlertCircle, Check, HardDrive, Loader2, Rocket, FileText, Server, X } from 'lucide-react'
 import { useEnvironments } from '../hooks/useEnvironments'
 import { highlightContent } from '../lib/highlight'
 import { Badge, Button, Select } from './ui'
 import type { TeamSpec } from '../../../shared/types'
 
-type DeployState = 'idle' | 'preparing' | 'deploying' | 'done' | 'error'
+type DeployState = 'idle' | 'preparing' | 'reviewing' | 'deploying' | 'done' | 'error'
 
 interface DeployFile {
   path: string
@@ -15,6 +15,40 @@ interface DeployFile {
 type LogEntry =
   | { type: 'file'; path: string; content: string }
   | { type: 'status'; line: string; color: string }
+
+interface AgentSelection {
+  disk: boolean
+  pod: boolean
+}
+
+function extractAgentSlugs(files: DeployFile[]): string[] {
+  const slugs = new Set<string>()
+  for (const f of files) {
+    const match = f.path.match(/^agents\/([^/]+)\//)
+    if (match) slugs.add(match[1])
+  }
+  return [...slugs].sort()
+}
+
+function computeSelectedPaths(files: DeployFile[], selections: Map<string, AgentSelection>): string[] {
+  const paths: string[] = []
+  for (const f of files) {
+    const match = f.path.match(/^agents\/([^/]+)\/(.+)$/)
+    if (!match) {
+      if (f.path !== 'ingress.yaml') paths.push(f.path)
+      continue
+    }
+    const [, slug, filename] = match
+    const sel = selections.get(slug)
+    if (!sel) continue
+    const isDisk = filename === 'pv.yaml' || filename === 'pvc.yaml'
+    const isPod = !isDisk && filename.endsWith('.yaml')
+    if ((isDisk && sel.disk) || (isPod && sel.pod)) paths.push(f.path)
+  }
+  const anyPod = [...selections.values()].some(s => s.pod)
+  if (anyPod && files.some(f => f.path === 'ingress.yaml')) paths.push('ingress.yaml')
+  return paths
+}
 
 export function DeployPanel({
   spec,
@@ -32,6 +66,8 @@ export function DeployPanel({
   const [viewingFile, setViewingFile] = useState<DeployFile | null>(null)
   const [recreateDisks, setRecreateDisks] = useState(false)
   const [recreatePods, setRecreatePods] = useState(false)
+  const [previewFiles, setPreviewFiles] = useState<DeployFile[]>([])
+  const [agentSelections, setAgentSelections] = useState<Map<string, AgentSelection>>(new Map())
   const logEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -72,12 +108,13 @@ export function DeployPanel({
     }
   }, [deployState, logEntries, spec.slug])
 
-  const handleDeploy = useCallback(async () => {
+  const handlePreview = useCallback(async () => {
     if (!selectedEnvSlug) return
 
     setDeployState('preparing')
     setLogEntries([])
     setViewingFile(null)
+    setPreviewFiles([])
     await window.api.invoke('deploy:clearLogs', { teamSlug: spec.slug }).catch(() => {})
 
     try {
@@ -96,19 +133,43 @@ export function DeployPanel({
       }
 
       const files = preview.files ?? []
+      setPreviewFiles(files)
+
+      const slugs = extractAgentSlugs(files)
+      setAgentSelections(new Map(slugs.map(s => [s, { disk: true, pod: true }])))
+
       const fileEntries: LogEntry[] = files.map((f) => ({ type: 'file', path: f.path, content: f.content }))
       setLogEntries((prev) => [
         ...prev,
         { type: 'status', line: `Generated ${files.length} spec file${files.length !== 1 ? 's' : ''}`, color: 'text-gray-500' },
         ...fileEntries,
-        { type: 'status', line: 'Starting deployment...', color: 'text-gray-500' },
       ])
-      setDeployState('deploying')
+      setDeployState('reviewing')
+    } catch (error) {
+      setDeployState('error')
+      setLogEntries((prev) => [...prev, { type: 'status', line: `ERROR: ${error instanceof Error ? error.message : String(error)}`, color: 'text-red-600' }])
+    }
+  }, [selectedEnvSlug, spec.slug, onSave])
 
+  const handleApprove = useCallback(async () => {
+    const selectedPaths = computeSelectedPaths(previewFiles, agentSelections)
+    const allSelected = selectedPaths.length === previewFiles.filter(f => f.path.endsWith('.yaml')).length
+
+    setLogEntries((prev) => [
+      ...prev,
+      { type: 'status', line: `Deploying ${selectedPaths.length} resource${selectedPaths.length !== 1 ? 's' : ''}...`, color: 'text-gray-500' },
+    ])
+    setDeployState('deploying')
+
+    try {
       const result = (await window.api.invoke('deploy:team', {
         teamSlug: spec.slug,
         envSlug: selectedEnvSlug,
-        options: { keepDisks: !recreateDisks, forceRecreate: recreatePods },
+        options: {
+          keepDisks: !recreateDisks,
+          forceRecreate: recreatePods,
+          ...(allSelected ? {} : { selectedPaths }),
+        },
       })) as { ok: boolean; reason?: string }
 
       if (result.ok) {
@@ -122,7 +183,16 @@ export function DeployPanel({
       setDeployState('error')
       setLogEntries((prev) => [...prev, { type: 'status', line: `ERROR: ${error instanceof Error ? error.message : String(error)}`, color: 'text-red-600' }])
     }
-  }, [selectedEnvSlug, spec.slug, onSave, recreateDisks, recreatePods])
+  }, [previewFiles, agentSelections, spec.slug, selectedEnvSlug, recreateDisks, recreatePods])
+
+  const toggleAgentSelection = (slug: string, field: 'disk' | 'pod') => {
+    setAgentSelections((prev) => {
+      const next = new Map(prev)
+      const current = next.get(slug) ?? { disk: true, pod: true }
+      next.set(slug, { ...current, [field]: !current[field] })
+      return next
+    })
+  }
 
   const statusBadgeVariant =
     deployState === 'done'
@@ -136,9 +206,12 @@ export function DeployPanel({
   const statusLabel =
     deployState === 'idle' ? 'Idle'
       : deployState === 'preparing' ? 'Preparing'
-        : deployState === 'deploying' ? 'Deploying'
-          : deployState === 'done' ? 'Deployed'
-            : 'Failed'
+        : deployState === 'reviewing' ? 'Review'
+          : deployState === 'deploying' ? 'Deploying'
+            : deployState === 'done' ? 'Deployed'
+              : 'Failed'
+
+  const agentNameMap = new Map(spec.agents.map(a => [a.slug, a.name || a.slug]))
 
   return (
     <div className="flex flex-col h-full">
@@ -148,6 +221,7 @@ export function DeployPanel({
             className="w-auto px-2 py-1 text-xs"
             value={selectedEnvSlug}
             onChange={(e) => setSelectedEnvSlug(e.target.value)}
+            disabled={deployState === 'reviewing' || deployState === 'deploying'}
           >
             {(environments ?? []).map((env) => {
               const cfg = env.config as { clusterName?: string }
@@ -163,42 +237,100 @@ export function DeployPanel({
             {statusLabel}
           </Badge>
         )}
-        <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={recreateDisks}
-            onChange={(e) => setRecreateDisks(e.target.checked)}
-            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
-          Recreate disks
-        </label>
-        <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={recreatePods}
-            onChange={(e) => setRecreatePods(e.target.checked)}
-            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
-          Recreate pods
-        </label>
-        <Button
-          variant="dark"
-          onClick={() => void handleDeploy()}
-          disabled={!selectedEnvSlug || isSaving || deployState === 'preparing' || deployState === 'deploying'}
-        >
-          {deployState === 'preparing' || deployState === 'deploying' ? (
-            <>
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              Deploying...
-            </>
-          ) : (
-            <>
-              <Rocket className="w-3.5 h-3.5" />
-              Deploy
-            </>
-          )}
-        </Button>
+        {deployState !== 'reviewing' && (
+          <>
+            <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={recreateDisks}
+                onChange={(e) => setRecreateDisks(e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              Recreate disks
+            </label>
+            <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={recreatePods}
+                onChange={(e) => setRecreatePods(e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              Recreate pods
+            </label>
+          </>
+        )}
+        {deployState === 'reviewing' ? (
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setDeployState('idle')}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="dark"
+              onClick={() => void handleApprove()}
+              disabled={![...agentSelections.values()].some(s => s.disk || s.pod)}
+            >
+              <Check className="w-3.5 h-3.5" />
+              Approve
+            </Button>
+          </>
+        ) : (
+          <Button
+            variant="dark"
+            onClick={() => void handlePreview()}
+            disabled={!selectedEnvSlug || isSaving || deployState === 'preparing' || deployState === 'deploying'}
+          >
+            {deployState === 'preparing' || deployState === 'deploying' ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                {deployState === 'preparing' ? 'Preparing...' : 'Deploying...'}
+              </>
+            ) : (
+              <>
+                <Rocket className="w-3.5 h-3.5" />
+                Deploy
+              </>
+            )}
+          </Button>
+        )}
       </div>
+
+      {deployState === 'reviewing' && agentSelections.size > 0 && (
+        <div className="border-b border-gray-200 px-5 py-3 bg-gray-50 shrink-0">
+          <div className="flex flex-wrap items-center gap-4 justify-center">
+            {[...agentSelections.entries()].map(([slug, sel]) => (
+              <div key={slug} className="flex items-center gap-2.5 text-xs">
+                <span className="font-medium text-gray-700 min-w-0 truncate max-w-[120px]">
+                  {agentNameMap.get(slug) ?? slug}
+                </span>
+                <label className="flex items-center gap-1 text-gray-500 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={sel.disk}
+                    onChange={() => toggleAgentSelection(slug, 'disk')}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <HardDrive className="w-3 h-3" />
+                  Disk
+                </label>
+                <label className="flex items-center gap-1 text-gray-500 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={sel.pod}
+                    onChange={() => toggleAgentSelection(slug, 'pod')}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <Server className="w-3 h-3" />
+                  Pod
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 flex min-h-0">
         <div className={`flex flex-col min-h-0 ${viewingFile ? 'w-1/2 border-r border-gray-200' : 'flex-1'}`}>

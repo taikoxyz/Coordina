@@ -29,6 +29,7 @@ export interface AgentSpec {
   image?: string
   cpu?: number
   diskGi?: number
+  disabled?: boolean
 }
 
 export interface TeamSpec {
@@ -106,6 +107,8 @@ export interface ValidationResult {
 export interface DeployOptions {
   keepDisks: boolean
   forceRecreate: boolean
+  selectedPaths?: string[]
+  skipOrphanCleanup?: boolean
 }
 
 export interface DeployStatus {

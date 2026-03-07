@@ -156,37 +156,39 @@ export async function* deployTeam(
     }
   }
 
-  const existingPodList = await coreApi.listNamespacedPod({ namespace, labelSelector: `coordina.team=${teamSlug}` })
-    .catch(() => ({ items: [] } as { items: k8s.V1Pod[] }))
-  const existingStatefulSetList = await appsApi.listNamespacedStatefulSet({ namespace, labelSelector: `coordina.team=${teamSlug}` })
-    .catch(() => ({ items: [] } as { items: k8s.V1StatefulSet[] }))
-  const existingPodNames = (existingPodList.items ?? []).map(p => p.metadata?.name).filter((name): name is string => Boolean(name))
-  const existingStatefulSetNames = (existingStatefulSetList.items ?? []).map(s => s.metadata?.name).filter((name): name is string => Boolean(name))
+  if (!options.skipOrphanCleanup) {
+    const existingPodList = await coreApi.listNamespacedPod({ namespace, labelSelector: `coordina.team=${teamSlug}` })
+      .catch(() => ({ items: [] } as { items: k8s.V1Pod[] }))
+    const existingStatefulSetList = await appsApi.listNamespacedStatefulSet({ namespace, labelSelector: `coordina.team=${teamSlug}` })
+      .catch(() => ({ items: [] } as { items: k8s.V1StatefulSet[] }))
+    const existingPodNames = (existingPodList.items ?? []).map(p => p.metadata?.name).filter((name): name is string => Boolean(name))
+    const existingStatefulSetNames = (existingStatefulSetList.items ?? []).map(s => s.metadata?.name).filter((name): name is string => Boolean(name))
 
-  const removedAgentSlugs = new Set<string>()
-  for (const name of existingPodNames) {
-    const slug = parseAgentSlugFromPodName(name)
-    if (slug && !desiredAgentSlugs.has(slug)) removedAgentSlugs.add(slug)
-  }
-  for (const name of existingStatefulSetNames) {
-    const slug = parseAgentSlugFromStatefulSetName(name)
-    if (slug && !desiredAgentSlugs.has(slug)) removedAgentSlugs.add(slug)
-  }
-
-  for (const agentSlug of [...removedAgentSlugs].sort()) {
-    const statefulSetName = `agent-${agentSlug}`
-    await tryDelete(() => appsApi.deleteNamespacedStatefulSet({ name: statefulSetName, namespace }))
-    yield { resource: `StatefulSet/${statefulSetName}`, status: 'deleted', message: 'Agent removed from team spec' }
-    for (const podName of existingPodNames.filter(name => parseAgentSlugFromPodName(name) === agentSlug)) {
-      await tryDelete(() => coreApi.deleteNamespacedPod({ name: podName, namespace }))
-      yield { resource: `Pod/${podName}`, status: 'deleted', message: 'Agent removed from team spec' }
+    const removedAgentSlugs = new Set<string>()
+    for (const name of existingPodNames) {
+      const slug = parseAgentSlugFromPodName(name)
+      if (slug && !desiredAgentSlugs.has(slug)) removedAgentSlugs.add(slug)
     }
-    await tryDelete(() => coreApi.deleteNamespacedService({ name: statefulSetName, namespace }))
-    yield { resource: `Service/${statefulSetName}`, status: 'deleted', message: 'Agent removed from team spec' }
-    await tryDelete(() => coreApi.deleteNamespacedConfigMap({ name: `${teamSlug}-${agentSlug}-config`, namespace }))
-    yield { resource: `ConfigMap/${teamSlug}-${agentSlug}-config`, status: 'deleted', message: 'Agent removed from team spec' }
-    await tryDelete(() => coreApi.deleteNamespacedSecret({ name: `${teamSlug}-${agentSlug}-credentials`, namespace }))
-    yield { resource: `Secret/${teamSlug}-${agentSlug}-credentials`, status: 'deleted', message: 'Agent removed from team spec' }
+    for (const name of existingStatefulSetNames) {
+      const slug = parseAgentSlugFromStatefulSetName(name)
+      if (slug && !desiredAgentSlugs.has(slug)) removedAgentSlugs.add(slug)
+    }
+
+    for (const agentSlug of [...removedAgentSlugs].sort()) {
+      const statefulSetName = `agent-${agentSlug}`
+      await tryDelete(() => appsApi.deleteNamespacedStatefulSet({ name: statefulSetName, namespace }))
+      yield { resource: `StatefulSet/${statefulSetName}`, status: 'deleted', message: 'Agent removed from team spec' }
+      for (const podName of existingPodNames.filter(name => parseAgentSlugFromPodName(name) === agentSlug)) {
+        await tryDelete(() => coreApi.deleteNamespacedPod({ name: podName, namespace }))
+        yield { resource: `Pod/${podName}`, status: 'deleted', message: 'Agent removed from team spec' }
+      }
+      await tryDelete(() => coreApi.deleteNamespacedService({ name: statefulSetName, namespace }))
+      yield { resource: `Service/${statefulSetName}`, status: 'deleted', message: 'Agent removed from team spec' }
+      await tryDelete(() => coreApi.deleteNamespacedConfigMap({ name: `${teamSlug}-${agentSlug}-config`, namespace }))
+      yield { resource: `ConfigMap/${teamSlug}-${agentSlug}-config`, status: 'deleted', message: 'Agent removed from team spec' }
+      await tryDelete(() => coreApi.deleteNamespacedSecret({ name: `${teamSlug}-${agentSlug}-credentials`, namespace }))
+      yield { resource: `Secret/${teamSlug}-${agentSlug}-credentials`, status: 'deleted', message: 'Agent removed from team spec' }
+    }
   }
 
   const existingPvcNames = new Set<string>()

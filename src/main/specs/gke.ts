@@ -94,7 +94,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
       ...spec,
       telegramGroupId,
       telegramAdminId,
-      agents: spec.agents.map(a => ({
+      agents: spec.agents.filter(a => !a.disabled).map(a => ({
         ...a,
         isLead: a.slug === spec.leadAgent,
         gatewayUrl: `http://agent-${a.slug}.${namespace}.svc.cluster.local:18789`,
@@ -109,7 +109,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
     files.push({ path: 'BOOTSTRAP.md', content: bootstrapMd })
     files.push({ path: 'configmap-shared.yaml', content: teamConfig })
 
-    for (const agent of spec.agents) {
+    for (const agent of spec.agents.filter(a => !a.disabled)) {
       const providerRecord = providers.get(agent.provider)
       let modelProvider
       try { modelProvider = providerRecord ? getProvider(providerRecord.type) : undefined } catch { /* unknown type */ }
@@ -252,7 +252,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
     }
 
     if (ingressDomain) {
-      files.push({ path: 'ingress.yaml', content: generateIngress({ teamSlug: spec.slug, agents: spec.agents.map(a => a.slug), domain: ingressDomain, namespace }) })
+      files.push({ path: 'ingress.yaml', content: generateIngress({ teamSlug: spec.slug, agents: spec.agents.filter(a => !a.disabled).map(a => a.slug), domain: ingressDomain, namespace }) })
     }
 
     return files

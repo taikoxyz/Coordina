@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Crown, Pencil, Send } from 'lucide-react'
+import { Crown, EyeOff, Pencil, Send } from 'lucide-react'
 import { deriveSlug } from '../../../../shared/slug'
 import type { AgentSpec } from '../../../../shared/types'
 import { PERSONA_CATALOG, getPersonasByDivision } from '../../../../shared/personaCatalog'
@@ -19,6 +19,7 @@ interface Props {
   isSaving: boolean
   onChange: (updated: AgentSpec) => void
   onDelete: () => void
+  onToggleDisabled?: () => void
 }
 
 export function AgentCard({
@@ -34,6 +35,7 @@ export function AgentCard({
   isSaving,
   onChange,
   onDelete,
+  onToggleDisabled,
 }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [telegramToken, setTelegramToken] = useState('')
@@ -138,6 +140,11 @@ export function AgentCard({
               <Send className="w-3 h-3" /> TG
             </Badge>
           )}
+          {agent.disabled && (
+            <Badge variant="warning" size="sm">
+              <EyeOff className="w-3 h-3" /> Disabled
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {isEditing ? (
@@ -172,9 +179,21 @@ export function AgentCard({
               </Button>
             </>
           ) : (
-            <Button variant="ghost" size="icon" onClick={onEdit} title="Edit agent">
-              <Pencil className="w-4 h-4" />
-            </Button>
+            <>
+              {onToggleDisabled && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onToggleDisabled}
+                  title={agent.disabled ? 'Enable agent' : 'Disable agent'}
+                >
+                  <EyeOff className={`w-4 h-4 ${agent.disabled ? 'text-amber-500' : 'text-gray-400'}`} />
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" onClick={onEdit} title="Edit agent">
+                <Pencil className="w-4 h-4" />
+              </Button>
+            </>
           )}
         </div>
       </div>

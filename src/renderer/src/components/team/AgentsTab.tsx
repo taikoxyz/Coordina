@@ -55,6 +55,15 @@ export function AgentsTab({ spec, onSpecChange, onSave, onSaveSpec, isSaving }: 
     applyAgents(agents)
   }
 
+  const toggleDisableAgent = (i: number) => {
+    const agent = spec.agents[i]
+    const agents = [...spec.agents]
+    agents[i] = { ...agent, disabled: !agent.disabled }
+    const newSpec = { ...spec, agents }
+    onSpecChange(newSpec)
+    void onSaveSpec(newSpec)
+  }
+
   const deleteAgent = (i: number) => {
     const newAgents = spec.agents.filter((_, j) => j !== i)
     const newSpec = { ...spec, agents: newAgents, leadAgent: newAgents[0]?.slug || undefined }
@@ -113,6 +122,7 @@ export function AgentsTab({ spec, onSpecChange, onSave, onSaveSpec, isSaving }: 
                 selectedAgentSlug === agent.slug
                   ? 'bg-white text-gray-900'
                   : 'text-gray-600 hover:bg-white/80 hover:text-gray-900',
+                agent.disabled && 'opacity-50',
               )}
             >
               <div className="min-w-0">
@@ -163,6 +173,7 @@ export function AgentsTab({ spec, onSpecChange, onSave, onSaveSpec, isSaving }: 
                   updateAgent(selectedAgentIndex, updated)
                 }}
                 onDelete={() => deleteAgent(selectedAgentIndex)}
+                onToggleDisabled={() => toggleDisableAgent(selectedAgentIndex)}
               />
             </div>
           )}
