@@ -115,6 +115,11 @@ export function TeamContent({ slug }: { slug: string }) {
     }
   }
 
+  const { statuses: agentStatuses } = useAgentStatuses(
+    localSpec?.slug ?? '',
+    localSpec?.deployedEnvSlug,
+  )
+
   if (!localSpec) {
     return (
       <div className="flex items-center justify-center h-full text-sm text-gray-400">
@@ -124,8 +129,6 @@ export function TeamContent({ slug }: { slug: string }) {
   }
 
   const isLead = selectedAgent && agents.length > 0 && selectedAgent.slug === agents[0].slug
-
-  const { statuses: agentStatuses } = useAgentStatuses(localSpec.slug, localSpec.deployedEnvSlug)
 
   const selectedAgentStatus = selectedAgent ? agentStatuses.get(selectedAgent.slug) : undefined
   const isDeployed = !!localSpec.deployedEnvSlug
