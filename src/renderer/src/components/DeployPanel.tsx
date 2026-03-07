@@ -203,18 +203,14 @@ export function DeployPanel({
           ? 'warning' as const
           : 'default' as const
 
-  const statusLabel =
-    deployState === 'idle' ? 'Idle'
-      : deployState === 'preparing' ? 'Preparing'
-        : deployState === 'reviewing' ? 'Review'
-          : deployState === 'deploying' ? 'Deploying'
-            : deployState === 'done' ? 'Deployed'
-              : 'Failed'
-
   const agentNameMap = new Map(spec.agents.map(a => [a.slug, a.name || a.slug]))
+
+  const fileEntries = logEntries.filter((e): e is LogEntry & { type: 'file' } => e.type === 'file')
+  const statusEntries = logEntries.filter((e): e is LogEntry & { type: 'status' } => e.type === 'status')
 
   return (
     <div className="flex flex-col h-full">
+      {/* Toolbar */}
       <div className="flex items-center justify-center gap-4 px-5 py-3 border-b border-gray-200 shrink-0">
         {(environments ?? []).length > 0 && (
           <Select
@@ -234,7 +230,7 @@ export function DeployPanel({
           <Badge variant={statusBadgeVariant} className="uppercase tracking-wider">
             {deployState === 'done' && <Check className="w-3 h-3" />}
             {deployState === 'error' && <AlertCircle className="w-3 h-3" />}
-            {statusLabel}
+            {deployState === 'done' ? 'Deployed' : 'Failed'}
           </Badge>
         )}
         {deployState !== 'reviewing' && (
@@ -261,11 +257,7 @@ export function DeployPanel({
         )}
         {deployState === 'reviewing' ? (
           <>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setDeployState('idle')}
-            >
+            <Button variant="secondary" size="sm" onClick={() => setDeployState('idle')}>
               Cancel
             </Button>
             <Button
@@ -298,52 +290,55 @@ export function DeployPanel({
         )}
       </div>
 
-      {deployState === 'reviewing' && agentSelections.size > 0 && (
-        <div className="border-b border-gray-200 px-5 py-3 bg-gray-50 shrink-0">
-          <div className="flex flex-wrap items-center gap-4 justify-center">
-            {[...agentSelections.entries()].map(([slug, sel]) => (
-              <div key={slug} className="flex items-center gap-2.5 text-xs">
-                <span className="font-medium text-gray-700 min-w-0 truncate max-w-[120px]">
-                  {agentNameMap.get(slug) ?? slug}
-                </span>
-                <label className="flex items-center gap-1 text-gray-500 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={sel.disk}
-                    onChange={() => toggleAgentSelection(slug, 'disk')}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <HardDrive className="w-3 h-3" />
-                  Disk
-                </label>
-                <label className="flex items-center gap-1 text-gray-500 cursor-pointer select-none">
-                  <input
-                    type="checkbox"
-                    checked={sel.pod}
-                    onChange={() => toggleAgentSelection(slug, 'pod')}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <Server className="w-3 h-3" />
-                  Pod
-                </label>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
+      {/* Upper panel: deployment plan (agent selections + file list / file preview) */}
       <div className="flex-1 flex min-h-0">
-        <div className={`flex flex-col min-h-0 ${viewingFile ? 'w-1/2 border-r border-gray-200' : 'flex-1'}`}>
-          <div className={`flex flex-col flex-1 min-h-0 py-5 px-6 ${viewingFile ? '' : 'max-w-2xl mx-auto w-full'}`}>
-            <h5 className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 mb-2 shrink-0">Log</h5>
-            <div className="flex-1 overflow-y-auto min-h-0 space-y-0.5">
-            {logEntries.length === 0 ? (
-              <div className="text-sm text-gray-400">
-                No logs found.
+        <div className={`flex flex-col min-h-0 overflow-y-auto ${viewingFile ? 'w-1/2 border-r border-gray-200' : 'flex-1'}`}>
+          <div className="py-5 px-6 max-w-2xl mx-auto w-full space-y-4">
+            {/* Agent selections (reviewing state) */}
+            {deployState === 'reviewing' && agentSelections.size > 0 && (
+              <div className="space-y-2">
+                <h5 className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">Deployment Plan</h5>
+                <div className="border border-gray-200 rounded-lg divide-y divide-gray-100">
+                  {[...agentSelections.entries()].map(([slug, sel]) => (
+                    <div key={slug} className="flex items-center justify-between px-4 py-2.5">
+                      <span className="text-sm font-medium text-gray-800 min-w-0 truncate">
+                        {agentNameMap.get(slug) ?? slug}
+                      </span>
+                      <div className="flex items-center gap-4 shrink-0">
+                        <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={sel.disk}
+                            onChange={() => toggleAgentSelection(slug, 'disk')}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <HardDrive className="w-3 h-3" />
+                          Disk
+                        </label>
+                        <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={sel.pod}
+                            onChange={() => toggleAgentSelection(slug, 'pod')}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <Server className="w-3 h-3" />
+                          Pod
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ) : (
-              logEntries.map((entry, index) =>
-                entry.type === 'file' ? (
+            )}
+
+            {/* File list */}
+            {fileEntries.length > 0 && (
+              <div className="space-y-1">
+                <h5 className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
+                  Files ({fileEntries.length})
+                </h5>
+                {fileEntries.map((entry, index) => (
                   <button
                     key={`${index}:${entry.path}`}
                     onClick={() => setViewingFile({ path: entry.path, content: entry.content })}
@@ -356,21 +351,13 @@ export function DeployPanel({
                     <FileText className="w-3 h-3 shrink-0" />
                     {entry.path}
                   </button>
-                ) : (
-                  <div
-                    key={`${index}:${entry.line}`}
-                    className={`text-xs font-mono ${entry.color}`}
-                  >
-                    {entry.line}
-                  </div>
-                ),
-              )
+                ))}
+              </div>
             )}
-            <div ref={logEndRef} />
-            </div>
           </div>
         </div>
 
+        {/* File preview (right side) */}
         {viewingFile && (
           <div className="w-1/2 flex flex-col min-h-0">
             <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 shrink-0 bg-gray-50">
@@ -391,6 +378,28 @@ export function DeployPanel({
             </div>
           </div>
         )}
+      </div>
+
+      {/* Lower panel: logs */}
+      <div className="h-48 shrink-0 border-t border-gray-200 flex flex-col min-h-0 bg-gray-50">
+        <div className="px-6 py-2 border-b border-gray-100 shrink-0">
+          <h5 className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">Log</h5>
+        </div>
+        <div className="flex-1 overflow-y-auto min-h-0 px-6 py-2 space-y-0.5">
+          {statusEntries.length === 0 ? (
+            <div className="text-xs text-gray-400">No logs yet.</div>
+          ) : (
+            statusEntries.map((entry, index) => (
+              <div
+                key={`${index}:${entry.line}`}
+                className={`text-xs font-mono ${entry.color}`}
+              >
+                {entry.line}
+              </div>
+            ))
+          )}
+          <div ref={logEndRef} />
+        </div>
       </div>
     </div>
   )
