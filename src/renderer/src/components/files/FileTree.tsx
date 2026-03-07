@@ -54,6 +54,7 @@ function buildTree(files: FileEntry[]): TreeNode[] {
     }
 
     const name = parts[parts.length - 1]
+    if (file.isDir && dirs.has(file.path)) continue
     current.push({ name, path: file.path, isDir: file.isDir, size: file.size, children: [] })
   }
 

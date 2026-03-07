@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { RefreshCw } from 'lucide-react'
 import { FileTree } from './FileTree'
-import { FileTab } from './FileTab'
 import { MarkdownViewer } from './MarkdownViewer'
 interface Props {
   teamSlug: string
@@ -16,7 +15,7 @@ interface FileEntry {
   isDir: boolean
 }
 
-interface OpenTab {
+interface ActiveFile {
   path: string
   content: string | null
   loading: boolean
@@ -24,9 +23,8 @@ interface OpenTab {
 }
 
 export function FileBrowser({ teamSlug, agentSlug, envSlug }: Props) {
-  const [openTabs, setOpenTabs] = useState<OpenTab[]>([])
-  const [activeTab, setActiveTab] = useState<string | null>(null)
-  const [refreshingTabs, setRefreshingTabs] = useState(false)
+  const [activeFile, setActiveFile] = useState<ActiveFile | null>(null)
+  const [refreshingFile, setRefreshingFile] = useState(false)
 
   const {
     data: fileList,
@@ -46,58 +44,28 @@ export function FileBrowser({ teamSlug, agentSlug, envSlug }: Props) {
   }
 
   async function openFile(filePath: string) {
-    // If already open, just switch to it
-    if (openTabs.some(t => t.path === filePath)) {
-      setActiveTab(filePath)
-      return
-    }
-
-    // Add loading tab
-    setOpenTabs(prev => [...prev, { path: filePath, content: null, loading: true }])
-    setActiveTab(filePath)
-
+    setActiveFile({ path: filePath, content: null, loading: true })
     const result = await fetchFile(filePath)
-    setOpenTabs(prev => prev.map(t =>
-      t.path === filePath ? { ...t, content: result.content, loading: false, error: result.error } : t
-    ))
+    setActiveFile({ path: filePath, content: result.content, loading: false, error: result.error })
   }
 
   async function reloadFiles() {
-    const tabsToRefresh = openTabs.map(tab => tab.path)
-    setRefreshingTabs(true)
-    setOpenTabs(prev => prev.map(tab => ({ ...tab, loading: true })))
-
+    setRefreshingFile(true)
     try {
       await refetchFileList()
-      const refreshedTabs = await Promise.all(tabsToRefresh.map(async (path) => {
-        const result = await fetchFile(path)
-        return {
-          path,
-          content: result.content,
-          loading: false,
-          error: result.error,
-        }
-      }))
-      setOpenTabs(refreshedTabs)
+      if (activeFile) {
+        setActiveFile(prev => prev ? { ...prev, loading: true } : null)
+        const result = await fetchFile(activeFile.path)
+        setActiveFile({ path: activeFile.path, content: result.content, loading: false, error: result.error })
+      }
     } finally {
-      setRefreshingTabs(false)
+      setRefreshingFile(false)
     }
   }
 
-  function closeTab(filePath: string) {
-    setOpenTabs(prev => {
-      const next = prev.filter(t => t.path !== filePath)
-      if (activeTab === filePath) {
-        setActiveTab(next.length > 0 ? next[next.length - 1].path : null)
-      }
-      return next
-    })
-  }
-
-  const activeTabData = openTabs.find(t => t.path === activeTab)
   const files = fileList?.files ?? []
   const fileListError = fileList?.error
-  const isRefreshing = listFetching || refreshingTabs
+  const isRefreshing = listFetching || refreshingFile
 
   return (
     <div className="flex h-full bg-white">
@@ -130,41 +98,27 @@ export function FileBrowser({ teamSlug, agentSlug, envSlug }: Props) {
             {fileListError ?? 'No files available'}
           </div>
         ) : (
-          <FileTree files={files} onSelect={openFile} activeFile={activeTab ?? undefined} />
+          <FileTree files={files} onSelect={openFile} activeFile={activeFile?.path} />
         )}
       </div>
 
-      {/* Right: tabs + viewer */}
+      {/* Right: viewer */}
       <div className="flex-1 flex flex-col min-w-0">
-        {openTabs.length > 0 && (
-          <div className="flex border-b border-gray-200 overflow-x-auto flex-shrink-0 bg-white">
-            {openTabs.map(tab => (
-              <FileTab
-                key={tab.path}
-                path={tab.path}
-                isActive={activeTab === tab.path}
-                onClick={() => setActiveTab(tab.path)}
-                onClose={() => closeTab(tab.path)}
-              />
-            ))}
-          </div>
-        )}
-
         <div className="flex-1 overflow-auto">
-          {!activeTabData ? (
+          {!activeFile ? (
             <div className="flex items-center justify-center h-full text-gray-400 text-sm">
               Select a file to view
             </div>
-          ) : activeTabData.loading ? (
+          ) : activeFile.loading ? (
             <div className="flex items-center justify-center h-full text-gray-400 text-sm">
               Loading…
             </div>
-          ) : activeTabData.content === null ? (
+          ) : activeFile.content === null ? (
             <div className="flex items-center justify-center h-full text-red-500 text-sm">
-              {activeTabData.error ?? 'Failed to load file'}
+              {activeFile.error ?? 'Failed to load file'}
             </div>
           ) : (
-            <MarkdownViewer content={activeTabData.content} filePath={activeTabData.path} />
+            <MarkdownViewer content={activeFile.content} filePath={activeFile.path} />
           )}
         </div>
       </div>
