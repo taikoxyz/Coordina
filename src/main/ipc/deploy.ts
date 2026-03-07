@@ -14,6 +14,7 @@ import { authenticateGke } from '../environments/gke/auth'
 import { resolveGatewayMode } from '../gateway/mode'
 import type { EnvironmentRecord, DeployOptions } from '../../shared/types'
 import { validateTeamSpec } from '../validation/teamSpec'
+import { getDeployLogs, saveDeployLogs, clearDeployLogs } from '../store/deployLogs'
 
 export function registerDeployHandlers(): void {
   const telegramAccount = (teamSlug: string, agentSlug: string) => `team:${teamSlug}:agent:${agentSlug}`
@@ -85,7 +86,7 @@ export function registerDeployHandlers(): void {
   ipcMain.handle('deploy:preview', async (_event, { teamSlug, envSlug }: { teamSlug: string; envSlug: string }) => {
     try {
       const { specFiles } = await deriveValidatedDeployFiles(teamSlug, envSlug)
-      return { ok: true, files: specFiles.map(file => ({ path: file.path })) }
+      return { ok: true, files: specFiles.map(file => ({ path: file.path, content: file.content })) }
     } catch (error) {
       return { ok: false, reason: error instanceof Error ? error.message : String(error) }
     }
@@ -155,6 +156,20 @@ export function registerDeployHandlers(): void {
     } catch (e) {
       return { ok: false, reason: e instanceof Error ? e.message : String(e) }
     }
+  })
+
+  ipcMain.handle('deploy:getLogs', async (_e, { teamSlug }: { teamSlug: string }) => {
+    return getDeployLogs(teamSlug)
+  })
+
+  ipcMain.handle('deploy:saveLogs', async (_e, { teamSlug, entries }: { teamSlug: string; entries: unknown[] }) => {
+    await saveDeployLogs(teamSlug, entries as Parameters<typeof saveDeployLogs>[1])
+    return { ok: true }
+  })
+
+  ipcMain.handle('deploy:clearLogs', async (_e, { teamSlug }: { teamSlug: string }) => {
+    await clearDeployLogs(teamSlug)
+    return { ok: true }
   })
 
   ipcMain.handle('deploy:getStatus', async (_e, { teamSlug, envSlug }: { teamSlug: string; envSlug: string }) => {

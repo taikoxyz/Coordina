@@ -1,40 +1,47 @@
 import { create } from 'zustand'
 
-export type Page = 'teams' | 'settings'
-export type TeamTab = 'overview' | 'agents' | 'deploy'
-export type SettingsTab = 'general' | 'providers' | 'environments'
-export type TeamsView = 'empty' | 'list' | 'create'
+export type SidebarGroup = 'providers' | 'environments' | 'teams'
+
+export type SelectedItem =
+  | { type: 'provider'; slug: string }
+  | { type: 'environment'; slug: string }
+  | { type: 'team'; slug: string }
+
+export type TeamTab = 'specs' | 'deployment' | 'chat'
 
 interface NavStore {
-  page: Page
-  teamSlug: string | null
+  expandedGroups: SidebarGroup[]
+  selectedItem: SelectedItem | null
   teamTab: TeamTab
-  settingsTab: SettingsTab
-  teamsView: TeamsView
-  setPage: (page: Page, teamSlug?: string | null) => void
-  openTeamCreator: () => void
+  agentSlug: string | null
+  isSettingsOpen: boolean
+  isCreateDialogOpen: SidebarGroup | null
+
+  toggleGroup: (group: SidebarGroup) => void
+  selectItem: (item: SelectedItem) => void
   setTeamTab: (tab: TeamTab) => void
-  setSettingsTab: (tab: SettingsTab) => void
+  selectAgent: (slug: string | null) => void
+  setSettingsOpen: (open: boolean) => void
+  setCreateDialogOpen: (group: SidebarGroup | null) => void
 }
 
 export const useNav = create<NavStore>((set) => ({
-  page: 'teams',
-  teamSlug: null,
-  teamTab: 'overview',
-  settingsTab: 'general',
-  teamsView: 'empty',
-  setPage: (page, teamSlug = null) => set({
-    page,
-    teamSlug,
-    teamTab: 'overview',
-    teamsView: page === 'teams' && !teamSlug ? 'list' : 'empty',
-  }),
-  openTeamCreator: () => set({
-    page: 'teams',
-    teamSlug: null,
-    teamTab: 'overview',
-    teamsView: 'create',
-  }),
+  expandedGroups: ['providers', 'environments', 'teams'],
+  selectedItem: null,
+  teamTab: 'specs',
+  agentSlug: null,
+  isSettingsOpen: false,
+  isCreateDialogOpen: null,
+
+  toggleGroup: (group) =>
+    set((s) => ({
+      expandedGroups: s.expandedGroups.includes(group)
+        ? s.expandedGroups.filter((g) => g !== group)
+        : [...s.expandedGroups, group],
+    })),
+  selectItem: (item) => set({ selectedItem: item, teamTab: 'specs', agentSlug: null }),
   setTeamTab: (teamTab) => set({ teamTab }),
-  setSettingsTab: (settingsTab) => set({ settingsTab }),
+  selectAgent: (slug) => set({ agentSlug: slug }),
+  setSettingsOpen: (isSettingsOpen) => set({ isSettingsOpen }),
+  setCreateDialogOpen: (isCreateDialogOpen) => set({ isCreateDialogOpen }),
 }))

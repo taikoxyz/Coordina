@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { highlightContent } from '../../lib/highlight'
 
 interface Props {
   content: string
@@ -19,6 +20,9 @@ function renderMarkdown(text: string): string {
     .replace(/\n\n/g, '</p><p class="text-gray-700 mb-2">')
     .replace(/\n/g, '<br/>')
 }
+
+const isHighlightable = (path: string) =>
+  path.endsWith('.json') || path.endsWith('.yaml') || path.endsWith('.yml')
 
 export function MarkdownViewer({ content, filePath }: Props) {
   const isMarkdown = filePath.endsWith('.md') || filePath.endsWith('.markdown')
@@ -44,8 +48,10 @@ export function MarkdownViewer({ content, filePath }: Props) {
       )}
 
       <div className="flex-1 overflow-auto p-4">
-        {viewSource ? (
-          <pre className="text-sm font-mono text-gray-700 whitespace-pre-wrap leading-relaxed">{content}</pre>
+        {viewSource || !isMarkdown ? (
+          <pre className="text-sm font-mono text-gray-700 whitespace-pre-wrap leading-relaxed">
+            {isHighlightable(filePath) ? highlightContent(content, filePath) : content}
+          </pre>
         ) : (
           <div
             className="prose-sm max-w-none text-gray-700 leading-relaxed"

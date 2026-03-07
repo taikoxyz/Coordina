@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Sidebar } from './components/Sidebar'
-import { TeamsPage } from './pages/TeamsPage'
-import { TeamDetailPage } from './pages/TeamDetailPage'
-import { SettingsPage } from './pages/SettingsPage'
+import { AppSidebar } from './components/AppSidebar'
+import { MainContent } from './components/MainContent'
+import { SettingsDialog } from './components/SettingsDialog'
+import { CreateTeamDialog } from './components/CreateTeamDialog'
+import { CreateProviderDialog } from './components/CreateProviderDialog'
+import { CreateEnvironmentDialog } from './components/CreateEnvironmentDialog'
 import { useTeams } from './hooks/useTeams'
 import { useNav } from './store/nav'
 import './assets/main.css'
@@ -11,41 +13,30 @@ import './assets/main.css'
 const queryClient = new QueryClient()
 
 function AppContent() {
-  const { page, teamSlug, teamsView, setPage } = useNav()
+  const { selectedItem, selectItem } = useNav()
   const { data: teams, isFetched } = useTeams()
-  const [hasResolvedInitialTeam, setHasResolvedInitialTeam] = useState(false)
+  const [hasResolved, setHasResolved] = useState(false)
 
   useEffect(() => {
-    if (hasResolvedInitialTeam || page !== 'teams' || !isFetched) return
+    if (hasResolved || !isFetched) return
 
-    if (teamSlug) {
-      setHasResolvedInitialTeam(true)
-      return
+    if (!selectedItem && teams?.length) {
+      selectItem({ type: 'team', slug: teams[0].slug })
     }
 
-    if (teams?.length) {
-      setHasResolvedInitialTeam(true)
-      setPage('teams', teams[0].slug)
-      return
-    }
-
-    setHasResolvedInitialTeam(true)
-  }, [hasResolvedInitialTeam, isFetched, page, setPage, teamSlug, teams])
-
-  const isResolvingInitialTeam = page === 'teams' && !teamSlug && !hasResolvedInitialTeam
-  const shouldShowTeamsPage = page === 'teams' && !teamSlug && hasResolvedInitialTeam && teamsView !== 'empty'
-  const shouldShowEmptyMainView = page === 'teams' && !teamSlug && hasResolvedInitialTeam && teamsView === 'empty'
+    setHasResolved(true)
+  }, [hasResolved, isFetched, teams, selectedItem, selectItem])
 
   return (
     <div className="flex h-screen bg-[var(--color-background)] text-[var(--color-foreground)]">
-      <Sidebar />
-      <main className="flex-1 overflow-hidden flex flex-col">
-        {isResolvingInitialTeam && <div className="flex-1 bg-[var(--color-background)]" />}
-        {shouldShowEmptyMainView && <div className="flex-1 bg-[var(--color-background)]" />}
-        {shouldShowTeamsPage && <TeamsPage startCreating={teamsView === 'create'} />}
-        {page === 'teams' && teamSlug && <TeamDetailPage teamSlug={teamSlug} />}
-        {page === 'settings' && <SettingsPage />}
+      <AppSidebar />
+      <main className="flex-1 overflow-hidden">
+        <MainContent />
       </main>
+      <SettingsDialog />
+      <CreateTeamDialog />
+      <CreateProviderDialog />
+      <CreateEnvironmentDialog />
     </div>
   )
 }
