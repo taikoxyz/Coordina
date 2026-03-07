@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AlertCircle, Check, Loader2, Rocket, FileText, X } from 'lucide-react'
+import { AlertCircle, Check, ExternalLink, Loader2, Rocket, FileText, X } from 'lucide-react'
 import { useEnvironments } from '../hooks/useEnvironments'
 import { highlightContent } from '../lib/highlight'
 import { Badge, Button, Select } from './ui'
@@ -27,6 +27,14 @@ export function DeployPanel({
 }) {
   const { data: environments } = useEnvironments()
   const [selectedEnvSlug, setSelectedEnvSlug] = useState('')
+
+  const selectedEnv = (environments ?? []).find((e) => e.slug === selectedEnvSlug)
+  const gkeProjectId = selectedEnv?.type === 'gke'
+    ? (selectedEnv.config as { projectId?: string }).projectId
+    : undefined
+  const gkeConsoleUrl = gkeProjectId
+    ? `https://console.cloud.google.com/kubernetes/workload/overview?project=${gkeProjectId}`
+    : 'https://console.cloud.google.com/kubernetes/workload/overview?project=coordina-489002'
   const [logEntries, setLogEntries] = useState<LogEntry[]>([])
   const [deployState, setDeployState] = useState<DeployState>('idle')
   const [viewingFile, setViewingFile] = useState<DeployFile | null>(null)
@@ -181,6 +189,15 @@ export function DeployPanel({
           />
           Recreate pods
         </label>
+        <a
+          href={gkeConsoleUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 transition-colors"
+        >
+          <ExternalLink className="w-3.5 h-3.5" />
+          GKE Workloads
+        </a>
         <Button
           variant="dark"
           onClick={() => void handleDeploy()}
