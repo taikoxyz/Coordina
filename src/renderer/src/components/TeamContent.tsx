@@ -1,15 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
-import { MessageSquare, FolderOpen } from 'lucide-react'
+import { MessageSquare, FolderOpen, Plus } from 'lucide-react'
 import { useNav } from '../store/nav'
 import { useTeam, useSaveTeam } from '../hooks/useTeams'
+import { useProviders } from '../hooks/useProviders'
+import { useSettings } from '../hooks/useSettings'
 import { SpecEditor } from './SpecEditor'
-import { AgentsTab } from './team/AgentsTab'
+import { AgentCard } from './team/AgentCard'
 import { DeployPanel } from './DeployPanel'
 import { ChatPane } from './chat/ChatPane'
 import { FileBrowser } from './files/FileBrowser'
 import { cn } from '../lib/utils'
-import type { TeamSpec } from '../../../shared/types'
+import type { TeamSpec, AgentSpec } from '../../../shared/types'
 import type { TeamTab } from '../store/nav'
+import {
+  DEFAULT_AGENT_NAME_THEME,
+  generateAutoAgentIdentities,
+} from '../../../shared/agentNames'
 
 const tabs: { id: TeamTab; label: string }[] = [
   { id: 'specs', label: 'Specs' },
@@ -24,8 +30,13 @@ export function TeamContent({ slug }: { slug: string }) {
   const { data: savedSpec } = useTeam(slug)
   const saveTeam = useSaveTeam()
 
+  const { data: providers } = useProviders()
+  const { data: settings } = useSettings()
+  const providerSlugs = (providers ?? []).map((p) => p.slug)
+
   const [localSpec, setLocalSpec] = useState<TeamSpec | null>(null)
   const [isEditing, setIsEditing] = useState(false)
+  const [editingAgentSlug, setEditingAgentSlug] = useState<string | null>(null)
   const [chatSubPanel, setChatSubPanel] = useState<ChatSubPanel>('chat')
 
   useEffect(() => {
@@ -54,6 +65,49 @@ export function TeamContent({ slug }: { slug: string }) {
 
   const handleSaveSpec = async (spec: TeamSpec) => {
     await saveTeam.mutateAsync(spec)
+  }
+
+  const applyAgents = (agents: AgentSpec[]) => {
+    setLocalSpec((s) => s ? { ...s, agents, leadAgent: agents[0]?.slug || undefined } : s)
+  }
+
+  const addAgent = () => {
+    if (!localSpec) return
+    const generated = generateAutoAgentIdentities(
+      localSpec.agents,
+      1,
+      settings?.agentNameTheme ?? DEFAULT_AGENT_NAME_THEME,
+    )
+    if (!generated.length) return
+    const identity = generated[0]
+    const newAgent: AgentSpec = {
+      slug: identity.slug,
+      name: identity.name,
+      role: '',
+      provider: '',
+      skills: [],
+      persona: '',
+    }
+    applyAgents([...localSpec.agents, newAgent])
+    setEditingAgentSlug(newAgent.slug)
+  }
+
+  const updateAgent = (i: number, updated: AgentSpec) => {
+    if (!localSpec) return
+    const agents = [...localSpec.agents]
+    agents[i] = updated
+    applyAgents(agents)
+  }
+
+  const deleteAgent = (i: number) => {
+    if (!localSpec) return
+    const newAgents = localSpec.agents.filter((_, j) => j !== i)
+    const newSpec = { ...localSpec, agents: newAgents, leadAgent: newAgents[0]?.slug || undefined }
+    setLocalSpec(newSpec)
+    void handleSaveSpec(newSpec)
+    if (editingAgentSlug === localSpec.agents[i]?.slug) {
+      setEditingAgentSlug(null)
+    }
   }
 
   if (!localSpec) {
@@ -106,14 +160,45 @@ export function TeamContent({ slug }: { slug: string }) {
               }}
               isSaving={saveTeam.isPending}
             />
-            <div className="border-t border-gray-200">
-              <AgentsTab
-                spec={localSpec}
-                onSpecChange={setLocalSpec}
-                onSave={handleSave}
-                onSaveSpec={handleSaveSpec}
-                isSaving={saveTeam.isPending}
-              />
+
+            <div className="border-t border-gray-200 px-6 py-5 max-w-2xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400">
+                  Agents ({localSpec.agents.length})
+                </div>
+                <button
+                  onClick={addAgent}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md text-gray-600 hover:bg-gray-100 transition-colors"
+                  title="Add agent"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add
+                </button>
+              </div>
+
+              {localSpec.agents.length === 0 && (
+                <div className="rounded-lg border border-dashed border-gray-200 p-8 text-center">
+                  <p className="text-sm text-gray-500">No agents yet. Add agents to get started.</p>
+                </div>
+              )}
+
+              {localSpec.agents.map((agent, index) => (
+                <AgentCard
+                  key={agent.slug}
+                  teamSlug={localSpec.slug}
+                  agent={agent}
+                  isFirst={index === 0}
+                  providerSlugs={providerSlugs}
+                  isEditing={editingAgentSlug === agent.slug}
+                  onEdit={() => setEditingAgentSlug(agent.slug)}
+                  onSave={async () => {
+                    await handleSave()
+                    setEditingAgentSlug(null)
+                  }}
+                  isSaving={saveTeam.isPending}
+                  onChange={(updated) => updateAgent(index, updated)}
+                  onDelete={() => deleteAgent(index)}
+                />
+              ))}
             </div>
           </div>
         )}
