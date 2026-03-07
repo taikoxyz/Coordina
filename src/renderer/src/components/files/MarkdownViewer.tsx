@@ -49,7 +49,7 @@ export function MarkdownViewer({ content, filePath }: Props) {
 
       <div className="flex-1 overflow-auto p-4">
         {viewSource || !isMarkdown ? (
-          <pre className="text-sm font-mono text-gray-700 whitespace-pre-wrap leading-relaxed">
+          <pre className="text-xs font-mono text-gray-700 whitespace-pre-wrap leading-relaxed">
             {isHighlightable(filePath) ? highlightContent(content, filePath) : content}
           </pre>
         ) : (
