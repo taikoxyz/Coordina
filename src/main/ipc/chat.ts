@@ -47,25 +47,40 @@ export function registerChatHandlers() {
     const query = envSlug ? `?envSlug=${encodeURIComponent(envSlug)}` : ''
     const url = `http://127.0.0.1:${LOCAL_PORT}${path}${query}`
 
+    const bodyStr = JSON.stringify(body)
+    console.log('[chat:send] URL:', url)
+    console.log('[chat:send] Body size:', bodyStr.length, 'bytes')
+    console.log('[chat:send] Content types:', JSON.stringify(
+      ((body as any)?.input?.[0]?.content ?? []).map((p: any) => ({ type: p.type, ...(p.filename ? { filename: p.filename } : {}) }))
+    ))
+
     try {
+      console.log('[chat:send] Fetching...')
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: bodyStr,
       })
+      console.log('[chat:send] Response status:', response.status)
 
       if (!response.ok) {
+        const detail = await readErrorDetail(response)
+        console.log('[chat:send] Error detail:', detail)
         return {
           ok: false,
           status: response.status,
           error: `Gateway returned HTTP ${response.status}`,
-          detail: await readErrorDetail(response),
+          detail,
         }
       }
 
-      const payload = await response.json().catch(() => null)
+      const text = await response.text()
+      console.log('[chat:send] Response body length:', text.length, 'bytes')
+      console.log('[chat:send] Response body preview:', text.slice(0, 500))
+      const payload = text ? JSON.parse(text) : null
       return { ok: true, payload }
     } catch (e) {
+      console.log('[chat:send] Fetch error:', e instanceof Error ? e.message : String(e))
       return {
         ok: false,
         error: 'Failed to reach local proxy',
