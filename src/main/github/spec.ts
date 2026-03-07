@@ -120,7 +120,8 @@ export function generateTeamMd(team: {
   leadAgent?: string
   defaultDiskGi?: number
   teamDescription?: string
-  agents: { slug: string; name: string; role: string; telegramBot?: string; email?: string; slack?: string; githubUsername?: string; cpu?: number; isLead?: boolean; gatewayUrl?: string; gatewayToken?: string }[]
+  gatewayToken?: string
+  agents: { slug: string; name: string; role: string; telegramBot?: string; email?: string; slack?: string; githubUsername?: string; isLead?: boolean; gatewayUrl?: string }[]
 }): string {
   const lines: string[] = [`# Team: ${team.name}`]
   if (team.teamDescription) {
@@ -132,7 +133,7 @@ export function generateTeamMd(team: {
   if (team.telegramAdminId) lines.push(`- telegram_owner_user_id: ${team.telegramAdminId}`)
   if (team.defaultImage) lines.push(`- image: ${team.defaultImage}`)
   if (team.leadAgent) lines.push(`- lead: ${team.leadAgent}`)
-  if (team.defaultDiskGi) lines.push(`- storage: ${team.defaultDiskGi}Gi`)
+  if (team.gatewayToken) lines.push(`- gateway_token: ${team.gatewayToken}`)
   lines.push('', '## Members')
   for (const a of team.agents) {
     lines.push(`### ${a.slug}`)
@@ -142,9 +143,7 @@ export function generateTeamMd(team: {
     if (a.email) lines.push(`- email: ${a.email}`)
     if (a.slack) lines.push(`- slack: ${a.slack}`)
     if (a.githubUsername) lines.push(`- github: @${a.githubUsername}`)
-    if (a.cpu) lines.push(`- cpu: ${a.cpu}`)
     if (a.gatewayUrl) lines.push(`- gateway: ${a.gatewayUrl}`)
-    if (a.gatewayToken) lines.push(`- gateway_token: ${a.gatewayToken}`)
     if (a.isLead) lines.push(`- lead: true`)
     lines.push('')
   }

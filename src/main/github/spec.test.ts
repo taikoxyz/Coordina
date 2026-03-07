@@ -314,30 +314,32 @@ describe('generateTeamMd', () => {
     expect(md).toContain('# Team: Team')
   })
 
-  it('includes per-agent gateway URL in Members section', () => {
+  it('includes per-agent gateway URL and shared token in About', () => {
     const md = generateTeamMd({
       name: 'Team',
       slug: 'team',
+      gatewayToken: 'shared-token-xyz',
       agents: [
-        { slug: 'alice', name: 'Alice', role: 'Lead', gatewayUrl: 'http://agent-alice.team.svc.cluster.local:18789', gatewayToken: 'alice-token-abc', isLead: true },
-        { slug: 'bob', name: 'Bob', role: 'Engineer', gatewayUrl: 'http://agent-bob.team.svc.cluster.local:18789', gatewayToken: 'bob-token-xyz' },
+        { slug: 'alice', name: 'Alice', role: 'Lead', gatewayUrl: 'http://agent-alice.team.svc.cluster.local:18789', isLead: true },
+        { slug: 'bob', name: 'Bob', role: 'Engineer', gatewayUrl: 'http://agent-bob.team.svc.cluster.local:18789' },
       ],
     })
 
+    expect(md).toContain('- gateway_token: shared-token-xyz')
     expect(md).toContain('### alice')
     expect(md).toContain('- gateway: http://agent-alice.team.svc.cluster.local:18789')
-    expect(md).toContain('- gateway_token: alice-token-abc')
     expect(md).toContain('### bob')
     expect(md).toContain('- gateway: http://agent-bob.team.svc.cluster.local:18789')
-    expect(md).toContain('- gateway_token: bob-token-xyz')
+    expect(md.match(/gateway_token/g)?.length).toBe(1)
   })
 
   it('does not include Communication Protocol section', () => {
     const md = generateTeamMd({
       name: 'Team',
       slug: 'team',
+      gatewayToken: 'tok',
       agents: [
-        { slug: 'alice', name: 'Alice', role: 'Lead', gatewayUrl: 'http://agent-alice.team.svc.cluster.local:18789', gatewayToken: 'tok' },
+        { slug: 'alice', name: 'Alice', role: 'Lead', gatewayUrl: 'http://agent-alice.team.svc.cluster.local:18789' },
       ],
     })
 

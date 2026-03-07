@@ -97,11 +97,11 @@ const gkeDeriver: DeploymentSpecDeriver = {
       ...spec,
       telegramGroupId,
       telegramAdminId,
+      gatewayToken: teamGatewayToken,
       agents: spec.agents.map(a => ({
         ...a,
         isLead: a.slug === spec.leadAgent,
         gatewayUrl: `http://agent-${a.slug}.${namespace}.svc.cluster.local:18789`,
-        gatewayToken: teamGatewayToken,
       })),
     })
     const bootstrapMd = spec.startupInstructions || DEFAULT_BOOTSTRAP_INSTRUCTIONS
