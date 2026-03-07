@@ -32,12 +32,6 @@ export function DeployPanel({
   const [recreateDisks, setRecreateDisks] = useState(false)
   const [recreatePods, setRecreatePods] = useState(false)
   const logEndRef = useRef<HTMLDivElement>(null)
-  const logEntriesRef = useRef(logEntries)
-  logEntriesRef.current = logEntries
-
-  const persistLogs = useCallback(() => {
-    window.api.invoke('deploy:saveLogs', { teamSlug: spec.slug, entries: logEntriesRef.current }).catch(() => {})
-  }, [spec.slug])
 
   useEffect(() => {
     if (environments?.length && !selectedEnvSlug) {
@@ -71,6 +65,12 @@ export function DeployPanel({
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [logEntries])
 
+  useEffect(() => {
+    if ((deployState === 'done' || deployState === 'error') && logEntries.length > 0) {
+      window.api.invoke('deploy:saveLogs', { teamSlug: spec.slug, entries: logEntries }).catch(() => {})
+    }
+  }, [deployState, logEntries, spec.slug])
+
   const handleDeploy = useCallback(async () => {
     if (!selectedEnvSlug) return
 
@@ -90,7 +90,7 @@ export function DeployPanel({
       if (!preview.ok) {
         setDeployState('error')
         setLogEntries((prev) => [...prev, { type: 'status', line: `ERROR: ${preview.reason}`, color: 'text-red-600' }])
-        queueMicrotask(persistLogs)
+
         return
       }
 
@@ -123,7 +123,7 @@ export function DeployPanel({
       setLogEntries((prev) => [...prev, { type: 'status', line: `ERROR: ${error instanceof Error ? error.message : String(error)}`, color: 'text-red-600' }])
       queueMicrotask(persistLogs)
     }
-  }, [selectedEnvSlug, spec.slug, onSave, persistLogs, recreateDisks, recreatePods])
+  }, [selectedEnvSlug, spec.slug, onSave, recreateDisks, recreatePods])
 
   const statusBadgeCls =
     deployState === 'done'
