@@ -89,9 +89,7 @@ describe('gkeDeriver gateway injection', () => {
     expect(teamMd).toContain('- gateway_token:')
     expect(teamMd).toContain('### beta')
     expect(teamMd).toContain('- gateway: http://agent-beta.my-team.svc.cluster.local:18789')
-    expect(teamMd).toContain('## Communication Protocol')
-    expect(teamMd).toContain('exec')
-    expect(teamMd).toContain('POST <gateway>/v1/responses')
+    expect(teamMd).not.toContain('## Communication Protocol')
   })
 
   it('sets tools.profile to full for unrestricted agent capabilities', async () => {

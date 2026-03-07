@@ -5,7 +5,7 @@ describe('generateAgentStatefulSet', () => {
   it('generates StatefulSet manifest with deterministic PVC name', () => {
     const manifest = generateAgentStatefulSet({ teamSlug: 'eng-alpha', agentSlug: 'alice' })
     expect(manifest).toContain('name: agent-alice')
-    expect(manifest).toContain('team-eng-alpha')
+    expect(manifest).toContain('eng-alpha-agent-alice')
     expect(manifest).toContain('containerPort: 18789')
   })
 
@@ -61,8 +61,8 @@ describe('generateAgentStatefulSet', () => {
   it('init container creates state and workspace directories', () => {
     const manifest = generateAgentStatefulSet({ teamSlug: 'eng-alpha', agentSlug: 'alice' })
     expect(manifest).toContain('mkdir -p /agent-data/openclaw/state /agent-data/openclaw/workspace')
-    expect(manifest).toContain('chown -R 1000:1000 /agent-data/openclaw')
-    expect(manifest).toContain('chmod -R u+rwX,g+rwX /agent-data/openclaw')
+    expect(manifest).toContain('chown -R 1000:1000')
+    expect(manifest).toContain('chmod -R u+rwX,g+rwX')
   })
 
   it('sets pod fsGroup so runtime process can write PVC-backed state', () => {
@@ -153,6 +153,8 @@ describe('generateAgentConfigMap', () => {
       soulMd: '# Soul',
       skillsMd: '# Skills',
       agentsMd: '# Agents',
+      userMd: '# User',
+      toolsMd: '# Tools',
       openclawJson: '{ "agents": { "defaults": { "model": { "primary": "anthropic/claude-sonnet-4-6" } } }, "models": { "providers": { "anthropic": {} } } }',
     })
     expect(yaml).toContain('name: alpha-alice-config')
@@ -161,5 +163,7 @@ describe('generateAgentConfigMap', () => {
     expect(yaml).toContain('SOUL.md: |')
     expect(yaml).toContain('SKILLS.md: |')
     expect(yaml).toContain('AGENTS.md: |')
+    expect(yaml).toContain('USER.md: |')
+    expect(yaml).toContain('TOOLS.md: |')
   })
 })

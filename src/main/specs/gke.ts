@@ -19,6 +19,8 @@ import {
   generateSoulMd,
   generateSkillsMd,
   generateAgentsMd,
+  generateUserMd,
+  generateToolsMd,
   generateOpenClawJson,
 } from '../github/spec'
 
@@ -90,6 +92,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
 
     files.push({ path: 'namespace.yaml', content: generateNamespace(namespace) })
 
+    const hasGateways = true
     const teamMd = generateTeamMd({
       ...spec,
       telegramGroupId,
@@ -212,9 +215,28 @@ const gkeDeriver: DeploymentSpecDeriver = {
         teamSize: spec.agents.length,
       })
       const memoryMd = generateMemoryMd()
-      const soulMd = generateSoulMd({ userInput: agent.persona })
+      const soulMd = generateSoulMd({ userInput: agent.persona, tone: agent.tone, boundaries: agent.boundaries, values: agent.values })
       const skillsMd = generateSkillsMd(agent.skills)
-      const agentsMd = generateAgentsMd()
+      const agentsMd = generateAgentsMd({
+        agentName: agent.name,
+        role: agent.role,
+        teamName: spec.name,
+        leadAgent: spec.leadAgent,
+        isLead: agent.slug === spec.leadAgent,
+        hasTelegram: hasTelegramRouting,
+        hasGateways,
+        operatingRules: agent.operatingRules,
+      })
+      const userMd = generateUserMd({
+        teamName: spec.name,
+        adminName: spec.adminName,
+        adminEmail: spec.adminEmail,
+        telegramAdminId,
+      })
+      const toolsMd = generateToolsMd({
+        hasGateways,
+        toolGuidance: agent.toolGuidance,
+      })
       const openclawJson = generateOpenClawJson(openclawConfigWithGateway)
       const agentConfigMap = generateAgentConfigMap({
         teamSlug: spec.slug,
@@ -225,6 +247,8 @@ const gkeDeriver: DeploymentSpecDeriver = {
         soulMd,
         skillsMd,
         agentsMd,
+        userMd,
+        toolsMd,
         openclawJson,
       })
       const agentConfigHash = createHash('sha256').update(agentConfigMap).digest('hex')
@@ -234,6 +258,8 @@ const gkeDeriver: DeploymentSpecDeriver = {
       files.push({ path: `agents/${agent.slug}/SOUL.md`, content: soulMd })
       files.push({ path: `agents/${agent.slug}/SKILLS.md`, content: skillsMd })
       files.push({ path: `agents/${agent.slug}/AGENTS.md`, content: agentsMd })
+      files.push({ path: `agents/${agent.slug}/USER.md`, content: userMd })
+      files.push({ path: `agents/${agent.slug}/TOOLS.md`, content: toolsMd })
       files.push({ path: `agents/${agent.slug}/openclaw.json`, content: openclawJson })
       files.push({ path: `agents/${agent.slug}/configmap.yaml`, content: agentConfigMap })
       files.push({ path: `agents/${agent.slug}/statefulset.yaml`, content: generateAgentStatefulSet({
