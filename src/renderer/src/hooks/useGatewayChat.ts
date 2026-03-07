@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 
-export type { ChatAttachment, ChatMessage } from '../../../shared/types'
+export type { ChatMessage } from '../../../shared/types'
 import type { ChatMessage } from '../../../shared/types'
 
 export interface GatewayChatError {
@@ -9,23 +9,6 @@ export interface GatewayChatError {
   status?: number
   detail?: string
   hints: string[]
-}
-
-function toBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onerror = () => reject(new Error(`Failed to read '${file.name}'`))
-    reader.onload = () => {
-      const result = String(reader.result)
-      const base64 = result.split(',')[1]
-      if (!base64) {
-        reject(new Error(`Failed to encode '${file.name}'`))
-        return
-      }
-      resolve(base64)
-    }
-    reader.readAsDataURL(file)
-  })
 }
 
 function extractAssistantText(payload: unknown): string {
@@ -166,55 +149,26 @@ export function useGatewayChat(teamSlug: string, agentSlug?: string, envSlug?: s
     }
   }, [conversationKey, hasMore, loadingOlder, messagesByConversation, teamSlug, envSlug, agentSlug])
 
-  const sendMessage = useCallback(async (content: string, files: File[] = []) => {
+  const sendMessage = useCallback(async (content: string) => {
     const text = content.trim()
-    const attachments = files.map(file => ({ name: file.name, mimeType: file.type || 'application/octet-stream', size: file.size }))
-
-    if (!text && attachments.length === 0) return
+    if (!text) return
 
     const msg: ChatMessage = {
       id: `${Date.now()}-${Math.random()}`,
       role: 'user',
-      content: text || '(sent attachments)',
+      content: text,
       timestamp: Date.now(),
-      attachments: attachments.length > 0 ? attachments : undefined,
     }
     appendMessage(msg)
 
     try {
-      const contentParts: Array<Record<string, unknown>> = []
-      if (text) contentParts.push({ type: 'input_text', text })
-      for (const file of files) {
-        const base64 = await toBase64(file)
-        const mimeType = file.type || 'application/octet-stream'
-        if (mimeType.startsWith('image/')) {
-          contentParts.push({
-            type: 'input_image',
-            source: {
-              type: 'base64',
-              media_type: mimeType,
-              data: base64,
-            },
-          })
-          continue
-        }
-        contentParts.push({
-          type: 'input_file',
-          source: {
-            type: 'base64',
-            media_type: mimeType,
-            data: base64,
-            filename: file.name,
-          },
-        })
-      }
       const result = await window.api.invoke('chat:send', {
         teamSlug,
         envSlug,
         agentSlug,
         body: {
           model: 'openclaw-gateway',
-          input: [{ type: 'message', role: 'user', content: contentParts }],
+          input: [{ type: 'message', role: 'user', content: [{ type: 'input_text', text }] }],
         },
       }) as { ok: boolean; status?: number; payload?: unknown; error?: string; detail?: string }
 

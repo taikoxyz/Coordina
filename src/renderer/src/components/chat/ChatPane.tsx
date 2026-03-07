@@ -1,7 +1,15 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useCallback } from 'react'
+import {
+  AssistantRuntimeProvider,
+  useExternalStoreRuntime,
+  ThreadPrimitive,
+  MessagePrimitive,
+  ComposerPrimitive,
+  useMessage,
+} from '@assistant-ui/react'
+import type { AppendMessage, ThreadMessageLike } from '@assistant-ui/react'
 import { useGatewayChat } from '../../hooks/useGatewayChat'
-import { ChatMessage } from './ChatMessage'
-import { Button, Textarea } from '../ui'
+import type { ChatMessage } from '../../hooks/useGatewayChat'
 
 interface Props {
   teamSlug: string
@@ -11,175 +19,232 @@ interface Props {
   onClose?: () => void
 }
 
-export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: Props) {
-  const { messages, connected, error, sendMessage, hasMore, loadingOlder, loadingInitial, loadOlderMessages } = useGatewayChat(teamSlug, agentSlug, envSlug)
-  const [input, setInput] = useState('')
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
-  const [sending, setSending] = useState(false)
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
-  const prevScrollHeightRef = useRef(0)
-  const bottomRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  const lastMessageId = messages[messages.length - 1]?.id
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [lastMessageId])
-
-  useEffect(() => {
-    const el = scrollContainerRef.current
-    if (!el || prevScrollHeightRef.current === 0) return
-    el.scrollTop += el.scrollHeight - prevScrollHeightRef.current
-    prevScrollHeightRef.current = 0
-  }, [messages.length])
-
-  async function handleLoadMore() {
-    if (scrollContainerRef.current) {
-      prevScrollHeightRef.current = scrollContainerRef.current.scrollHeight
-    }
-    await loadOlderMessages()
+function convertMessage(msg: ChatMessage): ThreadMessageLike {
+  return {
+    id: msg.id,
+    role: msg.role,
+    content: [{ type: 'text', text: msg.content }],
+    createdAt: new Date(msg.timestamp),
   }
+}
 
-  async function handleSend() {
-    const text = input.trim()
-    if (!text && selectedFiles.length === 0) return
-    setSending(true)
-    await sendMessage(text, selectedFiles)
-    setSending(false)
-    setInput('')
-    setSelectedFiles([])
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      void handleSend()
-    }
-  }
-
-  const title = agentName
-    ? `Chat with ${agentName}`
-    : `Chat with ${teamSlug} (Lead Agent)`
+function Message() {
+  const { role, content, createdAt } = useMessage()
+  const isUser = role === 'user'
+  const text = content
+    .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+    .map(p => p.text)
+    .join('')
+  const time = createdAt
+    ? createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : ''
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className={`w-2 h-2 rounded-full ${connected ? 'bg-green-500' : 'bg-gray-300'}`} />
-          <span className="font-medium text-gray-900 text-sm">{title}</span>
-          {agentSlug && (
-            <span className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 px-2 py-0.5 rounded">
-              Direct — bypassing lead agent
-            </span>
-          )}
+    <MessagePrimitive.Root
+      style={{
+        display: 'flex',
+        justifyContent: isUser ? 'flex-end' : 'flex-start',
+        marginBottom: 8,
+        padding: '0 16px',
+      }}
+    >
+      <div style={{ maxWidth: '72%' }}>
+        <div
+          style={{
+            background: isUser ? '#d1e8ff' : '#f6f5f3',
+            color: '#1a1a1a',
+            borderRadius: 18,
+            padding: '10px 14px',
+            fontSize: 14,
+            lineHeight: 1.5,
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+          }}
+        >
+          {text}
         </div>
-        {onClose && (
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">✕</button>
-        )}
+        <div
+          style={{
+            fontSize: 11,
+            color: '#999',
+            marginTop: 2,
+            textAlign: isUser ? 'right' : 'left',
+            padding: '0 4px',
+          }}
+        >
+          {time}
+        </div>
       </div>
+    </MessagePrimitive.Root>
+  )
+}
 
-      {/* Messages */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4 bg-gray-50">
-        {hasMore && (
-          <div className="flex justify-center mb-4">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => void handleLoadMore()}
-              disabled={loadingOlder}
-            >
-              {loadingOlder ? 'Loading…' : 'Load earlier messages'}
-            </Button>
-          </div>
-        )}
-        {loadingInitial && (
-          <div className="text-center text-gray-400 py-4 text-xs">Loading history…</div>
-        )}
-        {error && (
-          <div className="mb-4 bg-red-50 text-red-800 p-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold">Connection Error</span>
-              {typeof error.status === 'number' && (
-                <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 border border-red-200 font-mono text-red-600">
-                  HTTP {error.status}
-                </span>
-              )}
+export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: Props) {
+  const { messages, connected, error, sendMessage, hasMore, loadingOlder, loadingInitial, loadOlderMessages } =
+    useGatewayChat(teamSlug, agentSlug, envSlug)
+  const [sending, setSending] = useState(false)
+
+  const onNew = useCallback(
+    async (appendMsg: AppendMessage) => {
+      const text = appendMsg.content
+        .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+        .map(p => p.text)
+        .join('')
+      setSending(true)
+      await sendMessage(text)
+      setSending(false)
+    },
+    [sendMessage],
+  )
+
+  const runtime = useExternalStoreRuntime({
+    messages,
+    isRunning: sending,
+    convertMessage,
+    onNew,
+  })
+
+  return (
+    <AssistantRuntimeProvider runtime={runtime}>
+      <ThreadPrimitive.Root style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#ffffff' }}>
+        {/* Messages */}
+        <div
+          style={{ flex: 1, overflowY: 'auto', padding: '16px 0 8px' }}
+        >
+          {hasMore && (
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+              <button
+                onClick={() => void loadOlderMessages()}
+                disabled={loadingOlder}
+                style={{
+                  fontSize: 12,
+                  color: '#666',
+                  background: '#f7f7f8',
+                  border: 'none',
+                  borderRadius: 12,
+                  padding: '4px 12px',
+                  cursor: loadingOlder ? 'default' : 'pointer',
+                  opacity: loadingOlder ? 0.6 : 1,
+                }}
+              >
+                {loadingOlder ? 'Loading…' : 'Load earlier messages'}
+              </button>
             </div>
-            <div className="text-sm mt-1">{error.message}</div>
-            {error.detail && (
-              <div className="text-xs mt-2 text-red-600 font-mono break-all">{error.detail}</div>
-            )}
-            <div className="mt-2">
+          )}
+          {loadingInitial && (
+            <div style={{ textAlign: 'center', color: '#888', padding: '12px 0', fontSize: 12 }}>
+              Loading history…
+            </div>
+          )}
+          {error && (
+            <div
+              style={{
+                margin: '4px 8px 6px',
+                background: '#fff0f0',
+                border: '1px solid #f5c6c6',
+                borderRadius: 10,
+                padding: '8px 10px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#c00' }}>Connection Error</span>
+                {typeof error.status === 'number' && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      padding: '1px 5px',
+                      borderRadius: 6,
+                      background: '#fde8e8',
+                      border: '1px solid #f5c6c6',
+                      fontFamily: 'monospace',
+                      color: '#c00',
+                    }}
+                  >
+                    HTTP {error.status}
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 13, marginTop: 3, color: '#600' }}>{error.message}</div>
+              {error.detail && (
+                <div style={{ fontSize: 11, marginTop: 4, color: '#900', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                  {error.detail}
+                </div>
+              )}
               {error.hints.map((hint, idx) => (
-                <div key={idx} className="text-xs text-red-700">• {hint}</div>
+                <div key={idx} style={{ fontSize: 11, color: '#b00', marginTop: 2 }}>
+                  • {hint}
+                </div>
               ))}
             </div>
-          </div>
-        )}
-        {messages.length === 0 && !error && !loadingInitial && (
-          <div className="text-center text-gray-400 py-12 text-sm">
-            {connected ? 'Connected. Say something to get started.' : 'Last request failed. You can retry now.'}
-          </div>
-        )}
-        {messages.map(msg => (
-          <ChatMessage key={msg.id} message={msg} />
-        ))}
-        <div ref={bottomRef} />
-      </div>
+          )}
+          <ThreadPrimitive.Empty>
+            <div style={{ textAlign: 'center', color: '#888', padding: '40px 16px', fontSize: 13 }}>
+              {connected ? 'Say something to get started.' : 'Reconnecting…'}
+            </div>
+          </ThreadPrimitive.Empty>
+          <ThreadPrimitive.Messages components={{ Message }} />
+          <div style={{ height: 4 }} />
+        </div>
 
-      {/* Input */}
-      <div className="px-4 py-3 border-t border-gray-200 flex-shrink-0 bg-white">
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-xs text-gray-500">
-            {selectedFiles.length > 0 ? `${selectedFiles.length} attachment${selectedFiles.length > 1 ? 's' : ''}` : 'No attachments'}
-          </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => fileInputRef.current?.click()}
+        {/* Composer */}
+        <div
+          style={{
+            background: '#ffffff',
+            borderTop: 'none',
+            padding: '12px 16px',
+            flexShrink: 0,
+          }}
+        >
+          <ComposerPrimitive.Root
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              background: '#f7f7f8',
+              borderRadius: 24,
+              padding: '4px 4px 4px 16px',
+              border: '1px solid #e5e5e5',
+            }}
           >
-            Attach files
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            className="hidden"
-            onChange={e => setSelectedFiles(Array.from(e.target.files ?? []))}
-          />
+              <ComposerPrimitive.Input
+                style={{
+                  flex: 1,
+                  border: 'none',
+                  outline: 'none',
+                  fontSize: 14,
+                  background: 'transparent',
+                  resize: 'none',
+                  padding: '6px 0',
+                  lineHeight: 1.5,
+                  color: '#1a1a1a',
+                }}
+                placeholder="Message…"
+                rows={1}
+                disabled={sending}
+              />
+              <ComposerPrimitive.Send
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: '50%',
+                  background: sending ? '#ccc' : '#1a1a1a',
+                  border: 'none',
+                  cursor: sending ? 'default' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  transition: 'background 0.15s',
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="12" y1="19" x2="12" y2="5" />
+                  <polyline points="5 12 12 5 19 12" />
+                </svg>
+              </ComposerPrimitive.Send>
+          </ComposerPrimitive.Root>
         </div>
-        {selectedFiles.length > 0 && (
-          <div className="mb-2 flex flex-wrap gap-1.5">
-            {selectedFiles.map(file => (
-              <span key={`${file.name}-${file.size}`} className="text-xs px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
-                {file.name}
-              </span>
-            ))}
-          </div>
-        )}
-        <div className="flex gap-2">
-          <Textarea
-            className="flex-1 rounded-lg resize-none"
-            placeholder="Message the agent... (Enter to send)"
-            rows={2}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            disabled={sending}
-          />
-          <Button
-            variant="primary"
-            size="lg"
-            className="self-end"
-            onClick={() => void handleSend()}
-            disabled={sending || (!input.trim() && selectedFiles.length === 0)}
-          >
-            {sending ? 'Sending…' : 'Send'}
-          </Button>
-        </div>
-      </div>
-    </div>
+      </ThreadPrimitive.Root>
+    </AssistantRuntimeProvider>
   )
 }
