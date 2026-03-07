@@ -311,6 +311,7 @@ export function TeamContent({ slug }: { slug: string }) {
                   <FileBrowser
                     teamSlug={localSpec.slug}
                     agentSlug={selectedAgent.slug}
+                    envSlug={localSpec.deployedEnvSlug}
                   />
                 )}
               </div>
