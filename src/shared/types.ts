@@ -47,6 +47,16 @@ export interface TeamSpec {
   lastDeployedAt?: number
 }
 
+export interface PersonaTemplate {
+  id: string
+  name: string
+  division: string
+  emoji: string
+  role: string
+  persona: string
+  skills: string[]
+}
+
 export interface ProviderRecord {
   slug: string
   type: string

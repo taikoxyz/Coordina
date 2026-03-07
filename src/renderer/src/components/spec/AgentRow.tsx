@@ -1,8 +1,9 @@
 // Inline editable agent row for team spec form without modals or dialogs
 // FEATURE: Agent editor component using inline expand pattern for dense layout
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { AgentSpec } from '../../../../shared/types'
 import { deriveSlug } from '../../../../shared/slug'
+import { PERSONA_CATALOG, getPersonasByDivision } from '../../../../shared/personaCatalog'
 
 interface Props {
   teamSlug: string
@@ -43,6 +44,21 @@ export function AgentRow({ teamSlug, agent, isFirst, providerSlugs, onChange, on
   const [tokenBusy, setTokenBusy] = useState(false)
   const [tokenError, setTokenError] = useState<string | null>(null)
   const set = (key: keyof AgentSpec) => (value: unknown) => onChange({ ...agent, [key]: value })
+
+  const personasByDivision = useMemo(() => getPersonasByDivision(), [])
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('')
+
+  const applyTemplate = (templateId: string) => {
+    setSelectedTemplate(templateId)
+    if (templateId === 'custom') {
+      onChange({ ...agent, role: '', emoji: undefined, persona: '', skills: [] })
+      return
+    }
+    if (!templateId) return
+    const tmpl = PERSONA_CATALOG.find(p => p.id === templateId)
+    if (!tmpl) return
+    onChange({ ...agent, role: tmpl.role, emoji: tmpl.emoji, persona: tmpl.persona, skills: tmpl.skills })
+  }
 
   const handleNameChange = (name: string) => {
     onChange({ ...agent, name, slug: name ? deriveSlug(name) : '' })
@@ -118,8 +134,30 @@ export function AgentRow({ teamSlug, agent, isFirst, providerSlugs, onChange, on
               )}
             </div>
           </div>
-          {fieldRow('role', agent.role, set('role'), { placeholder: 'Researcher' })}
-          {fieldRow('emoji', agent.emoji ?? '', v => set('emoji')(v || undefined), { placeholder: '🤖' })}
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] text-gray-500 w-20 shrink-0">template</label>
+            <select
+              value={selectedTemplate}
+              onChange={e => applyTemplate(e.target.value)}
+              className="flex-1 bg-gray-800 border border-gray-700 rounded px-1.5 py-0.5 text-[11px] text-gray-200 focus:outline-none focus:border-blue-600"
+            >
+              <option value="">— select persona —</option>
+              <option value="custom">✏️ Custom</option>
+              {Array.from(personasByDivision.entries()).map(([division, templates]) => (
+                <optgroup key={division} label={division}>
+                  {templates.map(t => (
+                    <option key={t.id} value={t.id}>{t.emoji} {t.name}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+          {selectedTemplate && (
+            <>
+              {fieldRow('role', agent.role, set('role'), { placeholder: 'Researcher' })}
+              {fieldRow('emoji', agent.emoji ?? '', v => set('emoji')(v || undefined), { placeholder: '🤖' })}
+            </>
+          )}
           {fieldRow('avatar', agent.avatar ?? '', v => set('avatar')(v || undefined), { placeholder: '/avatar.png or https://…' })}
           {fieldRow('telegram id', agent.telegramBot ?? '', v => set('telegramBot')(v || undefined), { mono: true, placeholder: '123456789' })}
           <div className="flex items-start gap-2">
@@ -192,17 +230,21 @@ export function AgentRow({ teamSlug, agent, isFirst, providerSlugs, onChange, on
             />
             <span className="text-[10px] text-gray-600">Gi</span>
           </div>
-          {fieldRow('persona', agent.persona, set('persona'), { multiline: true, placeholder: "Describe this agent's personality..." })}
-          <div className="flex items-center gap-2">
-            <label className="text-[10px] text-gray-500 w-20 shrink-0">skills</label>
-            <input
-              type="text"
-              value={agent.skills.join(', ')}
-              onChange={e => set('skills')(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
-              placeholder="research, writing"
-              className="flex-1 bg-gray-800 border border-gray-700 rounded px-1.5 py-0.5 text-[11px] text-gray-200 focus:outline-none focus:border-blue-600"
-            />
-          </div>
+          {selectedTemplate && (
+            <>
+              {fieldRow('persona', agent.persona, set('persona'), { multiline: true, placeholder: "Describe this agent's personality..." })}
+              <div className="flex items-center gap-2">
+                <label className="text-[10px] text-gray-500 w-20 shrink-0">skills</label>
+                <input
+                  type="text"
+                  value={agent.skills.join(', ')}
+                  onChange={e => set('skills')(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                  placeholder="research, writing"
+                  className="flex-1 bg-gray-800 border border-gray-700 rounded px-1.5 py-0.5 text-[11px] text-gray-200 focus:outline-none focus:border-blue-600"
+                />
+              </div>
+            </>
+          )}
           {isFirst && (
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-gray-500 w-20 shrink-0">lead</span>
