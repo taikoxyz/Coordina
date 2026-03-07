@@ -48,8 +48,7 @@ function convertMessage(msg: ChatMessage): ThreadMessageLike {
 }
 
 function Message() {
-  const { message } = useMessage()
-  const { role, content, createdAt } = message
+  const { role, content, createdAt } = useMessage()
   const isUser = role === 'user'
   const text = content
     .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
@@ -394,8 +393,6 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
                   padding: '3px 0',
                   lineHeight: 1.4,
                   color: '#1a1a1a',
-                  maxHeight: 80,
-                  overflowY: 'auto',
                 }}
                 placeholder="Message…"
                 rows={1}
