@@ -224,6 +224,24 @@ describe('generateUserMd', () => {
     expect(md).not.toContain('Email:')
     expect(md).not.toContain('Telegram:')
   })
+
+  it('includes team lead section for non-lead agents', () => {
+    const md = generateUserMd({ teamName: 'Team Phoenix', leadAgentName: 'Alpha', leadAgentSlug: 'alpha', isLead: false })
+    expect(md).toContain('## Team Lead')
+    expect(md).toContain('- Name: Alpha')
+    expect(md).toContain('- Slug: alpha')
+    expect(md).toContain('team lead coordinates your work')
+  })
+
+  it('omits team lead section for the lead agent', () => {
+    const md = generateUserMd({ teamName: 'Team Phoenix', leadAgentName: 'Alpha', leadAgentSlug: 'alpha', isLead: true })
+    expect(md).not.toContain('## Team Lead')
+  })
+
+  it('omits team lead section when no lead agent defined', () => {
+    const md = generateUserMd({ teamName: 'Team Phoenix', isLead: false })
+    expect(md).not.toContain('## Team Lead')
+  })
 })
 
 describe('generateToolsMd', () => {

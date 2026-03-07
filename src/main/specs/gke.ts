@@ -227,11 +227,15 @@ const gkeDeriver: DeploymentSpecDeriver = {
         hasGateways,
         operatingRules: agent.operatingRules,
       })
+      const leadAgent = spec.agents.find(a => a.slug === spec.leadAgent)
       const userMd = generateUserMd({
         teamName: spec.name,
         adminName: spec.adminName,
         adminEmail: spec.adminEmail,
         telegramAdminId,
+        isLead: agent.slug === spec.leadAgent,
+        leadAgentName: leadAgent?.name,
+        leadAgentSlug: leadAgent?.slug,
       })
       const toolsMd = generateToolsMd({
         hasGateways,

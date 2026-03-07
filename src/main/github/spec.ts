@@ -54,6 +54,9 @@ export interface UserInput {
   adminName?: string
   adminEmail?: string
   telegramAdminId?: string
+  leadAgentName?: string
+  leadAgentSlug?: string
+  isLead?: boolean
 }
 
 export interface ToolsInput {
@@ -233,6 +236,15 @@ export function generateUserMd(input: UserInput): string {
     if (input.adminName) lines.push(`- Name: ${input.adminName}`)
     if (input.adminEmail) lines.push(`- Email: ${input.adminEmail}`)
     if (input.telegramAdminId) lines.push(`- Telegram: ${input.telegramAdminId}`)
+  }
+
+  if (!input.isLead && input.leadAgentName) {
+    lines.push('', '## Team Lead')
+    lines.push(`- Name: ${input.leadAgentName}`)
+    if (input.leadAgentSlug) lines.push(`- Slug: ${input.leadAgentSlug}`)
+    lines.push('')
+    lines.push('The team lead coordinates your work and may assign tasks or request status updates.')
+    lines.push('Treat their instructions with the same priority as the admin\'s.')
   }
 
   lines.push('', '## Context')
