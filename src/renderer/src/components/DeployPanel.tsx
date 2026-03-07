@@ -117,11 +117,9 @@ export function DeployPanel({
         setDeployState('error')
         setLogEntries((prev) => [...prev, { type: 'status', line: `ERROR: ${result.reason}`, color: 'text-red-600' }])
       }
-      queueMicrotask(persistLogs)
     } catch (error) {
       setDeployState('error')
       setLogEntries((prev) => [...prev, { type: 'status', line: `ERROR: ${error instanceof Error ? error.message : String(error)}`, color: 'text-red-600' }])
-      queueMicrotask(persistLogs)
     }
   }, [selectedEnvSlug, spec.slug, onSave, recreateDisks, recreatePods])
 
