@@ -6,6 +6,7 @@ import { getDataDir } from './dataDir'
 import type { ChatMessage } from '../../shared/types'
 
 const PAGE_SIZE = 50
+const MAX_MESSAGES = 500
 
 const chatDir = (teamSlug: string, envSlug: string, agentSlug: string): string =>
   path.join(getDataDir(), 'chat', teamSlug, envSlug, agentSlug)
@@ -57,5 +58,6 @@ export const appendChatMessage = async (
   await ensureDir(teamSlug, envSlug, agentSlug)
   const all = await readMessages(teamSlug, envSlug, agentSlug)
   all.push(message)
-  await fs.writeFile(chatPath(teamSlug, envSlug, agentSlug), JSON.stringify({ messages: all }, null, 2), 'utf-8')
+  const trimmed = all.length > MAX_MESSAGES ? all.slice(-MAX_MESSAGES) : all
+  await fs.writeFile(chatPath(teamSlug, envSlug, agentSlug), JSON.stringify({ messages: trimmed }, null, 2), 'utf-8')
 }

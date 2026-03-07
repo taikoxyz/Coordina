@@ -7,6 +7,7 @@ import { MarkdownViewer } from './MarkdownViewer'
 interface Props {
   teamSlug: string
   agentSlug: string
+  envSlug?: string
 }
 
 interface FileEntry {
@@ -22,7 +23,7 @@ interface OpenTab {
   error?: string
 }
 
-export function FileBrowser({ teamSlug, agentSlug }: Props) {
+export function FileBrowser({ teamSlug, agentSlug, envSlug }: Props) {
   const [openTabs, setOpenTabs] = useState<OpenTab[]>([])
   const [activeTab, setActiveTab] = useState<string | null>(null)
   const [refreshingTabs, setRefreshingTabs] = useState(false)
@@ -37,11 +38,11 @@ export function FileBrowser({ teamSlug, agentSlug }: Props) {
     error?: string
   }>({
     queryKey: ['files:list', teamSlug, agentSlug],
-    queryFn: () => window.api.invoke('files:list', teamSlug, agentSlug) as Promise<{ files: FileEntry[]; error?: string }>,
+    queryFn: () => window.api.invoke('files:list', teamSlug, agentSlug, envSlug) as Promise<{ files: FileEntry[]; error?: string }>,
   })
 
   async function fetchFile(filePath: string): Promise<{ content: string | null; error?: string }> {
-    return window.api.invoke('files:get', teamSlug, agentSlug, filePath) as Promise<{ content: string | null; error?: string }>
+    return window.api.invoke('files:get', teamSlug, agentSlug, filePath, envSlug) as Promise<{ content: string | null; error?: string }>
   }
 
   async function openFile(filePath: string) {

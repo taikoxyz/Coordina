@@ -82,6 +82,8 @@ function errorFromStatus(status: number, detail?: string): GatewayChatError {
   }
 }
 
+const MAX_MESSAGES = 500
+
 export function useGatewayChat(teamSlug: string, agentSlug?: string, envSlug?: string) {
   const conversationKey = `${teamSlug}::${envSlug ?? '__default_env__'}::${agentSlug ?? '__lead__'}`
   const [messagesByConversation, setMessagesByConversation] = useState<Record<string, ChatMessage[]>>({})
@@ -95,10 +97,10 @@ export function useGatewayChat(teamSlug: string, agentSlug?: string, envSlug?: s
   const hasMore = hasMoreByConversation[conversationKey] ?? false
 
   const appendMessage = useCallback((message: ChatMessage) => {
-    setMessagesByConversation(prev => ({
-      ...prev,
-      [conversationKey]: [...(prev[conversationKey] ?? []), message],
-    }))
+    setMessagesByConversation(prev => {
+      const updated = [...(prev[conversationKey] ?? []), message]
+      return { ...prev, [conversationKey]: updated.length > MAX_MESSAGES ? updated.slice(-MAX_MESSAGES) : updated }
+    })
     void window.api.invoke('chat:history:append', {
       teamSlug,
       envSlug: envSlug ?? '__default_env__',

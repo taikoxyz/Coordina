@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import {
   AssistantRuntimeProvider,
   useExternalStoreRuntime,
@@ -83,6 +83,12 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
   const { messages, connected, error, sendMessage, hasMore, loadingOlder, loadingInitial, loadOlderMessages } =
     useGatewayChat(teamSlug, agentSlug, envSlug)
   const [sending, setSending] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [messages.length, sending])
 
   const onNew = useCallback(
     async (appendMsg: AppendMessage) => {
@@ -109,6 +115,7 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
       <ThreadPrimitive.Root style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#ffffff' }}>
         {/* Messages */}
         <div
+          ref={scrollRef}
           style={{ flex: 1, overflowY: 'auto', padding: '16px 0 8px' }}
         >
           {hasMore && (
