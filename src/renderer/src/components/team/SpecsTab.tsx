@@ -7,6 +7,7 @@ import { generateAutoAgentIdentities, DEFAULT_AGENT_NAME_THEME } from '../../../
 import { useProviders } from '../../hooks/useProviders'
 import { useSettings } from '../../hooks/useSettings'
 import { AgentCard } from './AgentCard'
+import { InfoGroup, InfoRow, InfoBlock } from '../ui/InfoGroup'
 
 interface Props {
   spec: TeamSpec
@@ -166,81 +167,83 @@ export function SpecsTab({ spec, onSpecChange, onSave, onSaveSpec, isSaving }: P
           </div>
         ) : (
           /* Read view — Overview + Members */
-          <div className={cn('py-4 px-4 space-y-5', !showRightPanel && 'max-w-xl mx-auto w-full')}>
+          <div className={cn('py-4 px-6 space-y-2', !showRightPanel && 'max-w-xl mx-auto w-full')}>
 
             {/* Overview section */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Overview</span>
-                <button
-                  onClick={handleStartEdit}
-                  className="text-[11px] font-medium text-blue-600 hover:text-blue-700 transition-colors"
-                >
-                  Edit
-                </button>
-              </div>
-              <div className="rounded-lg border border-gray-200 bg-white px-3 py-2.5">
-                <div className="flex items-baseline gap-2 flex-wrap">
-                  <span className="text-sm font-semibold text-gray-900">{spec.name || 'Unnamed team'}</span>
-                  <span className="text-[11px] font-mono text-gray-400">{spec.slug}</span>
-                </div>
-                {spec.telegramGroupId && (
-                  <div className="text-[11px] font-mono text-gray-400 mt-0.5">TG {spec.telegramGroupId}</div>
-                )}
-              </div>
+            <div className="flex items-center justify-between pt-2 pb-1">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Overview</span>
+              <button
+                onClick={handleStartEdit}
+                className="text-[11px] font-medium text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                Edit
+              </button>
             </div>
+            <InfoGroup title="Team">
+              <InfoRow label="Name" value={spec.name} />
+              <InfoRow label="Slug" value={spec.slug} />
+            </InfoGroup>
+            <InfoGroup title="Telegram">
+              <InfoRow label="Group ID" value={spec.telegramGroupId} />
+              <InfoRow label="Admin ID" value={spec.telegramAdminId} />
+            </InfoGroup>
+            <InfoGroup title="Infrastructure">
+              <InfoRow label="Image" value={spec.defaultImage} />
+              <InfoRow label="Storage" value={spec.defaultDiskGi != null ? `${spec.defaultDiskGi} Gi` : undefined} />
+            </InfoGroup>
+            <InfoGroup title="Startup instructions">
+              <InfoBlock value={spec.startupInstructions} />
+            </InfoGroup>
 
             {/* Members section */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Members</span>
-                <button
-                  onClick={handleAddAgent}
-                  className="text-[13px] font-medium text-blue-600 hover:text-blue-700 leading-none transition-colors"
-                  title="Add agent"
-                >
-                  +
-                </button>
-              </div>
-              {spec.agents.length === 0 ? (
-                <div className="text-xs text-gray-400 py-1">No agents yet. Click + to add one.</div>
-              ) : (
-                <div className="space-y-0.5">
-                  {spec.agents.map((agent) => {
-                    const isSelected = agent.slug === selectedAgentSlug
-                    return (
-                      <div
-                        key={agent.slug}
-                        onClick={() => handleAgentClick(agent.slug)}
-                        className={cn(
-                          'flex items-center gap-2.5 rounded-lg px-2.5 py-2 cursor-pointer transition-colors',
-                          isSelected ? 'bg-blue-50 ring-1 ring-blue-200' : 'hover:bg-black/5',
-                        )}
-                      >
-                        {agent.emoji ? (
-                          <span className="text-lg shrink-0">{agent.emoji}</span>
-                        ) : (
-                          <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-[11px] font-semibold text-gray-500 shrink-0">
-                            {(agent.name || '?').charAt(0).toUpperCase()}
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-sm font-medium text-gray-900 truncate">{agent.name || 'Unnamed'}</span>
-                            {agent.slug === spec.agents[0]?.slug && (
-                              <span className="text-[10px] text-blue-500 shrink-0">· Lead</span>
-                            )}
-                          </div>
-                          {agent.role && (
-                            <div className="text-[11px] text-gray-400 truncate">{agent.role}</div>
+            <div className="flex items-center justify-between pt-2 pb-1">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Members</span>
+              <button
+                onClick={handleAddAgent}
+                className="text-[13px] font-medium text-blue-600 hover:text-blue-700 leading-none transition-colors"
+                title="Add agent"
+              >
+                +
+              </button>
+            </div>
+            {spec.agents.length === 0 ? (
+              <div className="text-xs text-gray-400 py-1">No agents yet. Click + to add one.</div>
+            ) : (
+              <InfoGroup title="Agents">
+                {spec.agents.map((agent) => {
+                  const isSelected = agent.slug === selectedAgentSlug
+                  return (
+                    <div
+                      key={agent.slug}
+                      onClick={() => handleAgentClick(agent.slug)}
+                      className={cn(
+                        'flex items-center gap-2.5 py-2 cursor-pointer transition-colors rounded-md px-1 -mx-1',
+                        isSelected ? 'bg-blue-50' : 'hover:bg-black/5',
+                      )}
+                    >
+                      {agent.emoji ? (
+                        <span className="text-lg shrink-0">{agent.emoji}</span>
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-[11px] font-semibold text-gray-500 shrink-0">
+                          {(agent.name || '?').charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-base font-medium text-gray-900 truncate">{agent.name || 'Unnamed'}</span>
+                          {agent.slug === spec.agents[0]?.slug && (
+                            <span className="text-[10px] text-blue-500 shrink-0">· Lead</span>
                           )}
                         </div>
+                        {agent.role && (
+                          <div className="text-sm text-gray-400 truncate">{agent.role}</div>
+                        )}
                       </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
+                    </div>
+                  )
+                })}
+              </InfoGroup>
+            )}
           </div>
         )}
       </div>
