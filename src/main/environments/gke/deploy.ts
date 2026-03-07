@@ -3,8 +3,16 @@
 import * as k8s from '@kubernetes/client-node'
 import { ClusterManagerClient } from '@google-cloud/container'
 import yaml from 'js-yaml'
+import os from 'os'
+import fs from 'fs/promises'
+import path from 'path'
+import crypto from 'crypto'
+import { execFile } from 'child_process'
+import { promisify } from 'util'
 import { getOAuth2Client } from './auth'
 import type { DeployOptions, DeployStatus, AgentStatus, SpecFile } from '../../../shared/types'
+
+const execFileAsync = promisify(execFile)
 
 export interface GkeDeployConfig {
   slug: string
@@ -27,7 +35,7 @@ function parseAgentSlugFromPodName(name?: string): string | undefined {
   return match?.[1]
 }
 
-async function buildKubeConfig(config: GkeDeployConfig): Promise<k8s.KubeConfig> {
+export async function buildKubeConfig(config: GkeDeployConfig): Promise<k8s.KubeConfig> {
   const auth = await getOAuth2Client(config.slug, { clientId: config.clientId, clientSecret: config.clientSecret })
   const containerClient = new ClusterManagerClient({ authClient: auth })
   const [cluster] = await containerClient.getCluster({
@@ -313,4 +321,25 @@ export async function getTeamStatus(teamSlug: string, agentSlugs: string[], conf
       return { agentSlug: slug, status: 'unknown' as const }
     }
   }))
+}
+
+export async function execInPod(
+  namespace: string,
+  agentSlug: string,
+  command: string[],
+  config: GkeDeployConfig,
+): Promise<string> {
+  const kc = await buildKubeConfig(config)
+  const tmpFile = path.join(os.tmpdir(), `coordina-kc-${crypto.randomBytes(8).toString('hex')}.json`)
+  await fs.writeFile(tmpFile, kc.exportConfig(), 'utf-8')
+  try {
+    const { stdout } = await execFileAsync(
+      'kubectl',
+      ['--kubeconfig', tmpFile, '-n', namespace, 'exec', `statefulset/agent-${agentSlug}`, '--', ...command],
+      { timeout: 15000, maxBuffer: 4 * 1024 * 1024 },
+    )
+    return stdout
+  } finally {
+    await fs.unlink(tmpFile).catch(() => undefined)
+  }
 }
