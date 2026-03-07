@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { MessageSquare, FolderOpen, Plus } from 'lucide-react'
+import { MessageSquare, FolderOpen, Plus, X, Crown } from 'lucide-react'
 import { useNav } from '../store/nav'
 import { useTeam, useSaveTeam } from '../hooks/useTeams'
 import { useProviders } from '../hooks/useProviders'
@@ -9,7 +9,10 @@ import { AgentCard } from './team/AgentCard'
 import { DeployPanel } from './DeployPanel'
 import { ChatPane } from './chat/ChatPane'
 import { FileBrowser } from './files/FileBrowser'
+import { agentColor } from '../lib/agentColors'
+import { highlightJson } from '../lib/highlight'
 import { cn } from '../lib/utils'
+import { Button } from './ui'
 import type { TeamSpec, AgentSpec } from '../../../shared/types'
 import type { TeamTab } from '../store/nav'
 import {
@@ -38,6 +41,7 @@ export function TeamContent({ slug }: { slug: string }) {
   const [isEditing, setIsEditing] = useState(false)
   const [editingAgentSlug, setEditingAgentSlug] = useState<string | null>(null)
   const [chatSubPanel, setChatSubPanel] = useState<ChatSubPanel>('chat')
+  const [showJson, setShowJson] = useState(false)
 
   useEffect(() => {
     if (savedSpec) {
@@ -148,58 +152,83 @@ export function TeamContent({ slug }: { slug: string }) {
 
       <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
         {teamTab === 'specs' && (
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 flex min-h-0">
+            <div className={`flex flex-col min-h-0 ${showJson ? 'w-1/2 border-r border-gray-200' : 'flex-1'}`}>
+              <div className="flex-1 overflow-y-auto min-h-0">
             <SpecEditor
               spec={localSpec}
               onSpecChange={setLocalSpec}
               isEditing={isEditing}
               onEdit={() => setIsEditing(true)}
+              onCancel={() => {
+                setLocalSpec(savedSpec ?? null)
+                setIsEditing(false)
+              }}
               onSave={async () => {
                 await handleSave()
                 setIsEditing(false)
               }}
               isSaving={saveTeam.isPending}
+              onShowJson={() => setShowJson(true)}
             />
 
-            <div className="border-t border-gray-200 px-6 py-5 max-w-2xl space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
-                  Agents ({localSpec.agents.length})
+            {localSpec.agents.map((agent, index) => (
+              <div key={agent.slug} className="border-t border-gray-200">
+                <div className="px-6 py-5 max-w-2xl mx-auto space-y-4">
+                  <AgentCard
+                    teamSlug={localSpec.slug}
+                    agent={agent}
+                    index={index}
+                    isFirst={index === 0}
+                    providerSlugs={providerSlugs}
+                    isEditing={editingAgentSlug === agent.slug}
+                    onEdit={() => setEditingAgentSlug(agent.slug)}
+                    onCancel={() => {
+                      setLocalSpec(savedSpec ?? null)
+                      setEditingAgentSlug(null)
+                    }}
+                    onSave={async () => {
+                      await handleSave()
+                      setEditingAgentSlug(null)
+                    }}
+                    isSaving={saveTeam.isPending}
+                    onChange={(updated) => updateAgent(index, updated)}
+                    onDelete={() => deleteAgent(index)}
+                  />
                 </div>
-                <button
-                  onClick={addAgent}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md text-gray-600 hover:bg-gray-100 transition-colors"
-                  title="Add agent"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Add
-                </button>
               </div>
+            ))}
 
-              {localSpec.agents.length === 0 && (
-                <div className="rounded-lg border border-dashed border-gray-200 p-8 text-center">
-                  <p className="text-sm text-gray-500">No agents yet. Add agents to get started.</p>
-                </div>
-              )}
-
-              {localSpec.agents.map((agent, index) => (
-                <AgentCard
-                  key={agent.slug}
-                  teamSlug={localSpec.slug}
-                  agent={agent}
-                  isFirst={index === 0}
-                  providerSlugs={providerSlugs}
-                  isEditing={editingAgentSlug === agent.slug}
-                  onEdit={() => setEditingAgentSlug(agent.slug)}
-                  onSave={async () => {
-                    await handleSave()
-                    setEditingAgentSlug(null)
-                  }}
-                  isSaving={saveTeam.isPending}
-                  onChange={(updated) => updateAgent(index, updated)}
-                  onDelete={() => deleteAgent(index)}
-                />
-              ))}
+            <div className="border-t border-gray-200">
+              <div className="px-6 py-5 max-w-2xl mx-auto">
+                <Button variant="primary" size="sm" onClick={addAgent}>
+                  <Plus className="w-3.5 h-3.5" /> Add agent
+                </Button>
+              </div>
             </div>
+              </div>
+            </div>
+
+            {showJson && (
+              <div className="w-1/2 flex flex-col min-h-0">
+                <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 shrink-0 bg-gray-50">
+                  <span className="text-xs font-semibold text-gray-700 font-mono truncate">
+                    team-spec.json
+                  </span>
+                  <button
+                    onClick={() => setShowJson(false)}
+                    className="rounded-md p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors shrink-0"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-auto p-4 min-h-0">
+                  <pre className="text-xs font-mono text-gray-700 whitespace-pre-wrap break-words">
+                    {highlightJson(JSON.stringify(localSpec, null, 2))}
+                  </pre>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -213,7 +242,7 @@ export function TeamContent({ slug }: { slug: string }) {
 
         {teamTab === 'chat' && (
           <div className="flex flex-1 min-h-0 overflow-hidden">
-            <div className="w-52 shrink-0 border-r border-gray-200 bg-[#f6f5f3] flex flex-col">
+            <div className="w-52 shrink-0 border-r border-gray-200 flex flex-col">
               <div className="flex-1 overflow-y-auto py-1">
                 {agents.map((agent, i) => (
                   <button
@@ -222,15 +251,17 @@ export function TeamContent({ slug }: { slug: string }) {
                     className={cn(
                       'w-full text-left px-3 py-2 text-sm transition-colors flex items-center gap-2',
                       agentSlug === agent.slug
-                        ? 'bg-gray-200/70 text-gray-900 font-medium'
+                        ? 'bg-sidebar text-gray-900 font-medium'
                         : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
                     )}
                   >
-                    {agent.emoji && <span className="text-sm">{agent.emoji}</span>}
+                    <span className={`flex items-center justify-center w-6 h-6 rounded-full text-[10px] font-semibold uppercase shrink-0 ${agentColor(i)}`}>
+                      {(agent.name || '?').charAt(0)}
+                    </span>
                     <span className="truncate">{agent.name}</span>
                     {i === 0 && (
-                      <span className="ml-auto text-xs text-gray-400 font-normal shrink-0">
-                        (Lead)
+                      <span className="ml-auto text-gray-400 shrink-0">
+                        <Crown className="w-3 h-3" />
                       </span>
                     )}
                   </button>
@@ -280,7 +311,6 @@ export function TeamContent({ slug }: { slug: string }) {
                   <FileBrowser
                     teamSlug={localSpec.slug}
                     agentSlug={selectedAgent.slug}
-                    agentName={selectedAgent.name}
                   />
                 )}
               </div>

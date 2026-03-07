@@ -84,7 +84,7 @@ export function AgentsTab({ spec, onSpecChange, onSave, onSaveSpec, isSaving }: 
 
   return (
     <div className="flex h-full overflow-hidden">
-      <div className="w-52 shrink-0 border-r border-gray-100 bg-[#f6f5f3] flex flex-col">
+      <div className="w-52 shrink-0 border-r border-gray-100 bg-sidebar flex flex-col">
         <div className="px-3 py-3 border-b border-gray-100">
           <div className="flex items-center justify-between gap-2">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
@@ -134,23 +134,25 @@ export function AgentsTab({ spec, onSpecChange, onSave, onSaveSpec, isSaving }: 
       <div className="flex-1 min-w-0 overflow-hidden flex flex-col bg-white">
         <div className="flex-1 min-h-0 overflow-hidden">
           {!activeAgent ? (
-            <div className="py-6 px-6 max-w-2xl space-y-4 h-full overflow-y-auto">
-              <div className="rounded-lg border border-dashed border-gray-200 p-8 text-center">
+            <div className="py-6 px-6 max-w-2xl mx-auto space-y-4 h-full overflow-y-auto">
+              <div className="border-b border-dashed border-gray-200 p-8 text-center">
                 <p className="text-sm text-gray-500">
                   No agents yet. Add agents to get started.
                 </p>
               </div>
             </div>
           ) : (
-            <div className="py-6 px-6 max-w-2xl space-y-4 h-full overflow-y-auto">
+            <div className="py-6 px-6 max-w-2xl mx-auto space-y-4 h-full overflow-y-auto">
               <AgentCard
                 key={activeAgent.slug}
                 teamSlug={spec.slug}
                 agent={activeAgent}
+                index={selectedAgentIndex}
                 isFirst={selectedAgentIndex <= 0}
                 providerSlugs={providerSlugs}
                 isEditing={isEditingAgent}
                 onEdit={() => setIsEditingAgent(true)}
+                onCancel={() => setIsEditingAgent(false)}
                 onSave={async () => {
                   await onSave()
                   setIsEditingAgent(false)

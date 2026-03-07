@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useEnvironments, useSaveEnvironment, useDeleteEnvironment } from '../../hooks/useEnvironments'
 import { Plus, Trash2, ExternalLink, RefreshCw, Check, AlertCircle } from 'lucide-react'
 import type { EnvironmentRecord } from '../../../../shared/types'
+import { Button, Input, Label, Select } from '../ui'
 
 const GKE_SLUG = 'goog-gke'
 const GKE_NAME = 'Google Kubernetes Engine'
@@ -45,8 +46,6 @@ function validateForm(form: GkeForm): string | null {
   return null
 }
 
-const inputCls = 'w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 font-mono placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-const labelCls = 'block text-xs font-medium text-gray-600 mb-1'
 
 export function EnvironmentsSettings() {
   const { data: environments, isLoading } = useEnvironments()
@@ -100,10 +99,10 @@ export function EnvironmentsSettings() {
 
   const field = (key: keyof GkeForm, label: string, placeholder = '', type = 'text') => form && (
     <div>
-      <label className={labelCls}>{label}</label>
-      <input
+      <Label>{label}</Label>
+      <Input
+        mono
         type={type}
-        className={inputCls}
         value={form[key]}
         onChange={e => { setForm({ ...form, [key]: e.target.value }); setFormError(null) }}
         placeholder={placeholder}
@@ -119,12 +118,9 @@ export function EnvironmentsSettings() {
           <p className="text-xs text-gray-500 mt-0.5">Configure cloud environments for deploying agent teams.</p>
         </div>
         {!gkeExists && !form && (
-          <button
-            onClick={openForm}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-          >
+          <Button variant="primary" onClick={openForm}>
             <Plus className="w-3.5 h-3.5" /> Add GKE
-          </button>
+          </Button>
         )}
         {form && (
           <button onClick={() => setForm(null)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
@@ -133,13 +129,13 @@ export function EnvironmentsSettings() {
 
       {/* Status messages */}
       {authStatus === 'done' && !form && (
-        <div className="flex items-center gap-2 rounded-md bg-green-50 border border-green-200 px-3 py-2">
+        <div className="flex items-center gap-2 bg-green-50 px-3 py-2">
           <Check className="w-4 h-4 text-green-600" />
           <span className="text-sm text-green-700">Signed in with Google</span>
         </div>
       )}
       {authStatus === 'error' && !form && (
-        <div className="flex items-center gap-2 rounded-md bg-red-50 border border-red-200 px-3 py-2">
+        <div className="flex items-center gap-2 bg-red-50 px-3 py-2">
           <AlertCircle className="w-4 h-4 text-red-600" />
           <span className="text-sm text-red-700">Sign-in failed{authError ? `: ${authError}` : ''}. Use Re-auth to try again.</span>
         </div>
@@ -148,7 +144,7 @@ export function EnvironmentsSettings() {
       {/* GKE form */}
       {form && (
         <div className="flex gap-6">
-          <div className="flex-1 rounded-lg border border-blue-200 bg-blue-50/50 p-4 space-y-3">
+          <div className="flex-1 border-b border-blue-200 bg-blue-50/30 p-4 space-y-3">
             <p className="text-xs text-gray-400 font-mono">{GKE_SLUG}</p>
             {field('projectId', 'GCP Project ID', 'my-gcp-project')}
             <div className="grid grid-cols-3 gap-3">
@@ -158,20 +154,20 @@ export function EnvironmentsSettings() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelCls}>Gateway mode</label>
-                <select
-                  className={inputCls}
+                <Label>Gateway mode</Label>
+                <Select
+                  mono
                   value={form.gatewayMode}
                   onChange={e => { setForm({ ...form, gatewayMode: e.target.value as GkeForm['gatewayMode'] }); setFormError(null) }}
                 >
                   <option value="port-forward">Port-forward (no domain)</option>
                   <option value="ingress">Ingress (domain + IAP)</option>
-                </select>
+                </Select>
               </div>
               <div>
-                <label className={labelCls}>Base domain</label>
-                <input
-                  className={inputCls}
+                <Label>Base domain</Label>
+                <Input
+                  mono
                   value={form.domain}
                   onChange={e => { setForm({ ...form, domain: e.target.value }); setFormError(null) }}
                   placeholder="example.com"
@@ -189,13 +185,14 @@ export function EnvironmentsSettings() {
                 {formError}
               </div>
             )}
-            <button
+            <Button
+              variant="primary"
+              size="lg"
               onClick={handleSave}
               disabled={saveEnv.isPending || authStatus === 'authing'}
-              className="px-4 py-1.5 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
               {saveEnv.isPending ? 'Saving...' : authStatus === 'authing' ? 'Signing in...' : 'Save & Sign in with Google'}
-            </button>
+            </Button>
           </div>
 
           {/* Help panel */}
@@ -222,13 +219,13 @@ export function EnvironmentsSettings() {
       {/* Environment list */}
       {isLoading && <p className="text-sm text-gray-400">Loading...</p>}
       {!isLoading && !environments?.length && !form && (
-        <div className="rounded-lg border border-dashed border-gray-200 p-8 text-center">
+        <div className="border-b border-dashed border-gray-200 p-8 text-center">
           <p className="text-sm text-gray-500">No environments. Add GKE to enable deployment.</p>
         </div>
       )}
 
       {environments?.map(env => (
-        <div key={env.slug} className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-3 group">
+        <div key={env.slug} className="flex items-center justify-between border-b border-gray-200 px-4 py-3 group">
           <div className="flex items-center gap-3 min-w-0">
             <div className="flex items-center justify-center w-8 h-8 rounded-md bg-blue-50 text-xs font-semibold text-blue-600 shrink-0">
               GKE

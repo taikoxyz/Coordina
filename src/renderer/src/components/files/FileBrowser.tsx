@@ -7,7 +7,6 @@ import { MarkdownViewer } from './MarkdownViewer'
 interface Props {
   teamSlug: string
   agentSlug: string
-  agentName?: string
 }
 
 interface FileEntry {
@@ -23,7 +22,7 @@ interface OpenTab {
   error?: string
 }
 
-export function FileBrowser({ teamSlug, agentSlug, agentName }: Props) {
+export function FileBrowser({ teamSlug, agentSlug }: Props) {
   const [openTabs, setOpenTabs] = useState<OpenTab[]>([])
   const [activeTab, setActiveTab] = useState<string | null>(null)
   const [refreshingTabs, setRefreshingTabs] = useState(false)
@@ -106,8 +105,8 @@ export function FileBrowser({ teamSlug, agentSlug, agentName }: Props) {
         <div className="px-3 py-2 border-b border-gray-200">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">
-                {agentName ?? agentSlug}
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-[0.16em]">
+                Files
               </p>
               {fileListError && (
                 <p className="text-xs text-red-600 mt-0.5">{fileListError}</p>

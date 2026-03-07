@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
 export type SidebarGroup = 'providers' | 'environments' | 'teams'
 
@@ -25,23 +26,35 @@ interface NavStore {
   setCreateDialogOpen: (group: SidebarGroup | null) => void
 }
 
-export const useNav = create<NavStore>((set) => ({
-  expandedGroups: ['providers', 'environments', 'teams'],
-  selectedItem: null,
-  teamTab: 'specs',
-  agentSlug: null,
-  isSettingsOpen: false,
-  isCreateDialogOpen: null,
+export const useNav = create<NavStore>()(
+  persist(
+    (set) => ({
+      expandedGroups: ['providers', 'environments', 'teams'],
+      selectedItem: null,
+      teamTab: 'specs',
+      agentSlug: null,
+      isSettingsOpen: false,
+      isCreateDialogOpen: null,
 
-  toggleGroup: (group) =>
-    set((s) => ({
-      expandedGroups: s.expandedGroups.includes(group)
-        ? s.expandedGroups.filter((g) => g !== group)
-        : [...s.expandedGroups, group],
-    })),
-  selectItem: (item) => set({ selectedItem: item, teamTab: 'specs', agentSlug: null }),
-  setTeamTab: (teamTab) => set({ teamTab }),
-  selectAgent: (slug) => set({ agentSlug: slug }),
-  setSettingsOpen: (isSettingsOpen) => set({ isSettingsOpen }),
-  setCreateDialogOpen: (isCreateDialogOpen) => set({ isCreateDialogOpen }),
-}))
+      toggleGroup: (group) =>
+        set((s) => ({
+          expandedGroups: s.expandedGroups.includes(group)
+            ? s.expandedGroups.filter((g) => g !== group)
+            : [...s.expandedGroups, group],
+        })),
+      selectItem: (item) => set({ selectedItem: item, teamTab: 'specs', agentSlug: null }),
+      setTeamTab: (teamTab) => set({ teamTab }),
+      selectAgent: (slug) => set({ agentSlug: slug }),
+      setSettingsOpen: (isSettingsOpen) => set({ isSettingsOpen }),
+      setCreateDialogOpen: (isCreateDialogOpen) => set({ isCreateDialogOpen }),
+    }),
+    {
+      name: 'coordina-nav',
+      partialize: (state) => ({
+        selectedItem: state.selectedItem,
+        teamTab: state.teamTab,
+        agentSlug: state.agentSlug,
+      }),
+    },
+  ),
+)

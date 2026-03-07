@@ -5,6 +5,7 @@ import {
   type AgentNameTheme,
 } from '../../../../shared/agentNames'
 import { useSaveSettings, useSettings } from '../../hooks/useSettings'
+import { Button, Input, Label } from '../ui'
 
 const agentNameThemeOptions: Array<{ value: AgentNameTheme; label: string }> = [
   { value: 'sci-fi', label: 'Sci-Fi' },
@@ -33,7 +34,7 @@ export function GeneralSettings() {
   return (
     <div className="space-y-6 max-w-lg">
       {/* Git versioning */}
-      <div className="rounded-lg border border-[var(--color-border)] bg-white p-5">
+      <div className="border-b border-border pb-5">
         <div className="flex items-center justify-between mb-3">
           <div>
             <h3 className="text-sm font-semibold text-gray-900">Git versioning</h3>
@@ -51,9 +52,9 @@ export function GeneralSettings() {
 
         {settings.gitEnabled && (
           <div className="mt-3 pt-3 border-t border-gray-100">
-            <label className="block text-xs font-medium text-gray-500 mb-1.5">Repository path</label>
-            <input
-              className="w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 font-mono placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            <Label>Repository path</Label>
+            <Input
+              mono
               value={settings.gitRepoPath ?? ''}
               onChange={e => setSettings({ ...settings, gitRepoPath: e.target.value || undefined })}
               placeholder="~/.coordina"
@@ -62,7 +63,7 @@ export function GeneralSettings() {
         )}
       </div>
 
-      <div className="rounded-lg border border-[var(--color-border)] bg-white p-5">
+      <div className="border-b border-border pb-5">
         <div className="space-y-3">
           <div>
             <h3 className="text-sm font-semibold text-gray-900">Agent names</h3>
@@ -70,7 +71,7 @@ export function GeneralSettings() {
               Choose the global name pack for automatically added agents.
             </p>
           </div>
-          <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1">
+          <div className="inline-flex bg-gray-50 p-1 rounded-md">
             {agentNameThemeOptions.map((option) => {
               const active =
                 (settings.agentNameTheme ?? DEFAULT_AGENT_NAME_THEME) ===
@@ -95,14 +96,14 @@ export function GeneralSettings() {
         </div>
       </div>
 
-      {/* Save button */}
-      <button
+      <Button
+        variant="primary"
+        size="lg"
         onClick={handleSave}
         disabled={saveSettings.isPending}
-        className="px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
       >
         {saveSettings.isPending ? 'Saving...' : saved ? 'Saved' : 'Save changes'}
-      </button>
+      </Button>
     </div>
   )
 }
