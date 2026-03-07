@@ -4,6 +4,7 @@ import { useNav } from '../store/nav'
 import { useTeam, useSaveTeam } from '../hooks/useTeams'
 import { useProviders } from '../hooks/useProviders'
 import { useSettings } from '../hooks/useSettings'
+import { useAgentStatuses } from '../hooks/useAgentStatuses'
 import { SpecEditor } from './SpecEditor'
 import { AgentCard } from './team/AgentCard'
 import { DeployPanel } from './DeployPanel'
@@ -114,6 +115,11 @@ export function TeamContent({ slug }: { slug: string }) {
     }
   }
 
+  const { statuses: agentStatuses } = useAgentStatuses(
+    localSpec?.slug ?? '',
+    localSpec?.deployedEnvSlug,
+  )
+
   if (!localSpec) {
     return (
       <div className="flex items-center justify-center h-full text-sm text-gray-400">
@@ -123,6 +129,17 @@ export function TeamContent({ slug }: { slug: string }) {
   }
 
   const isLead = selectedAgent && agents.length > 0 && selectedAgent.slug === agents[0].slug
+
+  const selectedAgentStatus = selectedAgent ? agentStatuses.get(selectedAgent.slug) : undefined
+  const isDeployed = !!localSpec.deployedEnvSlug
+  const isSelectedAgentReady = !isDeployed || selectedAgentStatus === 'running'
+
+  const statusDotClass = (status: string | undefined) => {
+    if (status === 'running') return 'bg-green-500'
+    if (status === 'pending') return 'bg-amber-400'
+    if (status === 'crashed') return 'bg-red-500'
+    return 'bg-gray-300'
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -259,11 +276,16 @@ export function TeamContent({ slug }: { slug: string }) {
                       {(agent.name || '?').charAt(0)}
                     </span>
                     <span className="truncate">{agent.name}</span>
-                    {i === 0 && (
-                      <span className="ml-auto text-gray-400 shrink-0">
-                        <Crown className="w-3 h-3" />
-                      </span>
-                    )}
+                    <span className="ml-auto flex items-center gap-1 shrink-0">
+                      {isDeployed && (
+                        <span className={`w-1.5 h-1.5 rounded-full ${statusDotClass(agentStatuses.get(agent.slug))}`} />
+                      )}
+                      {i === 0 && (
+                        <span className="text-gray-400">
+                          <Crown className="w-3 h-3" />
+                        </span>
+                      )}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -279,17 +301,19 @@ export function TeamContent({ slug }: { slug: string }) {
                     ]).map((tab) => (
                       <button
                         key={tab.id}
-                        onClick={() => setChatSubPanel(tab.id)}
+                        onClick={() => isSelectedAgentReady && setChatSubPanel(tab.id)}
                         className={cn(
                           'text-sm font-medium py-3 transition-colors relative flex items-center gap-1.5',
-                          chatSubPanel === tab.id
-                            ? 'text-gray-900'
-                            : 'text-gray-400 hover:text-gray-600',
+                          !isSelectedAgentReady
+                            ? 'text-gray-300 cursor-default'
+                            : chatSubPanel === tab.id
+                              ? 'text-gray-900'
+                              : 'text-gray-400 hover:text-gray-600',
                         )}
                       >
                         <tab.icon className="h-3.5 w-3.5" />
                         {tab.label}
-                        {chatSubPanel === tab.id && (
+                        {isSelectedAgentReady && chatSubPanel === tab.id && (
                           <span className="absolute -bottom-[1px] left-0 right-0 h-[2px] bg-gray-900 rounded-t" />
                         )}
                       </button>
@@ -299,20 +323,30 @@ export function TeamContent({ slug }: { slug: string }) {
               </div>
 
               <div className="flex-1 min-h-0 overflow-hidden">
-                {chatSubPanel === 'chat' && (
-                  <ChatPane
-                    teamSlug={localSpec.slug}
-                    envSlug={localSpec.deployedEnvSlug}
-                    agentSlug={isLead ? undefined : selectedAgent?.slug}
-                    agentName={selectedAgent?.name}
-                  />
-                )}
-                {chatSubPanel === 'files' && selectedAgent && (
-                  <FileBrowser
-                    teamSlug={localSpec.slug}
-                    agentSlug={selectedAgent.slug}
-                    envSlug={localSpec.deployedEnvSlug}
-                  />
+                {!isSelectedAgentReady ? (
+                  <div className="flex flex-col items-center justify-center h-full gap-2 text-sm text-gray-400">
+                    <span className={`w-2.5 h-2.5 rounded-full ${statusDotClass(selectedAgentStatus)}`} />
+                    <span className="font-medium text-gray-500">{selectedAgent?.name} is not ready</span>
+                    <span>Chat and file browsing are disabled until the agent is running.</span>
+                  </div>
+                ) : (
+                  <>
+                    {chatSubPanel === 'chat' && (
+                      <ChatPane
+                        teamSlug={localSpec.slug}
+                        envSlug={localSpec.deployedEnvSlug}
+                        agentSlug={isLead ? undefined : selectedAgent?.slug}
+                        agentName={selectedAgent?.name}
+                      />
+                    )}
+                    {chatSubPanel === 'files' && selectedAgent && (
+                      <FileBrowser
+                        teamSlug={localSpec.slug}
+                        agentSlug={selectedAgent.slug}
+                        envSlug={localSpec.deployedEnvSlug}
+                      />
+                    )}
+                  </>
                 )}
               </div>
             </div>

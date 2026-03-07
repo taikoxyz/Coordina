@@ -1,22 +1,17 @@
 import { ipcMain } from 'electron'
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
 import { getTeamDeployment } from '../store/deployments'
+import { getEnvironment } from '../store/environments'
+import { execInPod } from '../environments/gke/deploy'
+import type { GkeDeployConfig } from '../environments/gke/deploy'
 
-const execFileAsync = promisify(execFile)
 const WORKSPACE_DIR = '/agent-data/openclaw/workspace'
 
-async function kubectlExec(
-  teamSlug: string,
-  agentSlug: string,
-  command: string[],
-): Promise<string> {
-  const { stdout } = await execFileAsync('kubectl', [
-    '-n', teamSlug,
-    'exec', `statefulset/agent-${agentSlug}`,
-    '--', ...command,
-  ], { timeout: 15000, maxBuffer: 4 * 1024 * 1024 })
-  return stdout
+async function getGkeConfig(teamSlug: string): Promise<GkeDeployConfig | null> {
+  const deployment = await getTeamDeployment(teamSlug)
+  if (!deployment) return null
+  const env = await getEnvironment(deployment.envSlug)
+  if (!env || env.type !== 'gke') return null
+  return { slug: deployment.envSlug, ...env.config as Omit<GkeDeployConfig, 'slug'> }
 }
 
 interface FileEntry {
@@ -37,13 +32,13 @@ const LIST_SCRIPT = [
 
 export function registerFileHandlers() {
   ipcMain.handle('files:list', async (_event, teamSlug: string, agentSlug: string, _envSlug?: string) => {
-    const deployment = await getTeamDeployment(teamSlug)
-    if (!deployment) {
+    const config = await getGkeConfig(teamSlug)
+    if (!config) {
       return { files: [], error: 'Files are only available after deployment' }
     }
 
     try {
-      const output = await kubectlExec(teamSlug, agentSlug, ['node', '-e', LIST_SCRIPT])
+      const output = await execInPod(teamSlug, agentSlug, ['node', '-e', LIST_SCRIPT], config)
       const files: FileEntry[] = JSON.parse(output)
       return { files }
     } catch (e) {
@@ -52,14 +47,14 @@ export function registerFileHandlers() {
   })
 
   ipcMain.handle('files:get', async (_event, teamSlug: string, agentSlug: string, filePath: string, _envSlug?: string) => {
-    const deployment = await getTeamDeployment(teamSlug)
-    if (!deployment) {
+    const config = await getGkeConfig(teamSlug)
+    if (!config) {
       return { content: null, error: 'Files are only available after deployment' }
     }
 
     const fullPath = `${WORKSPACE_DIR}/${filePath}`
     try {
-      const content = await kubectlExec(teamSlug, agentSlug, ['cat', '--', fullPath])
+      const content = await execInPod(teamSlug, agentSlug, ['cat', '--', fullPath], config)
       return { content }
     } catch (e) {
       return { content: null, error: `Failed to fetch file: ${e instanceof Error ? e.message : String(e)}` }
