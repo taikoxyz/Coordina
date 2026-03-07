@@ -1,34 +1,20 @@
 import { useCallback } from 'react'
+import { Pencil, FileJson } from 'lucide-react'
 import type { TeamSpec } from '../../../shared/types'
-
-const inputCls = 'w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-const monoInputCls = inputCls + ' font-mono'
-const labelCls = 'block text-xs font-medium text-gray-600 mb-1'
-const readLabelCls = 'text-xs font-medium uppercase tracking-[0.16em] text-gray-400'
-const emptyValueCls = 'text-gray-400'
-
-function ReadField({ label, value, monospace = false }: { label: string; value?: string | number; monospace?: boolean }) {
-  const hasValue = value !== undefined && value !== null && `${value}`.trim().length > 0
-  return (
-    <div className="space-y-1.5">
-      <div className={readLabelCls}>{label}</div>
-      <div className={`${monospace ? 'font-mono text-xs' : 'text-sm'} ${hasValue ? 'text-gray-900' : emptyValueCls}`}>
-        {hasValue ? value : 'Not set'}
-      </div>
-    </div>
-  )
-}
+import { Button, Input, Label, ReadField, Textarea } from './ui'
 
 export interface SpecEditorProps {
   spec: TeamSpec
   onSpecChange: (spec: TeamSpec) => void
   isEditing: boolean
   onEdit: () => void
+  onCancel: () => void
   onSave: () => Promise<void>
   isSaving: boolean
+  onShowJson: () => void
 }
 
-export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onSave, isSaving }: SpecEditorProps) {
+export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, onSave, isSaving, onShowJson }: SpecEditorProps) {
   const set = useCallback(
     (key: keyof TeamSpec) => (value: unknown) => {
       onSpecChange({ ...spec, [key]: value })
@@ -39,56 +25,47 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onSave, isSa
   if (!isEditing) {
     return (
       <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="max-w-2xl mx-auto space-y-6 py-6 px-6">
+        <div className="max-w-2xl mx-auto space-y-4 py-6 px-6">
           <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900">Team overview</h3>
-              <p className="text-sm text-gray-500 mt-1">Review the current team configuration before making changes.</p>
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
+              Team overview
             </div>
-            <button
-              onClick={onEdit}
-              className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-            >
-              Edit team
-            </button>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" onClick={onShowJson} title="View JSON">
+                <FileJson className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={onEdit} title="Edit team">
+                <Pencil className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
 
           <div>
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Team details</h4>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-              <ReadField label="Name" value={spec.name} />
-              <ReadField label="Slug" value={spec.slug} monospace />
-            </div>
+            <h4 className="text-sm font-semibold text-gray-900 mb-1">Team details</h4>
+            <ReadField label="Name" value={spec.name} />
+            <ReadField label="Slug" value={spec.slug} monospace />
+            <ReadField label="Agents" value={spec.agents.length} />
           </div>
 
           <hr className="border-gray-200" />
 
           <div>
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Telegram integration</h4>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-              <ReadField label="Group ID" value={spec.telegramGroupId} monospace />
-              <ReadField label="Admin ID" value={spec.telegramAdminId} monospace />
-            </div>
+            <h4 className="text-sm font-semibold text-gray-900 mb-1">Telegram integration</h4>
+            <ReadField label="Group ID" value={spec.telegramGroupId} monospace />
+            <ReadField label="Admin ID" value={spec.telegramAdminId} monospace />
           </div>
 
           <hr className="border-gray-200" />
 
           <div>
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Infrastructure defaults</h4>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-              <ReadField label="Default container image" value={spec.defaultImage} monospace />
-              <ReadField label="Storage (Gi)" value={spec.defaultDiskGi} />
-            </div>
+            <h4 className="text-sm font-semibold text-gray-900 mb-1">Infrastructure defaults</h4>
+            <ReadField label="Default container image" value={spec.defaultImage} monospace />
+            <ReadField label="Storage (Gi)" value={spec.defaultDiskGi} />
           </div>
 
           <hr className="border-gray-200" />
 
-          <div className="space-y-1.5">
-            <div className={readLabelCls}>Startup instructions</div>
-            <div className={`min-h-20 whitespace-pre-wrap rounded-lg bg-gray-50 px-4 py-3 font-mono text-xs ${spec.startupInstructions?.trim() ? 'text-gray-700' : emptyValueCls}`}>
-              {spec.startupInstructions?.trim() || 'Not set'}
-            </div>
-          </div>
+          <ReadField label="Startup instructions" value={spec.startupInstructions?.trim() || undefined} monospace />
         </div>
       </div>
     )
@@ -98,29 +75,34 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onSave, isSa
     <div className="flex-1 overflow-y-auto min-h-0">
       <div className="max-w-2xl mx-auto space-y-5 py-6 px-6">
         <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900">Edit team</h3>
-            <p className="text-sm text-gray-500 mt-1">Update the base team configuration and save when finished.</p>
+          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
+            Edit team
           </div>
-          <button
-            onClick={() => void onSave()}
-            disabled={isSaving}
-            className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-          >
-            {isSaving ? 'Saving...' : 'Save'}
-          </button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => void onSave()}
+              disabled={isSaving}
+            >
+              {isSaving ? 'Saving...' : 'Save'}
+            </Button>
+            <Button variant="secondary" size="sm" onClick={onCancel} disabled={isSaving}>
+              Cancel
+            </Button>
+          </div>
         </div>
 
         <div>
           <h3 className="text-sm font-semibold text-gray-900 mb-3">Team details</h3>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelCls}>Name</label>
-              <input className={inputCls} value={spec.name} onChange={(e) => set('name')(e.target.value)} placeholder="My Team" />
+              <Label>Name</Label>
+              <Input value={spec.name} onChange={(e) => set('name')(e.target.value)} placeholder="My Team" />
             </div>
             <div>
-              <label className={labelCls}>Slug</label>
-              <input className={monoInputCls} value={spec.slug} onChange={(e) => set('slug')(e.target.value)} placeholder="my-team" />
+              <Label>Slug</Label>
+              <Input mono value={spec.slug} onChange={(e) => set('slug')(e.target.value)} placeholder="my-team" />
             </div>
           </div>
         </div>
@@ -129,18 +111,18 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onSave, isSa
           <h3 className="text-sm font-semibold text-gray-900 mb-3">Telegram integration</h3>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelCls}>Group ID</label>
-              <input
-                className={monoInputCls}
+              <Label>Group ID</Label>
+              <Input
+                mono
                 value={spec.telegramGroupId ?? ''}
                 onChange={(e) => set('telegramGroupId')(e.target.value || undefined)}
                 placeholder="-1001234567890"
               />
             </div>
             <div>
-              <label className={labelCls}>Admin ID</label>
-              <input
-                className={monoInputCls}
+              <Label>Admin ID</Label>
+              <Input
+                mono
                 value={spec.telegramAdminId ?? ''}
                 onChange={(e) => set('telegramAdminId')(e.target.value || undefined)}
                 placeholder="123456789"
@@ -153,20 +135,19 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onSave, isSa
           <h3 className="text-sm font-semibold text-gray-900 mb-3">Infrastructure defaults</h3>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelCls}>Default container image</label>
-              <input
-                className={monoInputCls}
+              <Label>Default container image</Label>
+              <Input
+                mono
                 value={spec.defaultImage ?? ''}
                 onChange={(e) => set('defaultImage')(e.target.value || undefined)}
                 placeholder="ghcr.io/org/openclaw:latest"
               />
             </div>
             <div>
-              <label className={labelCls}>Storage (Gi)</label>
-              <input
+              <Label>Storage (Gi)</Label>
+              <Input
                 type="number"
                 min={1}
-                className={inputCls}
                 value={spec.defaultDiskGi ?? ''}
                 onChange={(e) => set('defaultDiskGi')(e.target.value ? parseInt(e.target.value, 10) : undefined)}
                 placeholder="100"
@@ -176,9 +157,9 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onSave, isSa
         </div>
 
         <div>
-          <label className={labelCls}>Startup instructions</label>
-          <textarea
-            className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none font-mono"
+          <Label>Startup instructions</Label>
+          <Textarea
+            mono
             rows={4}
             value={spec.startupInstructions ?? ''}
             onChange={(e) => set('startupInstructions')(e.target.value || undefined)}

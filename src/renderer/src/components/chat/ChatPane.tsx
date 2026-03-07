@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useGatewayChat } from '../../hooks/useGatewayChat'
 import { ChatMessage } from './ChatMessage'
+import { Button, Textarea } from '../ui'
 
 interface Props {
   teamSlug: string
@@ -83,20 +84,21 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4 bg-gray-50">
         {hasMore && (
           <div className="flex justify-center mb-4">
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => void handleLoadMore()}
               disabled={loadingOlder}
-              className="text-xs px-3 py-1.5 bg-white text-gray-600 rounded-md border border-gray-200 hover:bg-gray-50 disabled:opacity-40"
             >
               {loadingOlder ? 'Loading…' : 'Load earlier messages'}
-            </button>
+            </Button>
           </div>
         )}
         {loadingInitial && (
           <div className="text-center text-gray-400 py-4 text-xs">Loading history…</div>
         )}
         {error && (
-          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 text-red-800 p-3">
+          <div className="mb-4 bg-red-50 text-red-800 p-3">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold">Connection Error</span>
               {typeof error.status === 'number' && (
@@ -133,12 +135,13 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
           <div className="text-xs text-gray-500">
             {selectedFiles.length > 0 ? `${selectedFiles.length} attachment${selectedFiles.length > 1 ? 's' : ''}` : 'No attachments'}
           </div>
-          <button
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => fileInputRef.current?.click()}
-            className="text-xs px-2.5 py-1 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
           >
             Attach files
-          </button>
+          </Button>
           <input
             ref={fileInputRef}
             type="file"
@@ -157,8 +160,8 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
           </div>
         )}
         <div className="flex gap-2">
-          <textarea
-            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-gray-900 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+          <Textarea
+            className="flex-1 rounded-lg resize-none"
             placeholder="Message the agent... (Enter to send)"
             rows={2}
             value={input}
@@ -166,13 +169,15 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
             onKeyDown={handleKeyDown}
             disabled={sending}
           />
-          <button
+          <Button
+            variant="primary"
+            size="lg"
+            className="self-end"
             onClick={() => void handleSend()}
             disabled={sending || (!input.trim() && selectedFiles.length === 0)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed self-end transition-colors"
           >
             {sending ? 'Sending…' : 'Send'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

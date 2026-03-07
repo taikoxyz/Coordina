@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import * as Dialog from '@radix-ui/react-dialog'
-import { X, Loader2, Check } from 'lucide-react'
+import { Loader2, Check, X } from 'lucide-react'
 import { useNav } from '../store/nav'
 import { useProviders, useSaveProvider } from '../hooks/useProviders'
 import type { ProviderRecord } from '../../../shared/types'
+import { Button, Input, Select, Label, DialogShell } from './ui'
 
 const PROVIDER_TYPES = ['anthropic', 'openai', 'deepseek', 'openrouter', 'ollama']
 const PROVIDER_NAMES: Record<string, string> = {
@@ -99,7 +99,7 @@ export function CreateProviderDialog() {
   }
 
   return (
-    <Dialog.Root
+    <DialogShell
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
@@ -107,91 +107,75 @@ export function CreateProviderDialog() {
           reset()
         }
       }}
+      title="Add Model Provider"
     >
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/40 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md rounded-lg bg-white p-6 shadow-xl focus:outline-none">
-          <div className="flex items-center justify-between mb-5">
-            <Dialog.Title className="text-sm font-semibold text-gray-900">
-              Add Model Provider
-            </Dialog.Title>
-            <Dialog.Close className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors">
-              <X className="w-4 h-4" />
-            </Dialog.Close>
+      <div className="space-y-4">
+        <div>
+          <Label>Provider type</Label>
+          <Select
+            value={type}
+            onChange={(e) => handleTypeChange(e.target.value)}
+          >
+            {PROVIDER_TYPES.map((t) => (
+              <option key={t} value={t}>{PROVIDER_NAMES[t]}</option>
+            ))}
+          </Select>
+          <p className="text-xs text-gray-400 font-mono mt-1">{toSlug(type, providers ?? [])}</p>
+        </div>
+
+        <div>
+          <Label>{credentialLabel(type)}</Label>
+          <div className="flex items-center gap-2">
+            <Input
+              mono
+              className="flex-1"
+              type={type === 'ollama' ? 'text' : 'password'}
+              value={credential}
+              onChange={(e) => {
+                setCredential(e.target.value)
+                setKeyStatus('idle')
+                setKeyError(null)
+                setModels([])
+                setModel('')
+              }}
+              onBlur={() => void handleCredentialBlur()}
+              placeholder={credentialPlaceholder(type)}
+            />
+            {keyStatus === 'checking' && <Loader2 className="w-4 h-4 text-gray-400 animate-spin shrink-0" />}
+            {keyStatus === 'valid' && <Check className="w-4 h-4 text-green-500 shrink-0" />}
+            {keyStatus === 'error' && <X className="w-4 h-4 text-red-500 shrink-0" />}
           </div>
+          {keyStatus === 'error' && keyError && (
+            <p className="text-xs text-red-600 mt-1">{keyError}</p>
+          )}
+        </div>
 
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Provider type</label>
-              <select
-                value={type}
-                onChange={(e) => handleTypeChange(e.target.value)}
-                className="w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {PROVIDER_TYPES.map((t) => (
-                  <option key={t} value={t}>{PROVIDER_NAMES[t]}</option>
-                ))}
-              </select>
-              <p className="text-xs text-gray-400 font-mono mt-1">{toSlug(type, providers ?? [])}</p>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                {credentialLabel(type)}
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type={type === 'ollama' ? 'text' : 'password'}
-                  value={credential}
-                  onChange={(e) => {
-                    setCredential(e.target.value)
-                    setKeyStatus('idle')
-                    setKeyError(null)
-                    setModels([])
-                    setModel('')
-                  }}
-                  onBlur={() => void handleCredentialBlur()}
-                  placeholder={credentialPlaceholder(type)}
-                  className="flex-1 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-mono text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                {keyStatus === 'checking' && <Loader2 className="w-4 h-4 text-gray-400 animate-spin shrink-0" />}
-                {keyStatus === 'valid' && <Check className="w-4 h-4 text-green-500 shrink-0" />}
-                {keyStatus === 'error' && <X className="w-4 h-4 text-red-500 shrink-0" />}
-              </div>
-              {keyStatus === 'error' && keyError && (
-                <p className="text-xs text-red-600 mt-1">{keyError}</p>
-              )}
-            </div>
-
-            {keyStatus === 'valid' && models.length > 0 && (
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Model</label>
-                <select
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {models.map((m) => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {saveError && <p className="text-xs text-red-600">{saveError}</p>}
-
-            <div className="flex justify-end">
-              <button
-                onClick={() => void handleSave()}
-                disabled={keyStatus !== 'valid' || !model || saveProvider.isPending}
-                className="px-4 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-              >
-                {saveProvider.isPending ? 'Saving...' : 'Save provider'}
-              </button>
-            </div>
+        {keyStatus === 'valid' && models.length > 0 && (
+          <div>
+            <Label>Model</Label>
+            <Select
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+            >
+              {models.map((m) => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </Select>
           </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+        )}
+
+        {saveError && <p className="text-xs text-red-600">{saveError}</p>}
+
+        <div className="flex justify-end">
+          <Button
+            variant="primary"
+            onClick={() => void handleSave()}
+            disabled={keyStatus !== 'valid' || !model || saveProvider.isPending}
+          >
+            {saveProvider.isPending ? 'Saving...' : 'Save provider'}
+          </Button>
+        </div>
+      </div>
+    </DialogShell>
   )
 }

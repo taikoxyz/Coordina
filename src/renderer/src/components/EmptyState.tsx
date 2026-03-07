@@ -11,10 +11,10 @@ interface EmptyStateProps {
 export function EmptyState({ icon, title, description, actionLabel, onAction }: EmptyStateProps) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 p-8">
-      <div className="text-[var(--color-muted-foreground)] opacity-40">{icon}</div>
+      <div className="text-muted-foreground opacity-40">{icon}</div>
       <div className="text-center">
-        <h2 className="text-sm font-semibold text-[var(--color-foreground)]">{title}</h2>
-        <p className="mt-1 text-xs text-[var(--color-muted-foreground)]">{description}</p>
+        <h2 className="text-sm font-semibold text-foreground">{title}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">{description}</p>
       </div>
       {actionLabel && onAction && (
         <button

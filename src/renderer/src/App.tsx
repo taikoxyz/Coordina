@@ -28,7 +28,7 @@ function AppContent() {
   }, [hasResolved, isFetched, teams, selectedItem, selectItem])
 
   return (
-    <div className="flex h-screen bg-[var(--color-background)] text-[var(--color-foreground)]">
+    <div className="flex h-screen bg-background text-foreground">
       <AppSidebar />
       <main className="flex-1 overflow-hidden">
         <MainContent />

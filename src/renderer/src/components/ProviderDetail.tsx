@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { useProviders, useDeleteProvider } from '../hooks/useProviders'
 import { useNav } from '../store/nav'
+import { Button, Card, CardContent, ReadField } from './ui'
 
 const PROVIDER_NAMES: Record<string, string> = {
   anthropic: 'Anthropic', openai: 'OpenAI', deepseek: 'DeepSeek', openrouter: 'OpenRouter', ollama: 'Ollama',
@@ -42,47 +43,31 @@ export function ProviderDetail({ slug }: { slug: string }) {
           </div>
         </div>
 
-        <div className="rounded-lg border border-gray-200 bg-white p-5 space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Model</label>
-            <p className="text-sm text-gray-900 font-mono">{provider.model}</p>
-          </div>
-          {provider.maskedApiKey && (
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">API Key</label>
-              <p className="text-sm text-gray-400 font-mono">{provider.maskedApiKey}</p>
-            </div>
-          )}
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Type</label>
-            <p className="text-sm text-gray-900">{PROVIDER_NAMES[provider.type] ?? provider.type}</p>
-          </div>
-        </div>
+        <Card>
+          <CardContent>
+            <ReadField label="Model" value={provider.model} monospace />
+            {provider.maskedApiKey && (
+              <ReadField label="API Key" value={provider.maskedApiKey} monospace />
+            )}
+            <ReadField label="Type" value={PROVIDER_NAMES[provider.type] ?? provider.type} />
+          </CardContent>
+        </Card>
 
         <div className="pt-2">
           {confirmDelete ? (
             <div className="flex items-center gap-2">
-              <button
-                onClick={handleDelete}
-                className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors"
-              >
+              <Button variant="destructive" onClick={handleDelete}>
                 Confirm delete
-              </button>
-              <button
-                onClick={() => setConfirmDelete(false)}
-                className="px-3 py-1.5 text-xs font-medium rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
-              >
+              </Button>
+              <Button variant="secondary" onClick={() => setConfirmDelete(false)}>
                 Cancel
-              </button>
+              </Button>
             </div>
           ) : (
-            <button
-              onClick={() => setConfirmDelete(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md text-red-600 hover:bg-red-50 transition-colors"
-            >
+            <Button variant="ghost-destructive" onClick={() => setConfirmDelete(true)}>
               <Trash2 className="w-3.5 h-3.5" />
               Delete provider
-            </button>
+            </Button>
           )}
         </div>
       </div>

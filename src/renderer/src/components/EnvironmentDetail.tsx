@@ -3,6 +3,7 @@ import { Trash2, RefreshCw, Check, AlertCircle, ExternalLink } from 'lucide-reac
 import { useEnvironments, useSaveEnvironment, useDeleteEnvironment } from '../hooks/useEnvironments'
 import { useNav } from '../store/nav'
 import type { EnvironmentRecord } from '../../../shared/types'
+import { Button, Card, CardContent, Input, Label, ReadField, Select } from './ui'
 
 interface GkeForm {
   projectId: string
@@ -40,9 +41,6 @@ function validateForm(form: GkeForm): string | null {
   if (form.gatewayMode === 'ingress' && !form.domain.trim()) return 'Base domain is required when using ingress mode'
   return null
 }
-
-const inputCls = 'w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 font-mono placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-const labelCls = 'block text-xs font-medium text-gray-600 mb-1'
 
 const GUIDE_STEPS = [
   { title: 'GCP Project ID', desc: 'Find this on the GCP Console home page.', url: 'https://console.cloud.google.com/home/dashboard' },
@@ -141,29 +139,30 @@ export function EnvironmentDetail({ slug }: { slug: string }) {
           </div>
           <div className="flex items-center gap-2">
             {!isEditing && (
-              <button onClick={handleEdit} className="px-3 py-1.5 text-xs font-medium rounded-md text-gray-600 hover:bg-gray-100 transition-colors">
+              <Button variant="ghost" onClick={handleEdit}>
                 Edit
-              </button>
+              </Button>
             )}
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => void handleAuth()}
               disabled={authStatus === 'authing'}
-              className="p-1.5 rounded-md text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
               title="Re-authenticate"
             >
               <RefreshCw className={`w-4 h-4 ${authStatus === 'authing' ? 'animate-spin' : ''}`} />
-            </button>
+            </Button>
           </div>
         </div>
 
         {authStatus === 'done' && (
-          <div className="flex items-center gap-2 rounded-md bg-green-50 border border-green-200 px-3 py-2">
+          <div className="flex items-center gap-2 bg-green-50 px-3 py-2">
             <Check className="w-4 h-4 text-green-600" />
             <span className="text-sm text-green-700">Signed in with Google</span>
           </div>
         )}
         {authStatus === 'error' && (
-          <div className="flex items-center gap-2 rounded-md bg-red-50 border border-red-200 px-3 py-2">
+          <div className="flex items-center gap-2 bg-red-50 px-3 py-2">
             <AlertCircle className="w-4 h-4 text-red-600" />
             <span className="text-sm text-red-700">Sign-in failed{authError ? `: ${authError}` : ''}</span>
           </div>
@@ -171,32 +170,32 @@ export function EnvironmentDetail({ slug }: { slug: string }) {
 
         {isEditing && form ? (
           <div className="flex gap-6">
-            <div className="flex-1 rounded-lg border border-blue-200 bg-blue-50/50 p-4 space-y-3">
+            <div className="flex-1 border-b border-blue-200 bg-blue-50/30 p-4 space-y-3">
               <div>
-                <label className={labelCls}>GCP Project ID</label>
-                <input className={inputCls} value={form.projectId} onChange={(e) => updateField('projectId', e.target.value)} placeholder="my-gcp-project" />
+                <Label>GCP Project ID</Label>
+                <Input mono value={form.projectId} onChange={(e) => updateField('projectId', e.target.value)} placeholder="my-gcp-project" />
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <div><label className={labelCls}>Cluster name</label><input className={inputCls} value={form.clusterName} onChange={(e) => updateField('clusterName', e.target.value)} /></div>
-                <div><label className={labelCls}>Cluster location</label><input className={inputCls} value={form.clusterZone} onChange={(e) => updateField('clusterZone', e.target.value)} /></div>
-                <div><label className={labelCls}>Disk zone</label><input className={inputCls} value={form.diskZone} onChange={(e) => updateField('diskZone', e.target.value)} /></div>
+                <div><Label>Cluster name</Label><Input mono value={form.clusterName} onChange={(e) => updateField('clusterName', e.target.value)} /></div>
+                <div><Label>Cluster location</Label><Input mono value={form.clusterZone} onChange={(e) => updateField('clusterZone', e.target.value)} /></div>
+                <div><Label>Disk zone</Label><Input mono value={form.diskZone} onChange={(e) => updateField('diskZone', e.target.value)} /></div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className={labelCls}>Gateway mode</label>
-                  <select className={inputCls} value={form.gatewayMode} onChange={(e) => updateField('gatewayMode', e.target.value)}>
+                  <Label>Gateway mode</Label>
+                  <Select mono value={form.gatewayMode} onChange={(e) => updateField('gatewayMode', e.target.value)}>
                     <option value="port-forward">Port-forward (no domain)</option>
                     <option value="ingress">Ingress (domain + IAP)</option>
-                  </select>
+                  </Select>
                 </div>
                 <div>
-                  <label className={labelCls}>Base domain</label>
-                  <input className={inputCls} value={form.domain} onChange={(e) => updateField('domain', e.target.value)} placeholder="example.com" disabled={form.gatewayMode !== 'ingress'} />
+                  <Label>Base domain</Label>
+                  <Input mono value={form.domain} onChange={(e) => updateField('domain', e.target.value)} placeholder="example.com" disabled={form.gatewayMode !== 'ingress'} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className={labelCls}>OAuth Client ID</label><input className={inputCls} value={form.clientId} onChange={(e) => updateField('clientId', e.target.value)} /></div>
-                <div><label className={labelCls}>OAuth Client Secret</label><input className={inputCls} type="password" value={form.clientSecret} onChange={(e) => updateField('clientSecret', e.target.value)} /></div>
+                <div><Label>OAuth Client ID</Label><Input mono value={form.clientId} onChange={(e) => updateField('clientId', e.target.value)} /></div>
+                <div><Label>OAuth Client Secret</Label><Input mono type="password" value={form.clientSecret} onChange={(e) => updateField('clientSecret', e.target.value)} /></div>
               </div>
               {formError && (
                 <div className="flex items-center gap-2 text-xs text-red-600">
@@ -204,12 +203,12 @@ export function EnvironmentDetail({ slug }: { slug: string }) {
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <button onClick={() => void handleSave()} disabled={saveEnv.isPending} className="px-4 py-1.5 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                <Button variant="primary" size="lg" onClick={() => void handleSave()} disabled={saveEnv.isPending}>
                   {saveEnv.isPending ? 'Saving...' : 'Save & Sign in with Google'}
-                </button>
-                <button onClick={() => { setIsEditing(false); setForm(null) }} className="px-3 py-1.5 text-xs font-medium text-gray-500 hover:text-gray-700">
+                </Button>
+                <Button variant="ghost" onClick={() => { setIsEditing(false); setForm(null) }}>
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -227,28 +226,28 @@ export function EnvironmentDetail({ slug }: { slug: string }) {
             </div>
           </div>
         ) : (
-          <div className="rounded-lg border border-gray-200 bg-white p-5 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div><label className="block text-xs font-medium text-gray-500 mb-1">Project ID</label><p className="text-sm text-gray-900 font-mono">{config.projectId}</p></div>
-              <div><label className="block text-xs font-medium text-gray-500 mb-1">Cluster</label><p className="text-sm text-gray-900 font-mono">{config.clusterName}</p></div>
-              <div><label className="block text-xs font-medium text-gray-500 mb-1">Cluster Zone</label><p className="text-sm text-gray-900 font-mono">{config.clusterZone}</p></div>
-              <div><label className="block text-xs font-medium text-gray-500 mb-1">Disk Zone</label><p className="text-sm text-gray-900 font-mono">{config.diskZone}</p></div>
-              <div><label className="block text-xs font-medium text-gray-500 mb-1">Gateway Mode</label><p className="text-sm text-gray-900">{config.gatewayMode ?? 'port-forward'}</p></div>
-              {config.domain && <div><label className="block text-xs font-medium text-gray-500 mb-1">Domain</label><p className="text-sm text-gray-900 font-mono">{config.domain}</p></div>}
-            </div>
-          </div>
+          <Card>
+            <CardContent>
+              <ReadField label="Project ID" value={config.projectId} monospace />
+              <ReadField label="Cluster" value={config.clusterName} monospace />
+              <ReadField label="Cluster Zone" value={config.clusterZone} monospace />
+              <ReadField label="Disk Zone" value={config.diskZone} monospace />
+              <ReadField label="Gateway Mode" value={config.gatewayMode ?? 'port-forward'} />
+              {config.domain && <ReadField label="Domain" value={config.domain} monospace />}
+            </CardContent>
+          </Card>
         )}
 
         <div className="pt-2">
           {confirmDelete ? (
             <div className="flex items-center gap-2">
-              <button onClick={handleDelete} className="px-3 py-1.5 text-xs font-medium rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors">Confirm delete</button>
-              <button onClick={() => setConfirmDelete(false)} className="px-3 py-1.5 text-xs font-medium rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">Cancel</button>
+              <Button variant="destructive" onClick={handleDelete}>Confirm delete</Button>
+              <Button variant="secondary" onClick={() => setConfirmDelete(false)}>Cancel</Button>
             </div>
           ) : (
-            <button onClick={() => setConfirmDelete(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md text-red-600 hover:bg-red-50 transition-colors">
+            <Button variant="ghost-destructive" onClick={() => setConfirmDelete(true)}>
               <Trash2 className="w-3.5 h-3.5" />Delete environment
-            </button>
+            </Button>
           )}
         </div>
       </div>

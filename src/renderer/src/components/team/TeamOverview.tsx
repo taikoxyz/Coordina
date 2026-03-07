@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertCircle, Check, Loader2, Rocket, X } from 'lucide-react'
+import { AlertCircle, Check, Loader2, Pencil, Rocket, X } from 'lucide-react'
 import type { EnvironmentRecord, TeamSpec } from '../../../../shared/types'
+import { Badge, Button, Input, Label, ReadField, Select, Textarea } from '../ui'
 
 interface Props {
   spec: TeamSpec
@@ -15,26 +16,29 @@ interface Props {
   onDeployEnvChange: (slug: string) => void
 }
 
-const inputCls = 'w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
-const monoInputCls = inputCls + ' font-mono'
-const labelCls = 'block text-xs font-medium text-gray-600 mb-1'
-const valueCls = 'min-h-10 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700'
-const readLabelCls = 'text-xs font-medium uppercase tracking-[0.16em] text-gray-400'
-const emptyValueCls = 'text-gray-400'
+type OverviewDeployState = 'idle' | 'preparing' | 'deploying' | 'done' | 'error'
 
-function ReadField({ label, value, monospace = false }: { label: string; value?: string | number; monospace?: boolean }) {
-  const hasValue = value !== undefined && value !== null && `${value}`.trim().length > 0
-  return (
-    <div className="space-y-1.5">
-      <div className={readLabelCls}>{label}</div>
-      <div className={`${monospace ? 'font-mono text-xs' : 'text-sm'} ${hasValue ? 'text-gray-900' : emptyValueCls}`}>
-        {hasValue ? value : 'Not set'}
-      </div>
-    </div>
-  )
+function deployBadgeVariant(state: OverviewDeployState) {
+  if (state === 'done') return 'success' as const
+  if (state === 'error') return 'destructive' as const
+  if (state === 'preparing' || state === 'deploying') return 'warning' as const
+  return 'default' as const
 }
 
-type OverviewDeployState = 'idle' | 'preparing' | 'deploying' | 'done' | 'error'
+function deployBadgeLabel(state: OverviewDeployState) {
+  if (state === 'idle') return 'Idle'
+  if (state === 'preparing') return 'Preparing'
+  if (state === 'deploying') return 'Deploying'
+  if (state === 'done') return 'Deployed'
+  return 'Failed'
+}
+
+function DeployBadgeIcon({ state }: { state: OverviewDeployState }) {
+  if (state === 'done') return <Check className="w-3 h-3" />
+  if (state === 'error') return <AlertCircle className="w-3 h-3" />
+  if (state === 'preparing' || state === 'deploying') return <Loader2 className="w-3 h-3 animate-spin" />
+  return null
+}
 
 export function TeamOverview({
   spec,
@@ -116,50 +120,36 @@ export function TeamOverview({
             <h3 className="text-sm font-semibold text-gray-900">Team overview</h3>
             <p className="text-sm text-gray-500 mt-1">Review the current team configuration before making changes.</p>
           </div>
-          <button
-            onClick={onEdit}
-            className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-          >
-            Edit team
-          </button>
+          <Button variant="ghost" size="icon" onClick={onEdit} title="Edit team">
+            <Pencil className="w-4 h-4" />
+          </Button>
         </div>
 
         <div>
           <h4 className="text-sm font-semibold text-gray-900 mb-3">Team details</h4>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-            <ReadField label="Name" value={spec.name} />
-            <ReadField label="Slug" value={spec.slug} monospace />
-          </div>
+          <ReadField label="Name" value={spec.name} />
+          <ReadField label="Slug" value={spec.slug} monospace />
         </div>
 
         <hr className="border-gray-200" />
 
         <div>
           <h4 className="text-sm font-semibold text-gray-900 mb-3">Telegram integration</h4>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-            <ReadField label="Group ID" value={spec.telegramGroupId} monospace />
-            <ReadField label="Admin ID" value={spec.telegramAdminId} monospace />
-          </div>
+          <ReadField label="Group ID" value={spec.telegramGroupId} monospace />
+          <ReadField label="Admin ID" value={spec.telegramAdminId} monospace />
         </div>
 
         <hr className="border-gray-200" />
 
         <div>
           <h4 className="text-sm font-semibold text-gray-900 mb-3">Infrastructure defaults</h4>
-          <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-            <ReadField label="Default container image" value={spec.defaultImage} monospace />
-            <ReadField label="Storage (Gi)" value={spec.defaultDiskGi} />
-          </div>
+          <ReadField label="Default container image" value={spec.defaultImage} monospace />
+          <ReadField label="Storage (Gi)" value={spec.defaultDiskGi} />
         </div>
 
         <hr className="border-gray-200" />
 
-        <div className="space-y-1.5">
-          <div className={readLabelCls}>Startup instructions</div>
-          <div className={`min-h-20 whitespace-pre-wrap rounded-lg bg-gray-50 px-4 py-3 font-mono text-xs ${spec.startupInstructions?.trim() ? 'text-gray-700' : emptyValueCls}`}>
-            {spec.startupInstructions?.trim() || 'Not set'}
-          </div>
-        </div>
+        <ReadField label="Startup instructions" value={spec.startupInstructions?.trim() || undefined} monospace />
 
         <hr className="border-gray-200" />
 
@@ -171,10 +161,10 @@ export function TeamOverview({
                 Select a target environment and deploy from the Overview page.
               </p>
             </div>
-            <button
+            <Button
+              variant="dark"
               onClick={handleDeploy}
               disabled={!deployEnvSlug || isSaving || deployState === 'preparing' || deployState === 'deploying'}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 transition-colors"
             >
               {(deployState === 'preparing' || deployState === 'deploying') ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -182,15 +172,14 @@ export function TeamOverview({
                 <Rocket className="w-3.5 h-3.5" />
               )}
               Deploy
-            </button>
+            </Button>
           </div>
 
           {deployEnvironments.length > 0 ? (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelCls}>Target environment</label>
-                <select
-                  className={inputCls}
+                <Label>Target environment</Label>
+                <Select
                   value={deployEnvSlug ?? ''}
                   onChange={e => onDeployEnvChange(e.target.value)}
                 >
@@ -199,36 +188,23 @@ export function TeamOverview({
                       {environment.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div>
-                <label className={labelCls}>Status</label>
-                <div className={`${valueCls} flex items-center justify-between gap-3`}>
+                <Label>Status</Label>
+                <div className="min-h-10 border-b border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 flex items-center justify-between gap-3">
                   <span className="truncate">
                     {deployEnvName || deployEnvSlug || 'No target selected'}
                   </span>
-                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium uppercase tracking-wider ${
-                    deployState === 'done'
-                      ? 'bg-green-50 text-green-700'
-                      : deployState === 'error'
-                      ? 'bg-red-50 text-red-700'
-                      : deployState === 'preparing' || deployState === 'deploying'
-                      ? 'bg-yellow-50 text-yellow-700'
-                      : 'bg-gray-100 text-gray-500'
-                  }`}>
-                    {deployState === 'done' && <Check className="w-3 h-3" />}
-                    {deployState === 'error' && <AlertCircle className="w-3 h-3" />}
-                    {(deployState === 'preparing' || deployState === 'deploying') && <Loader2 className="w-3 h-3 animate-spin" />}
-                    {deployState === 'idle' ? 'Idle' :
-                     deployState === 'preparing' ? 'Preparing' :
-                     deployState === 'deploying' ? 'Deploying' :
-                     deployState === 'done' ? 'Deployed' : 'Failed'}
-                  </span>
+                  <Badge variant={deployBadgeVariant(deployState)} className="uppercase tracking-wider">
+                    <DeployBadgeIcon state={deployState} />
+                    {deployBadgeLabel(deployState)}
+                  </Badge>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
+            <div className="border-b border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-500">
               No deployment environments configured. Add one in Settings before deploying.
             </div>
           )}
@@ -244,30 +220,21 @@ export function TeamOverview({
           <div className="flex items-center justify-between gap-4 border-b border-gray-200 px-5 py-2.5 shrink-0">
             <div className="flex items-center gap-2">
               <h4 className="text-sm font-semibold text-gray-900">Deploy output</h4>
-              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium uppercase tracking-wider text-gray-500">
+              <Badge>
                 {deployEnvName || deployEnvSlug || 'No target'}
-              </span>
-              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium uppercase tracking-wider ${
-                deployState === 'done' ? 'bg-green-50 text-green-700' :
-                deployState === 'error' ? 'bg-red-50 text-red-700' :
-                deployState === 'preparing' || deployState === 'deploying' ? 'bg-yellow-50 text-yellow-700' :
-                'bg-gray-100 text-gray-500'
-              }`}>
-                {deployState === 'done' && <Check className="w-3 h-3" />}
-                {deployState === 'error' && <AlertCircle className="w-3 h-3" />}
-                {(deployState === 'preparing' || deployState === 'deploying') && <Loader2 className="w-3 h-3 animate-spin" />}
-                {deployState === 'idle' ? 'Idle' :
-                 deployState === 'preparing' ? 'Preparing' :
-                 deployState === 'deploying' ? 'Deploying' :
-                 deployState === 'done' ? 'Deployed' : 'Failed'}
-              </span>
+              </Badge>
+              <Badge variant={deployBadgeVariant(deployState)} className="uppercase tracking-wider">
+                <DeployBadgeIcon state={deployState} />
+                {deployBadgeLabel(deployState)}
+              </Badge>
             </div>
-            <button
+            <Button
+              variant="ghost"
+              size="icon"
               onClick={() => setIsDeployDrawerOpen(false)}
-              className="rounded-md p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
             >
               <X className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
 
           {/* Panel body: files | logs side by side */}
@@ -333,25 +300,25 @@ export function TeamOverview({
           <h3 className="text-sm font-semibold text-gray-900">Edit team</h3>
           <p className="text-sm text-gray-500 mt-1">Update the base team configuration and save when finished.</p>
         </div>
-        <button
+        <Button
+          variant="primary"
           onClick={onSave}
           disabled={isSaving}
-          className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
         >
           {isSaving ? 'Saving...' : 'Save'}
-        </button>
+        </Button>
       </div>
 
       <div>
         <h3 className="text-sm font-semibold text-gray-900 mb-3">Team details</h3>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelCls}>Name</label>
-            <input className={inputCls} value={spec.name} onChange={e => set('name')(e.target.value)} placeholder="My Team" />
+            <Label>Name</Label>
+            <Input value={spec.name} onChange={e => set('name')(e.target.value)} placeholder="My Team" />
           </div>
           <div>
-            <label className={labelCls}>Slug</label>
-            <input className={monoInputCls} value={spec.slug} onChange={e => set('slug')(e.target.value)} placeholder="my-team" />
+            <Label>Slug</Label>
+            <Input mono value={spec.slug} onChange={e => set('slug')(e.target.value)} placeholder="my-team" />
           </div>
         </div>
       </div>
@@ -360,18 +327,18 @@ export function TeamOverview({
         <h3 className="text-sm font-semibold text-gray-900 mb-3">Telegram integration</h3>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelCls}>Group ID</label>
-            <input
-              className={monoInputCls}
+            <Label>Group ID</Label>
+            <Input
+              mono
               value={spec.telegramGroupId ?? ''}
               onChange={e => set('telegramGroupId')(e.target.value || undefined)}
               placeholder="-1001234567890"
             />
           </div>
           <div>
-            <label className={labelCls}>Admin ID</label>
-            <input
-              className={monoInputCls}
+            <Label>Admin ID</Label>
+            <Input
+              mono
               value={spec.telegramAdminId ?? ''}
               onChange={e => set('telegramAdminId')(e.target.value || undefined)}
               placeholder="123456789"
@@ -384,20 +351,19 @@ export function TeamOverview({
         <h3 className="text-sm font-semibold text-gray-900 mb-3">Infrastructure defaults</h3>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className={labelCls}>Default container image</label>
-            <input
-              className={monoInputCls}
+            <Label>Default container image</Label>
+            <Input
+              mono
               value={spec.defaultImage ?? ''}
               onChange={e => set('defaultImage')(e.target.value || undefined)}
               placeholder="ghcr.io/org/openclaw:latest"
             />
           </div>
           <div>
-            <label className={labelCls}>Storage (Gi)</label>
-            <input
+            <Label>Storage (Gi)</Label>
+            <Input
               type="number"
               min={1}
-              className={inputCls}
               value={spec.defaultDiskGi ?? ''}
               onChange={e => set('defaultDiskGi')(e.target.value ? parseInt(e.target.value, 10) : undefined)}
               placeholder="100"
@@ -407,9 +373,9 @@ export function TeamOverview({
       </div>
 
       <div>
-        <label className={labelCls}>Startup instructions</label>
-        <textarea
-          className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none font-mono"
+        <Label>Startup instructions</Label>
+        <Textarea
+          mono
           rows={4}
           value={spec.startupInstructions ?? ''}
           onChange={e => set('startupInstructions')(e.target.value || undefined)}
