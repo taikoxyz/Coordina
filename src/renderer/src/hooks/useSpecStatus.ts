@@ -22,7 +22,7 @@ export const useSpecStatus = (teamSlug: string): SpecStatus => {
   useEffect(() => {
     if (!teamSlug) return
 
-    void window.api.invoke('teams:derive', teamSlug)
+    void window.api.invoke('teams:validate', teamSlug)
 
     const removeValidation = window.api.on('spec:validation', (...args: unknown[]) => {
       const data = args[0] as { teamSlug: string; valid: boolean; errors: ValidationError[] }

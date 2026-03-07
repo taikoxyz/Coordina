@@ -1,9 +1,11 @@
 // IPC handlers for team spec CRUD replacing SQLite with file-based storage
 // FEATURE: Team management IPC layer using ~/.coordina/teams/{slug}.json files
-import { ipcMain } from 'electron'
+import { ipcMain, BrowserWindow } from 'electron'
 import { listTeams, getTeam, saveTeam, deleteTeam } from '../store/teams'
 import { deleteTeamDeployment } from '../store/deployments'
 import { runPipeline } from '../watcher'
+import { validateTeamSpec } from '../validation/teamSpec'
+import { listProviders } from '../store/providers'
 import type { TeamSpec } from '../../shared/types'
 import { getSecret, setSecret, deleteSecret } from '../keychain'
 import { normalizeTeamSpec, validateTelegramPair } from '../validation/teamSpecNormalize'
@@ -48,6 +50,15 @@ export function registerTeamHandlers(): void {
     }
     await setSecret(telegramAccount(data.teamSlug, data.agentSlug), 'agent-telegram-token', token)
     return { ok: true, cleared: false }
+  })
+
+  ipcMain.handle('teams:validate', async (_e, slug: string) => {
+    const spec = await getTeam(slug)
+    if (!spec) return { ok: false, reason: 'Team not found' }
+    const providerRecords = await listProviders()
+    const result = validateTeamSpec(spec, providerRecords)
+    BrowserWindow.getAllWindows().forEach(w => w.webContents.send('spec:validation', { teamSlug: slug, ...result }))
+    return { ok: true }
   })
 
   ipcMain.handle('teams:derive', async (_e, slug: string) => {
