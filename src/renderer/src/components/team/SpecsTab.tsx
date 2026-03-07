@@ -1,6 +1,7 @@
-// Two-column Finder-style layout for team and agent spec editing
-// FEATURE: Team specifications tab with sidebar navigation and detail panel
+// Single-panel layout with dynamic Finder-style split when an agent is selected
+// FEATURE: Team specifications tab with overview, members list, and agent detail panel
 import { useCallback, useState } from 'react'
+import { cn } from '../../lib/utils'
 import type { AgentSpec, TeamSpec } from '../../../../shared/types'
 import { generateAutoAgentIdentities, DEFAULT_AGENT_NAME_THEME } from '../../../../shared/agentNames'
 import { useProviders } from '../../hooks/useProviders'
@@ -15,21 +16,20 @@ interface Props {
   isSaving: boolean
 }
 
-type RightPanel = { kind: 'none' } | { kind: 'team-edit' } | { kind: 'agent'; slug: string }
-
 const inputCls =
   'w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
 const monoInputCls = inputCls + ' font-mono'
-const textareaCls = 'w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none font-mono'
+const textareaCls =
+  'w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none font-mono'
 const labelCls = 'block text-xs font-medium text-gray-600 mb-1'
 
 export function SpecsTab({ spec, onSpecChange, onSave, onSaveSpec, isSaving }: Props) {
-  const [panel, setPanel] = useState<RightPanel>({ kind: 'none' })
+  const [isEditing, setIsEditing] = useState(false)
+  const [selectedAgentSlug, setSelectedAgentSlug] = useState<string | null>(null)
   const [isEditingAgent, setIsEditingAgent] = useState(false)
 
   const { data: providers } = useProviders()
   const { data: settings } = useSettings()
-
   const providerSlugs = (providers ?? []).map((p) => p.slug)
 
   const set = useCallback(
@@ -38,12 +38,18 @@ export function SpecsTab({ spec, onSpecChange, onSave, onSaveSpec, isSaving }: P
     [spec, onSpecChange],
   )
 
-  const handleTeamEditToggle = () => {
-    setPanel((prev) => (prev.kind === 'team-edit' ? { kind: 'none' } : { kind: 'team-edit' }))
+  const handleStartEdit = () => {
+    setIsEditing(true)
+    setSelectedAgentSlug(null)
   }
 
-  const handleAgentClick = (agentSlug: string) => {
-    setPanel({ kind: 'agent', slug: agentSlug })
+  const handleDoneEdit = async () => {
+    await onSave()
+    setIsEditing(false)
+  }
+
+  const handleAgentClick = (slug: string) => {
+    setSelectedAgentSlug(slug)
     setIsEditingAgent(false)
   }
 
@@ -58,20 +64,15 @@ export function SpecsTab({ spec, onSpecChange, onSave, onSaveSpec, isSaving }: P
       persona: '',
       provider: providerSlugs[0] ?? '',
     }
-    const updated = { ...spec, agents: [...spec.agents, newAgent] }
-    onSpecChange(updated)
-    setPanel({ kind: 'agent', slug: identity.slug })
+    onSpecChange({ ...spec, agents: [...spec.agents, newAgent] })
+    setSelectedAgentSlug(identity.slug)
     setIsEditingAgent(true)
   }
 
   const handleAgentChange = (updated: AgentSpec) => {
-    const agents = spec.agents.map((a) =>
-      a.slug === (panel.kind === 'agent' ? panel.slug : '') ? updated : a,
-    )
+    const agents = spec.agents.map((a) => (a.slug === selectedAgentSlug ? updated : a))
     onSpecChange({ ...spec, agents })
-    if (panel.kind === 'agent' && updated.slug !== panel.slug) {
-      setPanel({ kind: 'agent', slug: updated.slug })
-    }
+    if (updated.slug !== selectedAgentSlug) setSelectedAgentSlug(updated.slug)
   }
 
   const handleAgentSave = useCallback(async () => {
@@ -80,233 +81,174 @@ export function SpecsTab({ spec, onSpecChange, onSave, onSaveSpec, isSaving }: P
   }, [onSaveSpec, spec])
 
   const handleAgentDelete = () => {
-    if (panel.kind !== 'agent') return
-    const agents = spec.agents.filter((a) => a.slug !== panel.slug)
+    const agents = spec.agents.filter((a) => a.slug !== selectedAgentSlug)
     onSpecChange({ ...spec, agents })
-    setPanel({ kind: 'none' })
+    setSelectedAgentSlug(null)
   }
 
-  const selectedAgent =
-    panel.kind === 'agent' ? spec.agents.find((a) => a.slug === panel.slug) : undefined
+  const selectedAgent = selectedAgentSlug
+    ? spec.agents.find((a) => a.slug === selectedAgentSlug)
+    : undefined
+  const showRightPanel = !isEditing && selectedAgentSlug !== null
 
   return (
     <div className="flex flex-1 min-h-0 overflow-hidden">
-      {/* Left sidebar */}
-      <div className="w-80 shrink-0 flex flex-col border-r border-gray-200 overflow-hidden" style={{ background: '#f6f5f3' }}>
-
-        {/* Team section */}
-        <div className="px-3 pt-3 pb-1">
-          <div className="flex items-center justify-between mb-1 px-1">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-              Team
-            </span>
-            <button
-              onClick={handleTeamEditToggle}
-              className="text-[11px] font-medium text-blue-600 hover:text-blue-700 transition-colors"
-            >
-              {panel.kind === 'team-edit' ? 'Done' : 'Edit'}
-            </button>
-          </div>
-
-          <div
-            className={`rounded-md px-2 py-1.5 cursor-pointer transition-colors ${panel.kind === 'team-edit' ? 'bg-blue-50 ring-1 ring-blue-200' : 'hover:bg-black/5'}`}
-            onClick={handleTeamEditToggle}
-          >
-            <div className="flex items-baseline gap-2">
-              <span className="text-sm font-medium text-gray-900 truncate">{spec.name || 'Unnamed team'}</span>
-              <span className="text-[11px] font-mono text-gray-400 truncate">{spec.slug}</span>
-            </div>
-            {spec.telegramGroupId && (
-              <div className="text-[11px] text-gray-400 font-mono mt-0.5 truncate">
-                TG {spec.telegramGroupId}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="mx-4 my-2 h-px bg-gray-200" />
-
-        {/* Agents section */}
-        <div className="px-3 pb-1 shrink-0">
-          <div className="flex items-center justify-between mb-1 px-1">
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
-              Agents
-            </span>
-            <button
-              onClick={handleAddAgent}
-              className="text-[13px] font-medium text-blue-600 hover:text-blue-700 leading-none transition-colors"
-              title="Add agent"
-            >
-              +
-            </button>
-          </div>
-        </div>
-
-        {/* Agent list */}
-        <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-0.5">
-          {spec.agents.length === 0 ? (
-            <div className="px-1 py-2 text-xs text-gray-400">No agents yet. Click + to add one.</div>
-          ) : (
-            spec.agents.map((agent) => {
-              const isSelected = panel.kind === 'agent' && panel.slug === agent.slug
-              return (
-                <div
-                  key={agent.slug}
-                  onClick={() => handleAgentClick(agent.slug)}
-                  className={`flex items-center gap-2 rounded-md px-2 py-1.5 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 ring-1 ring-blue-200' : 'hover:bg-black/5'}`}
-                >
-                  {agent.emoji ? (
-                    <span className="text-base shrink-0">{agent.emoji}</span>
-                  ) : (
-                    <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-semibold text-gray-500 shrink-0">
-                      {(agent.name || '?').charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-sm font-medium text-gray-900 truncate">
-                        {agent.name || 'Unnamed'}
-                      </span>
-                      {agent.slug === spec.agents[0]?.slug && (
-                        <span className="text-[10px] text-blue-500 shrink-0">· Lead</span>
-                      )}
-                    </div>
-                    {agent.role && (
-                      <div className="text-[11px] text-gray-400 truncate">{agent.role}</div>
-                    )}
-                  </div>
-                </div>
-              )
-            })
-          )}
-        </div>
-      </div>
-
-      {/* Right panel */}
-      <div className="flex-1 bg-white flex flex-col min-h-0 overflow-hidden">
-        {panel.kind === 'none' && (
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-sm text-gray-400">Select an item to view details</p>
-          </div>
+      {/* Main panel */}
+      <div
+        className={cn(
+          'flex flex-col overflow-y-auto bg-[#f6f5f3]',
+          showRightPanel ? 'w-80 shrink-0 border-r border-gray-200' : 'flex-1',
         )}
+      >
+        {isEditing ? (
+          /* Edit form — full panel, members hidden */
+          <div className="max-w-2xl mx-auto w-full space-y-5 py-6 px-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900">Edit team</h3>
+                <p className="text-sm text-gray-500 mt-1">Update the team configuration and save when finished.</p>
+              </div>
+              <button
+                onClick={() => void handleDoneEdit()}
+                disabled={isSaving}
+                className="px-3 py-1.5 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              >
+                {isSaving ? 'Saving...' : 'Save'}
+              </button>
+            </div>
 
-        {panel.kind === 'team-edit' && (
-          <div className="flex-1 overflow-y-auto min-h-0">
-            <div className="max-w-2xl mx-auto space-y-5 py-6 px-6">
-              <div className="flex items-center justify-between">
+            <div>
+              <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-3">Team details</h4>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <h3 className="text-sm font-semibold text-gray-900">Edit team</h3>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Update the base team configuration and save when finished.
-                  </p>
+                  <label className={labelCls}>Name</label>
+                  <input className={inputCls} value={spec.name} onChange={(e) => set('name')(e.target.value)} placeholder="My Team" />
                 </div>
+                <div>
+                  <label className={labelCls}>Slug</label>
+                  <input className={monoInputCls} value={spec.slug} onChange={(e) => set('slug')(e.target.value)} placeholder="my-team" />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-3">Telegram integration</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>Group ID</label>
+                  <input className={monoInputCls} value={spec.telegramGroupId ?? ''} onChange={(e) => set('telegramGroupId')(e.target.value || undefined)} placeholder="-1001234567890" />
+                </div>
+                <div>
+                  <label className={labelCls}>Admin ID</label>
+                  <input className={monoInputCls} value={spec.telegramAdminId ?? ''} onChange={(e) => set('telegramAdminId')(e.target.value || undefined)} placeholder="123456789" />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-3">Infrastructure defaults</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>Default container image</label>
+                  <input className={monoInputCls} value={spec.defaultImage ?? ''} onChange={(e) => set('defaultImage')(e.target.value || undefined)} placeholder="ghcr.io/org/openclaw:latest" />
+                </div>
+                <div>
+                  <label className={labelCls}>Storage (Gi)</label>
+                  <input type="number" min={1} className={inputCls} value={spec.defaultDiskGi ?? ''} onChange={(e) => set('defaultDiskGi')(e.target.value ? parseInt(e.target.value, 10) : undefined)} placeholder="100" />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className={labelCls}>Startup instructions</label>
+              <textarea className={textareaCls} rows={4} value={spec.startupInstructions ?? ''} onChange={(e) => set('startupInstructions')(e.target.value || undefined)} placeholder="Custom startup instructions..." />
+            </div>
+          </div>
+        ) : (
+          /* Read view — Overview + Members */
+          <div className={cn('py-4 px-4 space-y-5', !showRightPanel && 'max-w-xl mx-auto w-full')}>
+
+            {/* Overview section */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Overview</span>
                 <button
-                  onClick={() => void onSave()}
-                  disabled={isSaving}
-                  className="px-3 py-1.5 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  onClick={handleStartEdit}
+                  className="text-[11px] font-medium text-blue-600 hover:text-blue-700 transition-colors"
                 >
-                  {isSaving ? 'Saving...' : 'Save'}
+                  Edit
                 </button>
               </div>
-
-              <div>
-                <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-3">
-                  Team details
-                </h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={labelCls}>Name</label>
-                    <input
-                      className={inputCls}
-                      value={spec.name}
-                      onChange={(e) => set('name')(e.target.value)}
-                      placeholder="My Team"
-                    />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Slug</label>
-                    <input
-                      className={monoInputCls}
-                      value={spec.slug}
-                      onChange={(e) => set('slug')(e.target.value)}
-                      placeholder="my-team"
-                    />
-                  </div>
+              <div className="rounded-lg border border-gray-200 bg-white px-3 py-2.5">
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <span className="text-sm font-semibold text-gray-900">{spec.name || 'Unnamed team'}</span>
+                  <span className="text-[11px] font-mono text-gray-400">{spec.slug}</span>
                 </div>
+                {spec.telegramGroupId && (
+                  <div className="text-[11px] font-mono text-gray-400 mt-0.5">TG {spec.telegramGroupId}</div>
+                )}
               </div>
+            </div>
 
-              <div>
-                <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-3">
-                  Telegram integration
-                </h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={labelCls}>Group ID</label>
-                    <input
-                      className={monoInputCls}
-                      value={spec.telegramGroupId ?? ''}
-                      onChange={(e) => set('telegramGroupId')(e.target.value || undefined)}
-                      placeholder="-1001234567890"
-                    />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Admin ID</label>
-                    <input
-                      className={monoInputCls}
-                      value={spec.telegramAdminId ?? ''}
-                      onChange={(e) => set('telegramAdminId')(e.target.value || undefined)}
-                      placeholder="123456789"
-                    />
-                  </div>
+            {/* Members section */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Members</span>
+                <button
+                  onClick={handleAddAgent}
+                  className="text-[13px] font-medium text-blue-600 hover:text-blue-700 leading-none transition-colors"
+                  title="Add agent"
+                >
+                  +
+                </button>
+              </div>
+              {spec.agents.length === 0 ? (
+                <div className="text-xs text-gray-400 py-1">No agents yet. Click + to add one.</div>
+              ) : (
+                <div className="space-y-0.5">
+                  {spec.agents.map((agent) => {
+                    const isSelected = agent.slug === selectedAgentSlug
+                    return (
+                      <div
+                        key={agent.slug}
+                        onClick={() => handleAgentClick(agent.slug)}
+                        className={cn(
+                          'flex items-center gap-2.5 rounded-lg px-2.5 py-2 cursor-pointer transition-colors',
+                          isSelected ? 'bg-blue-50 ring-1 ring-blue-200' : 'hover:bg-black/5',
+                        )}
+                      >
+                        {agent.emoji ? (
+                          <span className="text-lg shrink-0">{agent.emoji}</span>
+                        ) : (
+                          <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-[11px] font-semibold text-gray-500 shrink-0">
+                            {(agent.name || '?').charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-medium text-gray-900 truncate">{agent.name || 'Unnamed'}</span>
+                            {agent.slug === spec.agents[0]?.slug && (
+                              <span className="text-[10px] text-blue-500 shrink-0">· Lead</span>
+                            )}
+                          </div>
+                          {agent.role && (
+                            <div className="text-[11px] text-gray-400 truncate">{agent.role}</div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
-              </div>
-
-              <div>
-                <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-3">
-                  Infrastructure defaults
-                </h4>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={labelCls}>Default container image</label>
-                    <input
-                      className={monoInputCls}
-                      value={spec.defaultImage ?? ''}
-                      onChange={(e) => set('defaultImage')(e.target.value || undefined)}
-                      placeholder="ghcr.io/org/openclaw:latest"
-                    />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Storage (Gi)</label>
-                    <input
-                      type="number"
-                      min={1}
-                      className={inputCls}
-                      value={spec.defaultDiskGi ?? ''}
-                      onChange={(e) =>
-                        set('defaultDiskGi')(e.target.value ? parseInt(e.target.value, 10) : undefined)
-                      }
-                      placeholder="100"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className={labelCls}>Startup instructions</label>
-                <textarea
-                  className={textareaCls}
-                  rows={4}
-                  value={spec.startupInstructions ?? ''}
-                  onChange={(e) => set('startupInstructions')(e.target.value || undefined)}
-                  placeholder="Custom startup instructions..."
-                />
-              </div>
+              )}
             </div>
           </div>
         )}
+      </div>
 
-        {panel.kind === 'agent' && selectedAgent && (
-          <div className="flex-1 overflow-y-auto min-h-0">
+      {/* Right panel — agent detail */}
+      {showRightPanel && (
+        <div className="flex-1 bg-white overflow-y-auto min-h-0">
+          {selectedAgent ? (
             <div className="max-w-2xl mx-auto py-6 px-6">
               <AgentCard
                 teamSlug={spec.slug}
@@ -321,15 +263,13 @@ export function SpecsTab({ spec, onSpecChange, onSave, onSaveSpec, isSaving }: P
                 onDelete={handleAgentDelete}
               />
             </div>
-          </div>
-        )}
-
-        {panel.kind === 'agent' && !selectedAgent && (
-          <div className="flex-1 flex items-center justify-center">
-            <p className="text-sm text-gray-400">Agent not found</p>
-          </div>
-        )}
-      </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center h-full">
+              <p className="text-sm text-gray-400">Agent not found</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
