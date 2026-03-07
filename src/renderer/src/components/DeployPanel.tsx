@@ -64,8 +64,6 @@ export function DeployPanel({
   const [logEntries, setLogEntries] = useState<LogEntry[]>([])
   const [deployState, setDeployState] = useState<DeployState>('idle')
   const [viewingFile, setViewingFile] = useState<DeployFile | null>(null)
-  const [recreateDisks, setRecreateDisks] = useState(false)
-  const [recreatePods, setRecreatePods] = useState(false)
   const [previewFiles, setPreviewFiles] = useState<DeployFile[]>([])
   const [agentSelections, setAgentSelections] = useState<Map<string, AgentSelection>>(new Map())
   const logEndRef = useRef<HTMLDivElement>(null)
@@ -166,8 +164,8 @@ export function DeployPanel({
         teamSlug: spec.slug,
         envSlug: selectedEnvSlug,
         options: {
-          keepDisks: !recreateDisks,
-          forceRecreate: recreatePods,
+          keepDisks: true,
+          forceRecreate: false,
           ...(allSelected ? {} : { selectedPaths }),
         },
       })) as { ok: boolean; reason?: string }
@@ -183,7 +181,7 @@ export function DeployPanel({
       setDeployState('error')
       setLogEntries((prev) => [...prev, { type: 'status', line: `ERROR: ${error instanceof Error ? error.message : String(error)}`, color: 'text-red-600' }])
     }
-  }, [previewFiles, agentSelections, spec.slug, selectedEnvSlug, recreateDisks, recreatePods])
+  }, [previewFiles, agentSelections, spec.slug, selectedEnvSlug])
 
   const toggleAgentSelection = (slug: string, field: 'disk' | 'pod') => {
     setAgentSelections((prev) => {
@@ -232,28 +230,6 @@ export function DeployPanel({
             {deployState === 'error' && <AlertCircle className="w-3 h-3" />}
             {deployState === 'done' ? 'Deployed' : 'Failed'}
           </Badge>
-        )}
-        {deployState !== 'reviewing' && (
-          <>
-            <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={recreateDisks}
-                onChange={(e) => setRecreateDisks(e.target.checked)}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              Recreate disks
-            </label>
-            <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={recreatePods}
-                onChange={(e) => setRecreatePods(e.target.checked)}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              Recreate pods
-            </label>
-          </>
         )}
         {deployState === 'reviewing' ? (
           <>
