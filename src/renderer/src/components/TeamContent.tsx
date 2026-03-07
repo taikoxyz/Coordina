@@ -130,7 +130,7 @@ export function TeamContent({ slug }: { slug: string }) {
                 key={tab.id}
                 onClick={() => setTeamTab(tab.id)}
                 className={cn(
-                  'text-[13px] font-medium py-3 transition-colors relative',
+                  'text-sm font-medium py-3 transition-colors relative',
                   teamTab === tab.id
                     ? 'text-gray-900'
                     : 'text-gray-400 hover:text-gray-600',
@@ -163,7 +163,7 @@ export function TeamContent({ slug }: { slug: string }) {
 
             <div className="border-t border-gray-200 px-6 py-5 max-w-2xl space-y-4">
               <div className="flex items-center justify-between">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400">
+                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
                   Agents ({localSpec.agents.length})
                 </div>
                 <button
@@ -220,7 +220,7 @@ export function TeamContent({ slug }: { slug: string }) {
                     key={agent.slug}
                     onClick={() => selectAgent(agent.slug)}
                     className={cn(
-                      'w-full text-left px-3 py-2 text-[13px] transition-colors flex items-center gap-2',
+                      'w-full text-left px-3 py-2 text-sm transition-colors flex items-center gap-2',
                       agentSlug === agent.slug
                         ? 'bg-gray-200/70 text-gray-900 font-medium'
                         : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
@@ -229,7 +229,7 @@ export function TeamContent({ slug }: { slug: string }) {
                     {agent.emoji && <span className="text-sm">{agent.emoji}</span>}
                     <span className="truncate">{agent.name}</span>
                     {i === 0 && (
-                      <span className="ml-auto text-[10px] text-gray-400 font-normal shrink-0">
+                      <span className="ml-auto text-xs text-gray-400 font-normal shrink-0">
                         (Lead)
                       </span>
                     )}
@@ -250,7 +250,7 @@ export function TeamContent({ slug }: { slug: string }) {
                         key={tab.id}
                         onClick={() => setChatSubPanel(tab.id)}
                         className={cn(
-                          'text-[13px] font-medium py-3 transition-colors relative flex items-center gap-1.5',
+                          'text-sm font-medium py-3 transition-colors relative flex items-center gap-1.5',
                           chatSubPanel === tab.id
                             ? 'text-gray-900'
                             : 'text-gray-400 hover:text-gray-600',

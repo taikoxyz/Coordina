@@ -87,7 +87,7 @@ export function AgentsTab({ spec, onSpecChange, onSave, onSaveSpec, isSaving }: 
       <div className="w-52 shrink-0 border-r border-gray-100 bg-[#f6f5f3] flex flex-col">
         <div className="px-3 py-3 border-b border-gray-100">
           <div className="flex items-center justify-between gap-2">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400">
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
               Agents
             </div>
             <button
@@ -116,12 +116,12 @@ export function AgentsTab({ spec, onSpecChange, onSave, onSaveSpec, isSaving }: 
               )}
             >
               <div className="min-w-0">
-                <div className="text-[12px] font-medium truncate">
+                <div className="text-sm font-medium truncate">
                   {agent.name || agent.slug}
                   {index === 0 && <span className="text-gray-400 font-normal"> (Lead)</span>}
                 </div>
                 {agent.role && (
-                  <div className="text-[10px] text-gray-400 truncate">
+                  <div className="text-xs text-gray-400 truncate">
                     {agent.role}
                   </div>
                 )}

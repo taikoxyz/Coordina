@@ -135,7 +135,7 @@ export function DeployPanel({
               ))}
             </select>
           )}
-          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${statusBadgeCls}`}>
+          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium uppercase tracking-wider ${statusBadgeCls}`}>
             {deployState === 'done' && <Check className="w-3 h-3" />}
             {deployState === 'error' && <AlertCircle className="w-3 h-3" />}
             {(deployState === 'preparing' || deployState === 'deploying') && <Loader2 className="w-3 h-3 animate-spin" />}
@@ -157,7 +157,7 @@ export function DeployPanel({
       </div>
 
       <div className="flex-1 flex flex-col p-4 min-h-0">
-        <h5 className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2 shrink-0">Log</h5>
+        <h5 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2 shrink-0">Log</h5>
         <div className="flex-1 overflow-y-auto min-h-0 space-y-0.5 rounded-lg border border-gray-100 bg-gray-50/50 p-3">
           {logEntries.length === 0 ? (
             <div className="text-xs text-gray-400">

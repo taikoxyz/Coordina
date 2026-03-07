@@ -45,7 +45,7 @@ function SidebarGroupSection({
           ) : (
             <ChevronRight className="w-3 h-3 text-gray-400 shrink-0" />
           )}
-          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-400">
+          <span className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
             {title}
           </span>
         </button>
@@ -64,7 +64,7 @@ function SidebarGroupSection({
       {isExpanded && (
         <div>
           {items.length === 0 && (
-            <p className="px-3 pb-3 text-[10px] text-gray-400 text-center">
+            <p className="px-3 pb-3 text-xs text-gray-400 text-center">
               None configured
             </p>
           )}
@@ -92,12 +92,12 @@ function SidebarGroupSection({
                     </span>
                   )}
                   <div className="min-w-0 flex-1">
-                    <div className="text-[12px] font-medium truncate">{item.label}</div>
+                    <div className="text-sm font-medium truncate">{item.label}</div>
                     {item.sublabel && (
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-[10px] text-gray-400 truncate">{item.sublabel}</span>
+                        <span className="text-xs text-gray-400 truncate">{item.sublabel}</span>
                         {item.deployed && (
-                          <span className="text-[10px] text-green-500 shrink-0">deployed</span>
+                          <span className="text-xs text-green-500 shrink-0">deployed</span>
                         )}
                       </div>
                     )}
@@ -111,13 +111,13 @@ function SidebarGroupSection({
                           onDelete(item.slug)
                           setDeleteTarget(null)
                         }}
-                        className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-red-600 text-white hover:bg-red-700"
+                        className="px-1.5 py-0.5 text-xs font-medium rounded bg-red-600 text-white hover:bg-red-700"
                       >
                         Confirm
                       </button>
                       <button
                         onClick={() => setDeleteTarget(null)}
-                        className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        className="px-1.5 py-0.5 text-xs font-medium rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
                       >
                         Cancel
                       </button>

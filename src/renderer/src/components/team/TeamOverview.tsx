@@ -19,7 +19,7 @@ const inputCls = 'w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 
 const monoInputCls = inputCls + ' font-mono'
 const labelCls = 'block text-xs font-medium text-gray-600 mb-1'
 const valueCls = 'min-h-10 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700'
-const readLabelCls = 'text-[11px] font-medium uppercase tracking-[0.16em] text-gray-400'
+const readLabelCls = 'text-xs font-medium uppercase tracking-[0.16em] text-gray-400'
 const emptyValueCls = 'text-gray-400'
 
 function ReadField({ label, value, monospace = false }: { label: string; value?: string | number; monospace?: boolean }) {
@@ -207,7 +207,7 @@ export function TeamOverview({
                   <span className="truncate">
                     {deployEnvName || deployEnvSlug || 'No target selected'}
                   </span>
-                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium uppercase tracking-wider ${
                     deployState === 'done'
                       ? 'bg-green-50 text-green-700'
                       : deployState === 'error'
@@ -244,10 +244,10 @@ export function TeamOverview({
           <div className="flex items-center justify-between gap-4 border-b border-gray-200 px-5 py-2.5 shrink-0">
             <div className="flex items-center gap-2">
               <h4 className="text-sm font-semibold text-gray-900">Deploy output</h4>
-              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-gray-500">
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium uppercase tracking-wider text-gray-500">
                 {deployEnvName || deployEnvSlug || 'No target'}
               </span>
-              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
+              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium uppercase tracking-wider ${
                 deployState === 'done' ? 'bg-green-50 text-green-700' :
                 deployState === 'error' ? 'bg-red-50 text-red-700' :
                 deployState === 'preparing' || deployState === 'deploying' ? 'bg-yellow-50 text-yellow-700' :
@@ -275,8 +275,8 @@ export function TeamOverview({
             {/* Derived files */}
             <div className="w-64 shrink-0 flex flex-col p-3 min-h-0">
               <div className="flex items-center justify-between mb-2 shrink-0">
-                <h5 className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">Files</h5>
-                <span className="text-[10px] text-gray-400">{deployFiles.length}</span>
+                <h5 className="text-xs font-semibold uppercase tracking-wider text-gray-400">Files</h5>
+                <span className="text-xs text-gray-400">{deployFiles.length}</span>
               </div>
               <div className="flex-1 overflow-y-auto min-h-0 space-y-0.5">
                 {deployFiles.length === 0 ? (
@@ -293,7 +293,7 @@ export function TeamOverview({
 
             {/* Deploy log */}
             <div className="flex-1 flex flex-col p-3 min-h-0">
-              <h5 className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2 shrink-0">Log</h5>
+              <h5 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2 shrink-0">Log</h5>
               <div className="flex-1 overflow-y-auto min-h-0 space-y-0.5">
                 {deployLogs.length === 0 ? (
                   <div className="text-xs text-gray-400">
