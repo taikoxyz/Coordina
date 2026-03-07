@@ -277,13 +277,13 @@ export function TeamContent({ slug }: { slug: string }) {
                     </span>
                     <span className="truncate">{agent.name}</span>
                     <span className="ml-auto flex items-center gap-1 shrink-0">
-                      {isDeployed && (
-                        <span className={`w-1.5 h-1.5 rounded-full ${statusDotClass(agentStatuses.get(agent.slug))}`} />
-                      )}
                       {i === 0 && (
                         <span className="text-gray-400">
                           <Crown className="w-3 h-3" />
                         </span>
+                      )}
+                      {isDeployed && (
+                        <span className={`w-1.5 h-1.5 rounded-full ${statusDotClass(agentStatuses.get(agent.slug))}`} />
                       )}
                     </span>
                   </button>
