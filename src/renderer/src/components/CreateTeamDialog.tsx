@@ -9,26 +9,29 @@ const toSlug = (name: string) =>
   'team-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
 export function CreateTeamDialog() {
-  const { isCreateTeamOpen, setCreateTeamOpen, selectTeam } = useNav()
+  const { isCreateDialogOpen, setCreateDialogOpen, selectItem } = useNav()
   const saveTeam = useSaveTeam()
   const [name, setName] = useState('')
   const slug = name.trim() ? toSlug(name) : ''
+  const isOpen = isCreateDialogOpen === 'teams'
 
   const handleCreate = async () => {
     if (!name.trim() || !slug) return
     const newSpec: TeamSpec = { slug, name: name.trim(), agents: [] }
     await saveTeam.mutateAsync(newSpec)
-    selectTeam(slug)
-    setCreateTeamOpen(false)
+    selectItem({ type: 'team', slug })
+    setCreateDialogOpen(null)
     setName('')
   }
 
   return (
     <Dialog.Root
-      open={isCreateTeamOpen}
+      open={isOpen}
       onOpenChange={(open) => {
-        setCreateTeamOpen(open)
-        if (!open) setName('')
+        if (!open) {
+          setCreateDialogOpen(null)
+          setName('')
+        }
       }}
     >
       <Dialog.Portal>

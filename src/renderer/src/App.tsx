@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { TopBar } from './components/TopBar'
-import { SetupView } from './views/SetupView'
-import { WorkspaceView } from './views/WorkspaceView'
-import { RuntimeView } from './views/RuntimeView'
+import { AppSidebar } from './components/AppSidebar'
+import { MainContent } from './components/MainContent'
 import { SettingsDialog } from './components/SettingsDialog'
+import { CreateTeamDialog } from './components/CreateTeamDialog'
+import { CreateProviderDialog } from './components/CreateProviderDialog'
+import { CreateEnvironmentDialog } from './components/CreateEnvironmentDialog'
 import { useTeams } from './hooks/useTeams'
 import { useNav } from './store/nav'
 import './assets/main.css'
@@ -12,33 +13,30 @@ import './assets/main.css'
 const queryClient = new QueryClient()
 
 function AppContent() {
-  const { mode, teamSlug, selectTeam, setMode } = useNav()
+  const { selectedItem, selectItem } = useNav()
   const { data: teams, isFetched } = useTeams()
   const [hasResolved, setHasResolved] = useState(false)
 
   useEffect(() => {
     if (hasResolved || !isFetched) return
 
-    if (!teamSlug && teams?.length) {
-      selectTeam(teams[0].slug)
-    }
-
-    if (!teams?.length) {
-      setMode('setup')
+    if (!selectedItem && teams?.length) {
+      selectItem({ type: 'team', slug: teams[0].slug })
     }
 
     setHasResolved(true)
-  }, [hasResolved, isFetched, teams, teamSlug, selectTeam, setMode])
+  }, [hasResolved, isFetched, teams, selectedItem, selectItem])
 
   return (
-    <div className="flex flex-col h-screen bg-[var(--color-background)] text-[var(--color-foreground)]">
-      <TopBar />
+    <div className="flex h-screen bg-[var(--color-background)] text-[var(--color-foreground)]">
+      <AppSidebar />
       <main className="flex-1 overflow-hidden">
-        {mode === 'setup' && <SetupView />}
-        {mode === 'workspace' && <WorkspaceView />}
-        {mode === 'runtime' && <RuntimeView />}
+        <MainContent />
       </main>
       <SettingsDialog />
+      <CreateTeamDialog />
+      <CreateProviderDialog />
+      <CreateEnvironmentDialog />
     </div>
   )
 }

@@ -189,6 +189,26 @@ export async function* deployTeam(
     yield { resource: `Secret/${teamSlug}-${agentSlug}-credentials`, status: 'deleted', message: 'Agent removed from team spec' }
   }
 
+  const existingPvcNames = new Set<string>()
+  if (options.keepDisks) {
+    const pvcList = await coreApi.listNamespacedPersistentVolumeClaim({ namespace })
+      .catch(() => ({ items: [] } as { items: k8s.V1PersistentVolumeClaim[] }))
+    for (const pvc of pvcList.items ?? []) {
+      if (pvc.metadata?.name) existingPvcNames.add(pvc.metadata.name)
+    }
+  }
+
+  const newAgentPvPaths = new Set<string>()
+  const newAgentPvcPaths = new Set<string>()
+  for (const f of specFiles.filter(f => f.path.endsWith('/pvc.yaml'))) {
+    const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata: k8s.V1ObjectMeta }
+    if (doc?.metadata?.name && !existingPvcNames.has(doc.metadata.name)) {
+      newAgentPvcPaths.add(f.path)
+      const pvPath = f.path.replace('/pvc.yaml', '/pv.yaml')
+      newAgentPvPaths.add(pvPath)
+    }
+  }
+
   // keepDisks=false is a destructive reset path; terminate desired StatefulSets first so PVC/PV operations can proceed safely.
   if (!options.keepDisks) {
     for (const name of desiredStatefulSetNames) {
@@ -203,6 +223,10 @@ export async function* deployTeam(
     }
   }
 
+  const pvFilesToProcess = options.keepDisks
+    ? specFiles.filter(f => newAgentPvPaths.has(f.path))
+    : specFiles.filter(f => f.path.endsWith('/pv.yaml'))
+
   if (!options.keepDisks) {
     // Delete PVCs then PVs so K8s releases disk references before GCE disk operations
     for (const f of specFiles.filter(f => f.path.endsWith('/pvc.yaml'))) {
@@ -213,18 +237,19 @@ export async function* deployTeam(
       const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata: k8s.V1ObjectMeta }
       if (doc?.metadata?.name) await tryDelete(() => coreApi.deletePersistentVolume({ name: doc.metadata.name! }))
     }
-    for (const f of specFiles.filter(f => f.path.endsWith('/pv.yaml'))) {
-      const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata: k8s.V1ObjectMeta; spec?: { capacity?: { storage?: string } } }
-      const diskName = doc?.metadata?.name
-      if (!diskName) continue
-      const sizeGb = parseInt(doc.spec?.capacity?.storage ?? '10') || 10
-      try {
-        const diskStatus = await ensureGceDisk(token, config.projectId, config.diskZone ?? config.clusterZone, diskName, sizeGb)
-        yield { resource: `GCEDisk/${diskName}`, status: diskStatus }
-      } catch (e: unknown) {
-        yield { resource: `GCEDisk/${diskName}`, status: 'error', message: String(e) }
-        return
-      }
+  }
+
+  for (const f of pvFilesToProcess) {
+    const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata: k8s.V1ObjectMeta; spec?: { capacity?: { storage?: string } } }
+    const diskName = doc?.metadata?.name
+    if (!diskName) continue
+    const sizeGb = parseInt(doc.spec?.capacity?.storage ?? '10') || 10
+    try {
+      const diskStatus = await ensureGceDisk(token, config.projectId, config.diskZone ?? config.clusterZone, diskName, sizeGb)
+      yield { resource: `GCEDisk/${diskName}`, status: diskStatus }
+    } catch (e: unknown) {
+      yield { resource: `GCEDisk/${diskName}`, status: 'error', message: String(e) }
+      return
     }
   }
 
@@ -235,8 +260,8 @@ export async function* deployTeam(
   }
 
   const skipDiskPaths = new Set(options.keepDisks ? [
-    ...specFiles.filter(f => f.path.endsWith('/pv.yaml')).map(f => f.path),
-    ...specFiles.filter(f => f.path.endsWith('/pvc.yaml')).map(f => f.path),
+    ...specFiles.filter(f => f.path.endsWith('/pv.yaml') && !newAgentPvPaths.has(f.path)).map(f => f.path),
+    ...specFiles.filter(f => f.path.endsWith('/pvc.yaml') && !newAgentPvcPaths.has(f.path)).map(f => f.path),
   ] : [])
 
   const orderedPaths = [
