@@ -30,10 +30,6 @@ export function ChatTab({ spec, onSpecChange, onSaveSpec, envSlug }: Props) {
   )
   const [panelMode, setPanelMode] = useState<PanelMode>('chat')
 
-  const applyAgents = (agents: AgentSpec[]) => {
-    onSpecChange({ ...spec, agents, leadAgent: agents[0]?.slug || undefined })
-  }
-
   const addAutoAgents = (count: number) => {
     const generated = generateAutoAgentIdentities(
       spec.agents,
