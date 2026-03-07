@@ -24,13 +24,13 @@ const {
     },
     mockCoreApi: {
       deleteNamespacedPersistentVolumeClaim: vi.fn(),
-      deletePersistentVolume: vi.fn(),
       deleteNamespacedSecret: vi.fn(),
       deleteNamespacedService: vi.fn(),
       deleteNamespacedConfigMap: vi.fn(),
       deleteNamespacedPod: vi.fn(),
       deleteCollectionNamespacedService: vi.fn(),
       listNamespacedPod: vi.fn(),
+      listNamespacedPersistentVolumeClaim: vi.fn(),
       readNamespacedPod: vi.fn(),
     },
     mockAppsApi: {
@@ -101,7 +101,7 @@ beforeEach(() => {
   mockObjectApi.create.mockResolvedValue({})
 
   mockCoreApi.deleteNamespacedPersistentVolumeClaim.mockResolvedValue({})
-  mockCoreApi.deletePersistentVolume.mockResolvedValue({})
+  mockCoreApi.listNamespacedPersistentVolumeClaim.mockResolvedValue({ items: [] })
   mockCoreApi.deleteNamespacedSecret.mockResolvedValue({})
   mockCoreApi.deleteNamespacedService.mockResolvedValue({})
   mockCoreApi.deleteNamespacedConfigMap.mockResolvedValue({})

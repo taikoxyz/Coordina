@@ -79,29 +79,20 @@ export interface AgentManifestInput {
   podAnnotations?: Record<string, string>
 }
 
-export function generateAgentPv(input: { teamSlug: string; agentSlug: string; projectId: string; zone: string; diskGi?: number }): string {
-  const { teamSlug, agentSlug, projectId, zone, diskGi = 10 } = input
-  const name = `${teamSlug}-agent-${agentSlug}`
+export function generateStorageClass(input: { teamSlug: string }): string {
+  const { teamSlug } = input
   const manifest = {
-    apiVersion: 'v1',
-    kind: 'PersistentVolume',
-    metadata: { name, labels: { 'coordina.team': teamSlug, 'coordina.agent': agentSlug } },
-    spec: {
-      capacity: { storage: `${diskGi}Gi` },
-      accessModes: ['ReadWriteOnce'],
-      persistentVolumeReclaimPolicy: 'Retain',
-      storageClassName: '',
-      csi: {
-        driver: 'pd.csi.storage.gke.io',
-        volumeHandle: `projects/${projectId}/zones/${zone}/disks/${name}`,
-        fsType: 'ext4',
-      },
-      nodeAffinity: {
-        required: {
-          nodeSelectorTerms: [{ matchExpressions: [{ key: 'topology.kubernetes.io/zone', operator: 'In', values: [zone] }] }],
-        },
-      },
+    apiVersion: 'storage.k8s.io/v1',
+    kind: 'StorageClass',
+    metadata: {
+      name: `coordina-${teamSlug}`,
+      labels: { 'coordina.team': teamSlug },
     },
+    provisioner: 'pd.csi.storage.gke.io',
+    parameters: { type: 'pd-balanced' },
+    reclaimPolicy: 'Retain',
+    volumeBindingMode: 'WaitForFirstConsumer',
+    allowVolumeExpansion: true,
   }
   return yaml.dump(manifest)
 }
@@ -115,8 +106,7 @@ export function generateAgentPvc(input: { teamSlug: string; agentSlug: string; n
     metadata: { name, namespace, labels: { 'coordina.team': teamSlug, 'coordina.agent': agentSlug } },
     spec: {
       accessModes: ['ReadWriteOnce'],
-      storageClassName: '',
-      volumeName: name,
+      storageClassName: `coordina-${teamSlug}`,
       resources: { requests: { storage: `${diskGi}Gi` } },
     },
   }

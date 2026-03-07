@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { generateAgentStatefulSet, generateAgentService, generateIapBackendConfig, generateIngress, generateConfigMap, generateTeamConfigMap, generateAgentConfigMap } from './manifests'
+import { generateAgentStatefulSet, generateAgentService, generateIapBackendConfig, generateIngress, generateConfigMap, generateTeamConfigMap, generateAgentConfigMap, generateStorageClass, generateAgentPvc } from './manifests'
 
 describe('generateAgentStatefulSet', () => {
   it('generates StatefulSet manifest with deterministic PVC name', () => {
@@ -165,5 +165,35 @@ describe('generateAgentConfigMap', () => {
     expect(yaml).toContain('AGENTS.md: |')
     expect(yaml).toContain('USER.md: |')
     expect(yaml).toContain('TOOLS.md: |')
+  })
+})
+
+describe('generateStorageClass', () => {
+  it('generates StorageClass with Retain policy and WaitForFirstConsumer binding', () => {
+    const manifest = generateStorageClass({ teamSlug: 'eng-alpha' })
+    expect(manifest).toContain('kind: StorageClass')
+    expect(manifest).toContain('name: coordina-eng-alpha')
+    expect(manifest).toContain('provisioner: pd.csi.storage.gke.io')
+    expect(manifest).toContain('reclaimPolicy: Retain')
+    expect(manifest).toContain('volumeBindingMode: WaitForFirstConsumer')
+    expect(manifest).toContain('allowVolumeExpansion: true')
+    expect(manifest).toContain('type: pd-balanced')
+    expect(manifest).toContain('coordina.team: eng-alpha')
+  })
+})
+
+describe('generateAgentPvc', () => {
+  it('generates PVC with dynamic StorageClass instead of static volumeName', () => {
+    const manifest = generateAgentPvc({ teamSlug: 'eng-alpha', agentSlug: 'alice', namespace: 'eng-alpha' })
+    expect(manifest).toContain('kind: PersistentVolumeClaim')
+    expect(manifest).toContain('name: eng-alpha-agent-alice')
+    expect(manifest).toContain('storageClassName: coordina-eng-alpha')
+    expect(manifest).toContain('coordina.agent: alice')
+    expect(manifest).not.toContain('volumeName')
+  })
+
+  it('uses custom disk size when provided', () => {
+    const manifest = generateAgentPvc({ teamSlug: 'eng-alpha', agentSlug: 'alice', namespace: 'eng-alpha', diskGi: 50 })
+    expect(manifest).toContain('storage: 50Gi')
   })
 })

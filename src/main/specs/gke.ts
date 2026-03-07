@@ -5,7 +5,7 @@ import yaml from 'js-yaml'
 import {
   generateNamespace,
   generateTeamConfigMap,
-  generateAgentPv,
+  generateStorageClass,
   generateAgentPvc,
   generateAgentConfigMap,
   generateAgentStatefulSet,
@@ -91,6 +91,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
     const teamGatewayToken = deriveAgentToken(seed, spec.slug)
 
     files.push({ path: 'namespace.yaml', content: generateNamespace(namespace) })
+    files.push({ path: 'storageclass.yaml', content: generateStorageClass({ teamSlug: spec.slug }) })
 
     const hasGateways = true
     const teamMd = generateTeamMd({
@@ -201,7 +202,6 @@ const gkeDeriver: DeploymentSpecDeriver = {
           : {}),
       }
       const credentialSecretName = `${spec.slug}-${agent.slug}-credentials`
-      files.push({ path: `agents/${agent.slug}/pv.yaml`, content: generateAgentPv({ teamSlug: spec.slug, agentSlug: agent.slug, projectId, zone: diskZone ?? clusterZone, diskGi: agent.diskGi }) })
       files.push({ path: `agents/${agent.slug}/pvc.yaml`, content: generateAgentPvc({ teamSlug: spec.slug, agentSlug: agent.slug, namespace, diskGi: agent.diskGi }) })
       files.push({ path: `agents/${agent.slug}/credentials.yaml`, content: generateProviderSecret({ teamSlug: spec.slug, providerSlug: agent.provider, agentSlug: agent.slug, namespace, envVars: envVarsWithTelegram }) })
       const identityMd = generateIdentityMd({
