@@ -20,6 +20,7 @@ type RightPanel = { kind: 'none' } | { kind: 'team-edit' } | { kind: 'agent'; sl
 const inputCls =
   'w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
 const monoInputCls = inputCls + ' font-mono'
+const textareaCls = 'w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none font-mono'
 const labelCls = 'block text-xs font-medium text-gray-600 mb-1'
 
 export function SpecsTab({ spec, onSpecChange, onSave, onSaveSpec, isSaving }: Props) {
@@ -32,7 +33,8 @@ export function SpecsTab({ spec, onSpecChange, onSave, onSaveSpec, isSaving }: P
   const providerSlugs = (providers ?? []).map((p) => p.slug)
 
   const set = useCallback(
-    (key: keyof TeamSpec) => (value: unknown) => onSpecChange({ ...spec, [key]: value }),
+    <K extends keyof TeamSpec>(key: K) => (value: TeamSpec[K]) =>
+      onSpecChange({ ...spec, [key]: value }),
     [spec, onSpecChange],
   )
 
@@ -71,6 +73,11 @@ export function SpecsTab({ spec, onSpecChange, onSave, onSaveSpec, isSaving }: P
       setPanel({ kind: 'agent', slug: updated.slug })
     }
   }
+
+  const handleAgentSave = useCallback(async () => {
+    await onSaveSpec(spec)
+    setIsEditingAgent(false)
+  }, [onSaveSpec, spec])
 
   const handleAgentDelete = () => {
     if (panel.kind !== 'agent') return
@@ -140,7 +147,7 @@ export function SpecsTab({ spec, onSpecChange, onSave, onSaveSpec, isSaving }: P
           {spec.agents.length === 0 ? (
             <div className="px-1 py-2 text-xs text-gray-400">No agents yet. Click + to add one.</div>
           ) : (
-            spec.agents.map((agent, index) => {
+            spec.agents.map((agent) => {
               const isSelected = panel.kind === 'agent' && panel.slug === agent.slug
               return (
                 <div
@@ -160,7 +167,7 @@ export function SpecsTab({ spec, onSpecChange, onSave, onSaveSpec, isSaving }: P
                       <span className="text-sm font-medium text-gray-900 truncate">
                         {agent.name || 'Unnamed'}
                       </span>
-                      {index === 0 && (
+                      {agent.slug === spec.agents[0]?.slug && (
                         <span className="text-[10px] text-blue-500 shrink-0">· Lead</span>
                       )}
                     </div>
@@ -287,7 +294,7 @@ export function SpecsTab({ spec, onSpecChange, onSave, onSaveSpec, isSaving }: P
               <div>
                 <label className={labelCls}>Startup instructions</label>
                 <textarea
-                  className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none font-mono"
+                  className={textareaCls}
                   rows={4}
                   value={spec.startupInstructions ?? ''}
                   onChange={(e) => set('startupInstructions')(e.target.value || undefined)}
@@ -308,10 +315,7 @@ export function SpecsTab({ spec, onSpecChange, onSave, onSaveSpec, isSaving }: P
                 providerSlugs={providerSlugs}
                 isEditing={isEditingAgent}
                 onEdit={() => setIsEditingAgent(true)}
-                onSave={async () => {
-                  await onSaveSpec(spec)
-                  setIsEditingAgent(false)
-                }}
+                onSave={handleAgentSave}
                 isSaving={isSaving}
                 onChange={handleAgentChange}
                 onDelete={handleAgentDelete}
