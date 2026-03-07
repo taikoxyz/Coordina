@@ -29,6 +29,8 @@ export function DeployPanel({
   const [logEntries, setLogEntries] = useState<LogEntry[]>([])
   const [deployState, setDeployState] = useState<DeployState>('idle')
   const [viewingFile, setViewingFile] = useState<DeployFile | null>(null)
+  const [recreateDisks, setRecreateDisks] = useState(false)
+  const [recreatePods, setRecreatePods] = useState(false)
   const logEndRef = useRef<HTMLDivElement>(null)
   const logEntriesRef = useRef(logEntries)
   logEntriesRef.current = logEntries
@@ -105,7 +107,7 @@ export function DeployPanel({
       const result = (await window.api.invoke('deploy:team', {
         teamSlug: spec.slug,
         envSlug: selectedEnvSlug,
-        options: { keepDisks: true, forceRecreate: false },
+        options: { keepDisks: !recreateDisks, forceRecreate: recreatePods },
       })) as { ok: boolean; reason?: string }
 
       if (result.ok) {
@@ -121,7 +123,7 @@ export function DeployPanel({
       setLogEntries((prev) => [...prev, { type: 'status', line: `ERROR: ${error instanceof Error ? error.message : String(error)}`, color: 'text-red-600' }])
       queueMicrotask(persistLogs)
     }
-  }, [selectedEnvSlug, spec.slug, onSave, persistLogs])
+  }, [selectedEnvSlug, spec.slug, onSave, persistLogs, recreateDisks, recreatePods])
 
   const statusBadgeCls =
     deployState === 'done'
@@ -162,18 +164,38 @@ export function DeployPanel({
             {statusLabel}
           </span>
         </div>
-        <button
-          onClick={() => void handleDeploy()}
-          disabled={!selectedEnvSlug || isSaving || deployState === 'preparing' || deployState === 'deploying'}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 transition-colors"
-        >
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={recreateDisks}
+              onChange={(e) => setRecreateDisks(e.target.checked)}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            Recreate disks
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={recreatePods}
+              onChange={(e) => setRecreatePods(e.target.checked)}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            Recreate pods
+          </label>
+          <button
+            onClick={() => void handleDeploy()}
+            disabled={!selectedEnvSlug || isSaving || deployState === 'preparing' || deployState === 'deploying'}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-gray-900 text-white hover:bg-gray-800 disabled:opacity-50 transition-colors"
+          >
           {deployState === 'preparing' || deployState === 'deploying' ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
           ) : (
             <Rocket className="w-3.5 h-3.5" />
           )}
-          Deploy
-        </button>
+            Deploy
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 flex flex-col p-4 min-h-0">
