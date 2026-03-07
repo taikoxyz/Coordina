@@ -26,26 +26,22 @@ function createWindow(): void {
     }
   })
 
-  const resetZoom = () => {
-    mainWindow.webContents.setZoomFactor(1)
-    mainWindow.webContents.setZoomLevel(0)
-  }
-
   mainWindow.webContents.on('before-input-event', (event, input) => {
-    const isZoomShortcut = ['Equal', 'Minus', 'Digit0', 'NumpadAdd', 'NumpadSubtract', 'Numpad0'].includes(input.code)
-
-    if ((input.control || input.meta) && isZoomShortcut) {
+    if (!input.meta && !input.control) return
+    if (input.type !== 'keyDown') return
+    if (input.key === '-') {
+      mainWindow.webContents.setZoomLevel(mainWindow.webContents.getZoomLevel() - 1)
       event.preventDefault()
-      resetZoom()
+    } else if (input.key === '=' || input.key === '+') {
+      mainWindow.webContents.setZoomLevel(mainWindow.webContents.getZoomLevel() + 1)
+      event.preventDefault()
+    } else if (input.key === '0') {
+      mainWindow.webContents.setZoomLevel(0)
+      event.preventDefault()
     }
   })
 
-  mainWindow.webContents.on('zoom-changed', () => {
-    resetZoom()
-  })
-
   mainWindow.on('ready-to-show', () => {
-    resetZoom()
     mainWindow.show()
   })
 
@@ -61,10 +57,6 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
-
-  mainWindow.webContents.on('did-finish-load', () => {
-    resetZoom()
-  })
 }
 
 // This method will be called when Electron has finished

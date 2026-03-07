@@ -21,8 +21,8 @@ function TeamRow({ team, isActive }: { team: TeamSpec; isActive: boolean }) {
         {team.name.charAt(0).toUpperCase()}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium truncate">{team.name}</div>
-        <div className="text-xs text-gray-400 truncate">
+        <div className="text-base font-medium truncate">{team.name}</div>
+        <div className="text-sm text-gray-400 truncate">
           {team.agents.length} agent{team.agents.length !== 1 ? 's' : ''}
           {team.lastDeployedAt && (
             <span className="ml-1.5 text-green-500">deployed</span>
@@ -72,7 +72,7 @@ export function Sidebar() {
             />
           ))}
           {!teams?.length && (
-            <p className="px-4 py-4 text-xs text-gray-400 text-center">
+            <p className="px-4 py-4 text-sm text-gray-400 text-center">
               No teams yet
             </p>
           )}
@@ -84,7 +84,7 @@ export function Sidebar() {
         <button
           onClick={() => setPage('settings')}
           className={cn(
-            'w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-left text-sm transition-colors',
+            'w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-left text-base transition-colors',
             page === 'settings'
               ? 'bg-white shadow-sm text-gray-900'
               : 'text-gray-500 hover:bg-white/60 hover:text-gray-900',

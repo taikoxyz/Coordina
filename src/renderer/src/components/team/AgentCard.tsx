@@ -4,6 +4,7 @@ import { cn } from '../../lib/utils'
 import { deriveSlug } from '../../../../shared/slug'
 import type { AgentSpec } from '../../../../shared/types'
 import { PERSONA_CATALOG, getPersonasByDivision } from '../../../../shared/personaCatalog'
+import { InfoGroup, InfoRow, InfoBlock } from '../ui/InfoGroup'
 
 interface Props {
   teamSlug: string
@@ -21,20 +22,6 @@ interface Props {
 const inputCls =
   'w-full rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
 const labelCls = 'block text-xs font-medium text-gray-500 mb-1'
-const valueCls = 'min-h-10 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700'
-const emptyValueCls = 'text-gray-400'
-
-function ReadField({ label, value, monospace = false }: { label: string; value?: string | number; monospace?: boolean }) {
-  const hasValue = value !== undefined && value !== null && `${value}`.trim().length > 0
-  return (
-    <div>
-      <label className={labelCls}>{label}</label>
-      <div className={`${valueCls} ${monospace ? 'font-mono text-xs' : ''} ${hasValue ? '' : emptyValueCls}`}>
-        {hasValue ? value : 'Not set'}
-      </div>
-    </div>
-  )
-}
 
 export function AgentCard({
   teamSlug,
@@ -145,7 +132,7 @@ export function AgentCard({
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-gray-900 truncate">
+            <span className="text-base font-medium text-gray-900 truncate">
               {agent.name || 'Unnamed agent'}
             </span>
             {isFirst && (
@@ -159,7 +146,7 @@ export function AgentCard({
               </span>
             )}
           </div>
-          <div className="text-xs text-gray-400 truncate">
+          <div className="text-sm text-gray-400 truncate">
             {agent.provider && (
               <span className="font-mono">{agent.provider}</span>
             )}
@@ -172,7 +159,7 @@ export function AgentCard({
               <button
                 onClick={() => void onSave()}
                 disabled={isSaving}
-                className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="px-3 py-1.5 text-base font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
                 {isSaving ? 'Saving...' : 'Save'}
               </button>
@@ -186,7 +173,7 @@ export function AgentCard({
           ) : (
             <button
               onClick={onEdit}
-              className="px-3 py-1.5 text-xs font-medium rounded-md bg-gray-900 text-white hover:bg-gray-800 transition-colors"
+              className="px-3 py-1.5 text-base font-medium rounded-md bg-gray-900 text-white hover:bg-gray-800 transition-colors"
             >
               Edit agent
             </button>
@@ -334,7 +321,7 @@ export function AgentCard({
                   <button
                     onClick={saveToken}
                     disabled={tokenBusy || !teamSlug || !agent.slug}
-                    className="px-2.5 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 shrink-0"
+                    className="px-2.5 py-1.5 text-base font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 shrink-0"
                   >
                     Save
                   </button>
@@ -342,7 +329,7 @@ export function AgentCard({
                     <button
                       onClick={clearToken}
                       disabled={tokenBusy}
-                      className="px-2.5 py-1.5 text-xs font-medium rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50 shrink-0"
+                      className="px-2.5 py-1.5 text-base font-medium rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50 shrink-0"
                     >
                       Clear
                     </button>
@@ -404,50 +391,32 @@ export function AgentCard({
             </div>
           </>
         ) : (
-          <>
-            <div className="grid grid-cols-3 gap-3">
-              <ReadField label="Emoji" value={agent.emoji} />
-              <ReadField label="Avatar URL" value={agent.avatar} monospace />
-              <ReadField label="Provider" value={agent.provider} monospace />
-            </div>
+          <div>
+            <InfoGroup title="Identity">
+              <InfoRow label="Emoji" value={agent.emoji} />
+              <InfoRow label="Avatar URL" value={agent.avatar} />
+              <InfoRow label="Provider" value={agent.provider} />
+            </InfoGroup>
 
-            <hr className="border-gray-100" />
+            <InfoGroup title="Telegram">
+              <InfoRow label="Bot ID" value={agent.telegramBot} />
+              <InfoRow label="Token" value={tokenMasked ?? undefined} />
+              {tokenError && (
+                <p className="text-xs text-red-600 pb-1">{tokenError}</p>
+              )}
+            </InfoGroup>
 
-            <div className="grid grid-cols-2 gap-3">
-              <ReadField label="Telegram Bot ID" value={agent.telegramBot} monospace />
-              <div>
-                <label className={labelCls}>Telegram Token</label>
-                <div className={`${valueCls} font-mono text-xs ${tokenMasked ? '' : emptyValueCls}`}>
-                  {tokenMasked || 'Not set'}
-                </div>
-                {tokenError && (
-                  <p className="text-xs text-red-600 mt-0.5">{tokenError}</p>
-                )}
-              </div>
-            </div>
+            <InfoGroup title="Infrastructure">
+              <InfoRow label="Container image" value={agent.image} />
+              <InfoRow label="CPU (cores)" value={agent.cpu} />
+              <InfoRow label="Disk (Gi)" value={agent.diskGi} />
+            </InfoGroup>
 
-            <hr className="border-gray-100" />
-
-            <div className="grid grid-cols-3 gap-3">
-              <ReadField label="Container image" value={agent.image} monospace />
-              <ReadField label="CPU (cores)" value={agent.cpu} />
-              <ReadField label="Disk (Gi)" value={agent.diskGi} />
-            </div>
-
-            <hr className="border-gray-100" />
-
-            <div>
-              <label className={labelCls}>Persona</label>
-              <div className={`${valueCls} min-h-24 whitespace-pre-wrap ${agent.persona?.trim() ? '' : emptyValueCls}`}>
-                {agent.persona?.trim() || 'Not set'}
-              </div>
-            </div>
-
-            <ReadField
-              label="Skills"
-              value={agent.skills.length > 0 ? agent.skills.join(', ') : undefined}
-            />
-          </>
+            <InfoGroup title="Persona">
+              <InfoBlock value={agent.persona} />
+              <InfoRow label="Skills" value={agent.skills.length > 0 ? agent.skills.join(', ') : undefined} />
+            </InfoGroup>
+          </div>
         )}
       </div>
     </div>

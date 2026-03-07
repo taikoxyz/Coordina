@@ -15,7 +15,7 @@ export function TeamToolbar({ spec, showSaveButton = true, onSave, isSaving = fa
   return (
     <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-white shrink-0">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-1.5 text-sm min-w-0">
+      <div className="flex items-center gap-1.5 text-base min-w-0">
         <button
           onClick={() => setPage('teams')}
           className="text-gray-500 hover:text-gray-700 transition-colors"
@@ -33,7 +33,7 @@ export function TeamToolbar({ spec, showSaveButton = true, onSave, isSaving = fa
           <button
             onClick={onSave}
             disabled={isSaving}
-            className="px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="px-3 py-1.5 text-base font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
             {isSaving ? 'Saving...' : 'Save'}
           </button>

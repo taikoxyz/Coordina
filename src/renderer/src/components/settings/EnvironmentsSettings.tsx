@@ -121,7 +121,7 @@ export function EnvironmentsSettings() {
         {!gkeExists && !form && (
           <button
             onClick={openForm}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-base font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" /> Add GKE
           </button>
@@ -248,7 +248,7 @@ export function EnvironmentsSettings() {
             </div>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            <button onClick={openForm} className="px-2.5 py-1 text-xs font-medium rounded-md text-gray-600 hover:bg-gray-100 transition-colors">
+            <button onClick={openForm} className="px-2.5 py-1 text-base font-medium rounded-md text-gray-600 hover:bg-gray-100 transition-colors">
               Edit
             </button>
             <button
@@ -264,13 +264,13 @@ export function EnvironmentsSettings() {
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => { deleteEnv.mutate(env.slug); setDeleteTarget(null) }}
-                    className="px-2.5 py-1 text-xs font-medium rounded-md bg-red-600 text-white hover:bg-red-700"
+                    className="px-2.5 py-1 text-base font-medium rounded-md bg-red-600 text-white hover:bg-red-700"
                   >
                     Confirm
                   </button>
                   <button
                     onClick={() => setDeleteTarget(null)}
-                    className="px-2.5 py-1 text-xs font-medium rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    className="px-2.5 py-1 text-base font-medium rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200"
                   >
                     Cancel
                   </button>
