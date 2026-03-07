@@ -1,14 +1,13 @@
-import { useMemo, useState, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import {
   AssistantRuntimeProvider,
   useExternalStoreRuntime,
   ThreadPrimitive,
   MessagePrimitive,
   ComposerPrimitive,
-  AttachmentPrimitive,
   useMessage,
 } from '@assistant-ui/react'
-import type { AppendMessage, ThreadMessageLike, AttachmentAdapter, PendingAttachment } from '@assistant-ui/react'
+import type { AppendMessage, ThreadMessageLike } from '@assistant-ui/react'
 import { useGatewayChat } from '../../hooks/useGatewayChat'
 import type { ChatMessage } from '../../hooks/useGatewayChat'
 
@@ -18,24 +17,6 @@ interface Props {
   agentSlug?: string
   agentName?: string
   onClose?: () => void
-}
-
-const attachmentAdapter: AttachmentAdapter = {
-  accept: '*/*',
-  async add({ file }) {
-    return {
-      id: `${Date.now()}-${Math.random()}`,
-      type: file.type.startsWith('image/') ? 'image' : 'file',
-      name: file.name,
-      contentType: file.type || 'application/octet-stream',
-      file,
-      status: { type: 'requires-action', reason: 'composer-send' },
-    }
-  },
-  async send(pending: PendingAttachment) {
-    return { ...pending, status: { type: 'complete' }, content: [] }
-  },
-  async remove() {},
 }
 
 function convertMessage(msg: ChatMessage): ThreadMessageLike {
@@ -126,29 +107,6 @@ function Message() {
   )
 }
 
-function ComposerAttachment() {
-  return (
-    <AttachmentPrimitive.Root
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        padding: '2px 8px',
-        borderRadius: 12,
-        background: '#e8f4fb',
-        color: '#2a7ae2',
-        fontSize: 12,
-        border: '1px solid #b8d9f5',
-      }}
-    >
-      <AttachmentPrimitive.Name />
-      <AttachmentPrimitive.Remove style={{ marginLeft: 2, color: '#7ab3e0', cursor: 'pointer' }}>
-        ✕
-      </AttachmentPrimitive.Remove>
-    </AttachmentPrimitive.Root>
-  )
-}
-
 export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: Props) {
   const { messages, connected, error, sendMessage, hasMore, loadingOlder, loadingInitial, loadOlderMessages } =
     useGatewayChat(teamSlug, agentSlug, envSlug)
@@ -160,24 +118,18 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
         .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
         .map(p => p.text)
         .join('')
-      const files = (appendMsg.attachments ?? [])
-        .map(a => a.file)
-        .filter((f): f is File => f instanceof File)
       setSending(true)
-      await sendMessage(text, files)
+      await sendMessage(text)
       setSending(false)
     },
     [sendMessage],
   )
-
-  const adapters = useMemo(() => ({ attachments: attachmentAdapter }), [])
 
   const runtime = useExternalStoreRuntime({
     messages,
     isRunning: sending,
     convertMessage,
     onNew,
-    adapters,
   })
 
   const displayName = agentName ?? `${teamSlug} agent`
@@ -353,35 +305,17 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
             flexShrink: 0,
           }}
         >
-          <ComposerPrimitive.Root style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <ComposerPrimitive.Attachments components={{ Attachment: ComposerAttachment }} />
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                background: '#ffffff',
-                borderRadius: 22,
-                padding: '4px 4px 4px 10px',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
-              }}
-            >
-              <ComposerPrimitive.AddAttachment
-                style={{
-                  color: '#aaaaaa',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '0 2px',
-                  flexShrink: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
-                </svg>
-              </ComposerPrimitive.AddAttachment>
+          <ComposerPrimitive.Root
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: '#ffffff',
+              borderRadius: 22,
+              padding: '4px 4px 4px 10px',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+            }}
+          >
               <ComposerPrimitive.Input
                 style={{
                   flex: 1,
@@ -418,7 +352,6 @@ export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: P
                   <polygon points="22 2 15 22 11 13 2 9 22 2" fill="white" stroke="none" />
                 </svg>
               </ComposerPrimitive.Send>
-            </div>
           </ComposerPrimitive.Root>
         </div>
       </ThreadPrimitive.Root>
