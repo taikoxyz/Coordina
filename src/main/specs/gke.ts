@@ -209,7 +209,6 @@ const gkeDeriver: DeploymentSpecDeriver = {
         name: agent.name,
         role: agent.role,
         persona: agent.persona,
-        emoji: agent.emoji,
         avatar: agent.avatar,
         teamName: spec.name,
         teamSlug: spec.slug,

@@ -18,7 +18,6 @@ export interface AgentSpec {
   slug: string
   name: string
   role: string
-  emoji?: string
   avatar?: string
   telegramBot?: string
   email?: string
