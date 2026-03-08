@@ -211,12 +211,6 @@ const gkeDeriver: DeploymentSpecDeriver = {
         ...(hasTelegramRouting && telegramBotToken
           ? { TELEGRAM_BOT_TOKEN: telegramBotToken }
           : {}),
-        ...(spec.teamEmail && secrets?.teamEmailPassword && effectiveEmail ? {
-          EMAIL_ADDRESS: effectiveEmail,
-          EMAIL_IMAP_HOST: 'imap.gmail.com',
-          EMAIL_SMTP_HOST: 'smtp.gmail.com',
-          EMAIL_PASSWORD: secrets.teamEmailPassword,
-        } : {}),
       }
       const credentialSecretName = `${spec.slug}-${agent.slug}-credentials`
       files.push({ path: `agents/${agent.slug}/pvc.yaml`, content: generateAgentPvc({ teamSlug: spec.slug, agentSlug: agent.slug, namespace, diskGi: agent.diskGi }) })
