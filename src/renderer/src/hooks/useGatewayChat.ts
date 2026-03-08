@@ -84,8 +84,8 @@ function errorFromStatus(status: number, detail?: string): GatewayChatError {
 
 const MAX_MESSAGES = 500
 
-export function useGatewayChat(teamSlug: string, agentSlug?: string, envSlug?: string) {
-  const conversationKey = `${teamSlug}::${envSlug ?? '__default_env__'}::${agentSlug ?? '__lead__'}`
+export function useGatewayChat(teamSlug: string, agentSlug?: string, envSlug?: string, projectSlug?: string) {
+  const conversationKey = `${teamSlug}::${envSlug ?? '__default_env__'}::${agentSlug ?? '__lead__'}::${projectSlug ?? '__untagged__'}`
   const [messagesByConversation, setMessagesByConversation] = useState<Record<string, ChatMessage[]>>({})
   const [hasMoreByConversation, setHasMoreByConversation] = useState<Record<string, boolean>>({})
   const [connected, setConnected] = useState(true)
@@ -105,9 +105,10 @@ export function useGatewayChat(teamSlug: string, agentSlug?: string, envSlug?: s
       teamSlug,
       envSlug: envSlug ?? '__default_env__',
       agentSlug: agentSlug ?? '__lead__',
+      projectSlug: projectSlug ?? '__untagged__',
       message,
     }).catch(() => undefined)
-  }, [conversationKey, teamSlug, envSlug, agentSlug])
+  }, [conversationKey, teamSlug, envSlug, agentSlug, projectSlug])
 
   useEffect(() => {
     setConnected(true)
@@ -120,6 +121,7 @@ export function useGatewayChat(teamSlug: string, agentSlug?: string, envSlug?: s
       teamSlug,
       envSlug: envSlug ?? '__default_env__',
       agentSlug: agentSlug ?? '__lead__',
+      projectSlug: projectSlug ?? '__untagged__',
     }).then((result: unknown) => {
       const { messages: loaded, hasMore: more } = result as { messages: ChatMessage[]; hasMore: boolean }
       setMessagesByConversation(prev => ({ ...prev, [conversationKey]: loaded }))
@@ -139,6 +141,7 @@ export function useGatewayChat(teamSlug: string, agentSlug?: string, envSlug?: s
         teamSlug,
         envSlug: envSlug ?? '__default_env__',
         agentSlug: agentSlug ?? '__lead__',
+        projectSlug: projectSlug ?? '__untagged__',
         offset,
       }) as { messages: ChatMessage[]; hasMore: boolean }
       setMessagesByConversation(prev => ({
@@ -149,7 +152,7 @@ export function useGatewayChat(teamSlug: string, agentSlug?: string, envSlug?: s
     } finally {
       setLoadingOlder(false)
     }
-  }, [conversationKey, hasMore, loadingOlder, messagesByConversation, teamSlug, envSlug, agentSlug])
+  }, [conversationKey, hasMore, loadingOlder, messagesByConversation, teamSlug, envSlug, agentSlug, projectSlug])
 
   const sendMessage = useCallback(async (content: string) => {
     const text = content.trim()

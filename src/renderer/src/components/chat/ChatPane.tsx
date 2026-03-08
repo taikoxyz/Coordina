@@ -16,6 +16,7 @@ interface Props {
   envSlug?: string
   agentSlug?: string
   agentName?: string
+  projectSlug?: string
   onClose?: () => void
 }
 
@@ -79,9 +80,9 @@ function Message() {
   )
 }
 
-export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, onClose }: Props) {
+export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, projectSlug, onClose }: Props) {
   const { messages, connected, error, sendMessage, hasMore, loadingOlder, loadingInitial, loadOlderMessages } =
-    useGatewayChat(teamSlug, agentSlug, envSlug)
+    useGatewayChat(teamSlug, agentSlug, envSlug, projectSlug)
   const [sending, setSending] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 

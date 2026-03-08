@@ -5,8 +5,10 @@ import { useTeam, useSaveTeam } from '../hooks/useTeams'
 import { useProviders } from '../hooks/useProviders'
 import { useSettings } from '../hooks/useSettings'
 import { useAgentStatuses } from '../hooks/useAgentStatuses'
+import { useProjects } from '../hooks/useProjects'
 import { SpecEditor } from './SpecEditor'
 import { AgentCard } from './team/AgentCard'
+import { ProjectSelector } from './team/ProjectSelector'
 import { DeployPanel } from './DeployPanel'
 import { ChatPane } from './chat/ChatPane'
 import { FileBrowser } from './files/FileBrowser'
@@ -30,7 +32,7 @@ const tabs: { id: TeamTab; label: string }[] = [
 type ChatSubPanel = 'chat' | 'files'
 
 export function TeamContent({ slug }: { slug: string }) {
-  const { teamTab, setTeamTab, agentSlug, selectAgent } = useNav()
+  const { teamTab, setTeamTab, agentSlug, selectAgent, projectSlug, selectProject } = useNav()
   const { data: savedSpec } = useTeam(slug)
   const saveTeam = useSaveTeam()
 
@@ -114,6 +116,8 @@ export function TeamContent({ slug }: { slug: string }) {
       setEditingAgentSlug(null)
     }
   }
+
+  const { data: projects } = useProjects(localSpec?.slug ?? '')
 
   const { statuses: agentStatuses } = useAgentStatuses(
     localSpec?.slug ?? '',
@@ -319,6 +323,16 @@ export function TeamContent({ slug }: { slug: string }) {
                       </button>
                     ))}
                   </div>
+                  {chatSubPanel === 'chat' && (projects ?? []).length > 0 && (
+                    <div className="ml-auto">
+                      <ProjectSelector
+                        projects={projects ?? []}
+                        selectedSlug={projectSlug}
+                        onSelect={selectProject}
+                        allowUntagged={!!isLead}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -332,12 +346,19 @@ export function TeamContent({ slug }: { slug: string }) {
                 ) : (
                   <>
                     {chatSubPanel === 'chat' && (
-                      <ChatPane
-                        teamSlug={localSpec.slug}
-                        envSlug={localSpec.deployedEnvSlug}
-                        agentSlug={isLead ? undefined : selectedAgent?.slug}
-                        agentName={selectedAgent?.name}
-                      />
+                      !isLead && (projects ?? []).length > 0 && projectSlug === null ? (
+                        <div className="flex items-center justify-center h-full text-sm text-gray-400">
+                          Select a project to start chatting with {selectedAgent?.name ?? 'this agent'}.
+                        </div>
+                      ) : (
+                        <ChatPane
+                          teamSlug={localSpec.slug}
+                          envSlug={localSpec.deployedEnvSlug}
+                          agentSlug={isLead ? undefined : selectedAgent?.slug}
+                          agentName={selectedAgent?.name}
+                          projectSlug={projectSlug ?? undefined}
+                        />
+                      )
                     )}
                     {chatSubPanel === 'files' && selectedAgent && (
                       <FileBrowser

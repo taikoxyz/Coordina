@@ -1,3 +1,5 @@
+import type { Project } from '../../shared/types'
+
 export interface AgentIdentity {
   name: string
   role: string
@@ -43,6 +45,7 @@ export interface AgentsInput {
   agentName: string
   role: string
   teamName: string
+  teamSlug?: string
   leadAgent?: string
   isLead: boolean
   hasTelegram: boolean
@@ -62,6 +65,8 @@ export interface UserInput {
 
 export interface ToolsInput {
   hasGateways: boolean
+  isLead?: boolean
+  teamSlug?: string
   primaryModel?: string
   toolGuidance?: string[]
 }
@@ -114,6 +119,17 @@ export function generateSkillsMd(skills: string[]): string {
   if (skills.length === 0) return '# Skills\n\n_No skills defined yet._\n'
   const list = skills.map(s => `- ${s}`).join('\n')
   return `# Skills\n\n${list}\n`
+}
+
+export function generateProjectsMd(projects: Project[]): string {
+  if (projects.length === 0) return '# Projects\n\n_No projects yet._\n'
+  const sections: string[] = ['# Projects']
+  for (const p of projects) {
+    sections.push('', `## ${p.slug}`, `- Name: ${p.name}`, `- Status: ${p.status}`)
+    if (p.description) sections.push(`- Description: ${p.description}`)
+  }
+  sections.push('')
+  return sections.join('\n')
 }
 
 export function generateTeamMd(team: {
@@ -241,7 +257,19 @@ export function generateAgentsMd(input: AgentsInput): string {
   if (input.operatingRules && input.operatingRules.length > 0) {
     for (const rule of input.operatingRules) ruleLines.push(`- ${rule}`)
   }
+  ruleLines.push('- When communicating with teammates via gateway, always include project context in your messages')
   lines.push(...ruleLines)
+
+  if (input.isLead) {
+    lines.push(
+      '',
+      '### Project Management',
+      '- Create and manage projects to organize team work using the project API (see TOOLS.md)',
+      '- Always specify the project context when assigning tasks to teammates',
+      '- Read PROJECTS.md for the current project list',
+      '- When delegating work, tell teammates which project the task belongs to',
+    )
+  }
 
   lines.push('')
   return lines.join('\n')
@@ -312,6 +340,31 @@ export function generateToolsMd(input: ToolsInput): string {
   if (input.toolGuidance && input.toolGuidance.length > 0) {
     lines.push('', '## Custom Guidance')
     for (const g of input.toolGuidance) lines.push(`- ${g}`)
+  }
+
+  if (input.isLead && input.teamSlug) {
+    lines.push(
+      '',
+      '## Project Management',
+      'Create a project:',
+      '```',
+      `curl -s -X POST http://127.0.0.1:19876/api/teams/${input.teamSlug}/projects \\`,
+      '  -H "Content-Type: application/json" \\',
+      `  -d '{"name": "Project Name", "description": "Optional description", "createdBy": "<your-slug>"}'`,
+      '```',
+      '',
+      'List projects:',
+      '```',
+      `curl -s http://127.0.0.1:19876/api/teams/${input.teamSlug}/projects`,
+      '```',
+      '',
+      'Update project status:',
+      '```',
+      `curl -s -X PATCH http://127.0.0.1:19876/api/teams/${input.teamSlug}/projects/<project-slug> \\`,
+      '  -H "Content-Type: application/json" \\',
+      '  -d \'{"status": "completed"}\'',
+      '```',
+    )
   }
 
   lines.push('')

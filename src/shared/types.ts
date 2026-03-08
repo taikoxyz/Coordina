@@ -120,3 +120,12 @@ export interface DeployResult {
   gatewayUrl?: string
   reason?: string
 }
+
+export interface Project {
+  slug: string
+  name: string
+  description?: string
+  status: 'active' | 'completed' | 'archived'
+  createdAt: number
+  createdBy: string
+}

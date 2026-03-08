@@ -22,6 +22,7 @@ import {
   generateUserMd,
   generateToolsMd,
   generateOpenClawJson,
+  generateProjectsMd,
 } from '../github/spec'
 
 import { DEFAULT_BOOTSTRAP_INSTRUCTIONS } from './bootstrap'
@@ -32,6 +33,7 @@ import type { TeamSpec, ProviderRecord, SpecFile } from '../../shared/types'
 import { getProvider } from '../providers/base'
 import { saveTeam } from '../store/teams'
 import { resolveGatewayMode } from '../gateway/mode'
+import { listProjects } from '../store/projects'
 
 function deriveAgentToken(seed: string, agentSlug: string): string {
   return createHmac('sha256', seed).update(agentSlug).digest('hex').slice(0, 48)
@@ -106,11 +108,14 @@ const gkeDeriver: DeploymentSpecDeriver = {
       })),
     })
     const bootstrapMd = spec.startupInstructions || DEFAULT_BOOTSTRAP_INSTRUCTIONS
-    const teamConfig = generateTeamConfigMap({ teamSlug: spec.slug, namespace, teamMd, bootstrapMd })
+    const projects = await listProjects(spec.slug)
+    const projectsMd = generateProjectsMd(projects)
+    const teamConfig = generateTeamConfigMap({ teamSlug: spec.slug, namespace, teamMd, bootstrapMd, projectsMd })
     const teamConfigHash = createHash('sha256').update(teamConfig).digest('hex')
 
     files.push({ path: 'TEAM.md', content: teamMd })
     files.push({ path: 'BOOTSTRAP.md', content: bootstrapMd })
+    files.push({ path: 'PROJECTS.md', content: projectsMd })
     files.push({ path: 'configmap-shared.yaml', content: teamConfig })
 
     for (const agent of spec.agents) {
@@ -240,6 +245,8 @@ const gkeDeriver: DeploymentSpecDeriver = {
       })
       const toolsMd = generateToolsMd({
         hasGateways,
+        isLead: agent.slug === spec.leadAgent,
+        teamSlug: spec.slug,
         primaryModel: openclawConfig.agents?.defaults?.model?.primary,
         toolGuidance: agent.toolGuidance,
       })
