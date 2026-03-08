@@ -141,7 +141,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
               groupPolicy: 'allowlist',
               groupAllowFrom: [telegramAdminId!],
               groups: {
-                [telegramGroupId!]: { requireMention: true },
+                [telegramGroupId!]: { requireMention: agent.slug !== spec.leadAgent },
               },
               streaming: 'partial',
             },
@@ -240,6 +240,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
       })
       const toolsMd = generateToolsMd({
         hasGateways,
+        primaryModel: openclawConfig.agents?.defaults?.model?.primary,
         toolGuidance: agent.toolGuidance,
       })
       const openclawJson = generateOpenClawJson(openclawConfigWithGateway)

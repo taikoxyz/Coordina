@@ -246,13 +246,19 @@ describe('generateUserMd', () => {
 
 describe('generateToolsMd', () => {
   it('includes inter-agent communication when hasGateways', () => {
-    const md = generateToolsMd({ hasGateways: true })
+    const md = generateToolsMd({ hasGateways: true, primaryModel: 'anthropic/claude-sonnet-4-6' })
     expect(md).toContain('# Tools')
     expect(md).toContain('## Inter-Agent Communication')
     expect(md).toContain('curl -s -m 300')
     expect(md).toContain('POST <gateway>/v1/responses')
     expect(md).toContain('Authorization: Bearer <gateway_token>')
     expect(md).toContain('Do NOT use OpenClaw node/tailnet commands')
+    expect(md).toContain('"model": "anthropic/claude-sonnet-4-6"')
+  })
+
+  it('uses placeholder model when primaryModel is not provided', () => {
+    const md = generateToolsMd({ hasGateways: true })
+    expect(md).toContain('"model": "<model>"')
   })
 
   it('omits inter-agent section when no gateways', () => {
