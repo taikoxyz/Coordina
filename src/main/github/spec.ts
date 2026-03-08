@@ -62,6 +62,7 @@ export interface UserInput {
 
 export interface ToolsInput {
   hasGateways: boolean
+  primaryModel?: string
   toolGuidance?: string[]
 }
 
@@ -293,7 +294,7 @@ export function generateToolsMd(input: ToolsInput): string {
       'curl -s -m 300 -X POST <gateway>/v1/responses \\',
       '  -H "Authorization: Bearer <gateway_token>" \\',
       '  -H "Content-Type: application/json" \\',
-      '  -d \'{"model": "anthropic/claude-sonnet-4-6", "input": "Your message here"}\'',
+      `  -d '{"model": "${input.primaryModel ?? '<model>'}", "input": "Your message here"}'`,
       '```',
       '',
       'The `-m 300` flag sets a 5-minute timeout. Replace `<gateway>` and `<gateway_token>` with values from TEAM.md.',
