@@ -23,8 +23,12 @@ export interface OpenClawConfig {
   agents: { defaults: { model: { primary: string; fallbacks?: string[] } } }
   models: { providers: { [provider: string]: { apiKey?: string; baseUrl?: string; api?: string } } }
   gateway?: {
+    bind?: string
     host?: string
-    auth?: { token?: string }
+    auth?: {
+      mode?: string
+      token?: string
+    }
     http?: {
       endpoints?: {
         responses?: {

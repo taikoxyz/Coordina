@@ -70,12 +70,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
     envConfig: Record<string, unknown>,
     secrets?: DeriveSecrets
   ): Promise<SpecFile[]> {
-    const {
-      projectId,
-      clusterZone,
-      diskZone,
-      domain: envDomain,
-    } = envConfig as { projectId: string; clusterZone: string; diskZone?: string; domain?: string; gatewayMode?: 'port-forward' | 'ingress' }
+    const { domain: envDomain } = envConfig as { domain?: string }
     const namespace = spec.slug
     const mode = resolveGatewayMode(envConfig)
     const ingressDomain = mode === 'ingress' ? envDomain : undefined
@@ -182,9 +177,11 @@ const gkeDeriver: DeploymentSpecDeriver = {
         },
         gateway: {
           ...baseGateway,
+          bind: (baseGateway.bind as string | undefined) ?? 'lan',
           mode: 'local',
           auth: {
             ...((baseGateway.auth as Record<string, unknown> | undefined) ?? {}),
+            mode: ((((baseGateway.auth as Record<string, unknown> | undefined) ?? {}).mode) as string | undefined) ?? 'token',
             token: agentToken,
           },
           http: {

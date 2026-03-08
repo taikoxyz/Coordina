@@ -131,9 +131,11 @@ describe('generateOpenClawJson gateway', () => {
     const config: import('./spec').OpenClawConfig = {
       agents: { defaults: { model: { primary: 'anthropic/claude-sonnet-4-6' } } },
       models: { providers: { anthropic: {} } },
-      gateway: { auth: { token: 'tok-gateway' } },
+      gateway: { bind: 'lan', auth: { mode: 'token', token: 'tok-gateway' } },
     }
     const parsed = JSON.parse(generateOpenClawJson(config))
+    expect(parsed.gateway.bind).toBe('lan')
+    expect(parsed.gateway.auth.mode).toBe('token')
     expect(parsed.gateway.auth.token).toBe('tok-gateway')
   })
 })
