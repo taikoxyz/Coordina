@@ -1,6 +1,7 @@
 import type { Project } from '../../shared/types'
 
 export interface AgentIdentity {
+  slug: string
   name: string
   role: string
   persona?: string
@@ -73,6 +74,7 @@ export interface ToolsInput {
 
 export function generateIdentityMd(agent: AgentIdentity): string {
   const lines: string[] = [
+    `Slug: ${agent.slug}`,
     `Name: ${agent.name}`,
     `Creature: ${agent.role}`,
   ]

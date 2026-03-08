@@ -3,24 +3,24 @@ import { generateIdentityMd, generateMemoryMd, generateSoulMd, generateOpenClawJ
 
 describe('generateIdentityMd', () => {
   it('outputs key-value format with Name and Creature', () => {
-    const md = generateIdentityMd({ name: 'Alice Chen', role: 'Engineer' })
+    const md = generateIdentityMd({ slug: 'alice-chen', name: 'Alice Chen', role: 'Engineer' })
     expect(md).toContain('Name: Alice Chen')
     expect(md).toContain('Creature: Engineer')
   })
 
   it('includes Vibe when persona provided', () => {
-    const md = generateIdentityMd({ name: 'Alice', role: 'Engineer', persona: 'Sharp and curious.' })
+    const md = generateIdentityMd({ slug: 'alice', name: 'Alice', role: 'Engineer', persona: 'Sharp and curious.' })
     expect(md).toContain('Vibe: Sharp and curious.')
   })
 
   it('includes emoji and avatar when present', () => {
-    const md = generateIdentityMd({ name: 'Alice', role: 'Engineer', emoji: '🤖', avatar: '/avatar.png' })
+    const md = generateIdentityMd({ slug: 'alice', name: 'Alice', role: 'Engineer', emoji: '🤖', avatar: '/avatar.png' })
     expect(md).toContain('Emoji: 🤖')
     expect(md).toContain('Avatar: /avatar.png')
   })
 
   it('omits optional fields when absent', () => {
-    const md = generateIdentityMd({ name: 'Bob', role: 'PM' })
+    const md = generateIdentityMd({ slug: 'bob', name: 'Bob', role: 'PM' })
     expect(md).not.toContain('Vibe:')
     expect(md).not.toContain('Emoji:')
     expect(md).not.toContain('Avatar:')
@@ -28,6 +28,7 @@ describe('generateIdentityMd', () => {
 
   it('adds team context as inline key-values when provided', () => {
     const md = generateIdentityMd({
+      slug: 'alice',
       name: 'Alice',
       role: 'Engineer',
       teamName: 'Team Phoenix',

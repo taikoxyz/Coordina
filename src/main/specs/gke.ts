@@ -211,6 +211,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
       files.push({ path: `agents/${agent.slug}/pvc.yaml`, content: generateAgentPvc({ teamSlug: spec.slug, agentSlug: agent.slug, namespace, diskGi: agent.diskGi }) })
       files.push({ path: `agents/${agent.slug}/credentials.yaml`, content: generateProviderSecret({ teamSlug: spec.slug, providerSlug: agent.provider, agentSlug: agent.slug, namespace, envVars: envVarsWithTelegram }) })
       const identityMd = generateIdentityMd({
+        slug: agent.slug,
         name: agent.name,
         role: agent.role,
         persona: agent.persona,
