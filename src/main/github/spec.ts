@@ -153,14 +153,6 @@ export function generateTeamMd(team: {
   if (team.leadAgent) lines.push(`- lead: ${team.leadAgent}`)
   if (team.gatewayToken) lines.push(`- gateway_token: ${team.gatewayToken}`)
   lines.push('')
-  if (team.gatewayToken) {
-    lines.push(
-      '## Gateway Usage',
-      'Use `gateway_token` in the `Authorization: Bearer` header when calling any teammate\'s `gateway` URL.',
-      'See TOOLS.md for curl examples and parameter details.',
-      '',
-    )
-  }
   lines.push('## Members')
   for (const a of team.agents) {
     lines.push(`### ${a.slug}`)
@@ -240,12 +232,7 @@ export function generateAgentsMd(input: AgentsInput): string {
       'All agent-to-agent communication MUST go through the gateway HTTP API — never via Telegram or any other channel.',
       'Telegram is for admin-to-agent communication only.',
       '',
-      'To contact a teammate:',
-      '1. Look up the teammate in the **Team Directory** section at the bottom of this file — each member is listed as `### <slug>` with `- name:`, `- gateway:`, and the shared `gateway_token`',
-      '2. Use the `exec` tool to run a curl POST to `<gateway>/v1/responses` (see `TOOLS.md` for the exact command)',
-      '3. Include full context in your message so the recipient can act without asking follow-up questions',
-      '',
-      'IMPORTANT: Always copy the gateway URL exactly from the Team Directory. Never construct or guess URLs yourself.',
+      'To message a teammate, find their `gateway` URL in the **Team Directory** at the bottom of this file, then follow the curl instructions in `TOOLS.md`.',
     )
   }
   if (input.hasTelegram) {
@@ -261,7 +248,6 @@ export function generateAgentsMd(input: AgentsInput): string {
   if (input.operatingRules && input.operatingRules.length > 0) {
     for (const rule of input.operatingRules) ruleLines.push(`- ${rule}`)
   }
-  ruleLines.push('- When communicating with teammates via gateway, always include project context in your messages')
   lines.push(...ruleLines)
 
   if (input.isLead) {
@@ -332,21 +318,16 @@ export function generateToolsMd(input: ToolsInput): string {
       `| \`model\` | \`${input.primaryModel ?? '<model>'}\` | Model to use for the response |`,
       '| `input` | Your message | Plain text message to the teammate |',
       '',
-      '### Step-by-step: messaging a teammate',
-      '1. Look up the teammate in the **Team Directory** section of `AGENTS.md`:',
-      '   - Each member is listed as `### <slug>` with `- name: <full name>` below it',
-      '   - Search by the `name:` field if you only know the teammate\'s first or full name',
-      '   - Copy the teammate\'s `gateway` URL from their section',
-      '   - Copy the shared `gateway_token` from the Team Directory `## About` section',
-      '2. Write the JSON body to `/tmp/msg.json` using `printf` — put your full message in the `input` field',
-      '3. Run the `curl` command using the `exec` tool with `-d @/tmp/msg.json`',
+      '### Steps',
+      '1. Find the teammate\'s `gateway` URL and the shared `gateway_token` in the **Team Directory** of `AGENTS.md` (search by `name:` if you only know their first name)',
+      '2. Write the JSON body to `/tmp/msg.json` using `printf` — include full project context in your message',
+      '3. Run the `curl` command with the `exec` tool',
       '',
-      '### Important',
+      '### Rules',
       '- Always use `-m 300` (5-minute timeout) — responses can take time',
-      '- Always include project context in your message so the recipient has full context',
+      '- Always write JSON to a file first — never pass JSON directly in `-d \'...\'`',
       '- Use the `exec` tool (not `bash`) to run curl commands',
       '- Do NOT use OpenClaw node/tailnet commands — only the HTTP gateway',
-      '- Always write JSON to a file first — never pass JSON directly in `-d \'...\'` to avoid shell quoting errors',
     )
   }
 

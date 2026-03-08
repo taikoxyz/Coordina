@@ -175,7 +175,6 @@ describe('generateAgentsMd', () => {
   it('includes gateway communication note when hasGateways', () => {
     const md = generateAgentsMd({ ...base, hasGateways: true })
     expect(md).toContain('Team Directory')
-    expect(md).toContain('find them by name')
     expect(md).toContain('TOOLS.md')
   })
 
@@ -341,7 +340,7 @@ describe('generateTeamMd', () => {
     expect(md).toContain('- gateway: http://agent-alice.team.svc.cluster.local:18789')
     expect(md).toContain('### bob')
     expect(md).toContain('- gateway: http://agent-bob.team.svc.cluster.local:18789')
-    expect(md.match(/gateway_token/g)?.length).toBe(2)
+    expect(md.match(/gateway_token/g)?.length).toBe(1)
   })
 
   it('does not include Communication Protocol section', () => {
