@@ -424,6 +424,7 @@ export function generateToolsMd(input: ToolsInput): string {
     '',
     '| Manager | Command | Notes |',
     '|---------|---------|-------|',
+    '| apt | `apt-get install -y <pkg>` | System packages, runs as root |',
     '| npm | `npm install -g <pkg>` | NPM_CONFIG_PREFIX is pre-configured |',
     '| pip | `pip install <pkg>` | PIP_USER=true, installs to PYTHONUSERBASE |',
     '| go | `go install <pkg>@latest` | GOPATH is set |',
