@@ -5,9 +5,9 @@ import { useProviders, useSaveProvider } from '../hooks/useProviders'
 import type { ProviderRecord } from '../../../shared/types'
 import { Button, Input, Select, Label, DialogShell } from './ui'
 
-const PROVIDER_TYPES = ['anthropic', 'openai', 'deepseek', 'openrouter', 'ollama']
+const PROVIDER_TYPES = ['anthropic', 'openai', 'deepseek', 'openrouter', 'minimax', 'ollama']
 const PROVIDER_NAMES: Record<string, string> = {
-  anthropic: 'Anthropic', openai: 'OpenAI', deepseek: 'DeepSeek', openrouter: 'OpenRouter', ollama: 'Ollama',
+  anthropic: 'Anthropic', openai: 'OpenAI', deepseek: 'DeepSeek', openrouter: 'OpenRouter', minimax: 'MiniMax', ollama: 'Ollama',
 }
 
 type KeyStatus = 'idle' | 'checking' | 'valid' | 'error'
