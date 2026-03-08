@@ -174,8 +174,16 @@ describe('generateAgentsMd', () => {
 
   it('includes gateway communication note when hasGateways', () => {
     const md = generateAgentsMd({ ...base, hasGateways: true })
-    expect(md).toContain('read TEAM.md for their gateway URL')
+    expect(md).toContain('Read `TEAM.md`')
+    expect(md).toContain('find them by name')
     expect(md).toContain('TOOLS.md')
+  })
+
+  it('inlines teamMd when provided', () => {
+    const md = generateAgentsMd({ ...base, teamMd: '# Team: Phoenix\n\n## Members\n### bob\n- name: Bob Li\n' })
+    expect(md).toContain('# Team: Phoenix')
+    expect(md).toContain('### bob')
+    expect(md).toContain('- name: Bob Li')
   })
 
   it('includes custom operating rules', () => {
@@ -332,7 +340,7 @@ describe('generateTeamMd', () => {
     expect(md).toContain('- gateway: http://agent-alice.team.svc.cluster.local:18789')
     expect(md).toContain('### bob')
     expect(md).toContain('- gateway: http://agent-bob.team.svc.cluster.local:18789')
-    expect(md.match(/gateway_token/g)?.length).toBe(1)
+    expect(md.match(/gateway_token/g)?.length).toBe(2)
   })
 
   it('does not include Communication Protocol section', () => {

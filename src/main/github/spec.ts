@@ -54,6 +54,7 @@ export interface AgentsInput {
   hasTelegram: boolean
   hasGateways: boolean
   operatingRules?: string[]
+  teamMd?: string
 }
 
 export interface UserInput {
@@ -240,7 +241,7 @@ export function generateAgentsMd(input: AgentsInput): string {
       'Telegram is for admin-to-agent communication only.',
       '',
       'To contact a teammate:',
-      '1. Read `TEAM.md` — it lists each teammate\'s `gateway` URL and the shared `gateway_token`',
+      '1. Read `TEAM.md` — each member is listed as `### <slug>` with a `- name:` field; find them by name if you only know their first name',
       '2. Use the `exec` tool to run a curl POST to `<gateway>/v1/responses` (see `TOOLS.md` for the exact command)',
       '3. Include full context in your message so the recipient can act without asking follow-up questions',
       '',
@@ -274,6 +275,7 @@ export function generateAgentsMd(input: AgentsInput): string {
     )
   }
 
+  if (input.teamMd) lines.push('', input.teamMd.trimEnd())
   lines.push('')
   return lines.join('\n')
 }
@@ -327,9 +329,11 @@ export function generateToolsMd(input: ToolsInput): string {
       '| `input` | Your message | Plain text message to the teammate |',
       '',
       '### Step-by-step: messaging a teammate',
-      '1. Read `TEAM.md` to find:',
-      '   - The teammate\'s `gateway` URL (under their `### <slug>` section)',
-      '   - The shared `gateway_token` (under `## About` → `gateway_token`)',
+      '1. Read `TEAM.md` to find the teammate:',
+      '   - Each member is listed as `### <slug>` with `- name: <full name>` below it',
+      '   - Search by the `name:` field if you only know the teammate\'s first or full name',
+      '   - Copy the teammate\'s `gateway` URL from their section',
+      '   - Copy the shared `gateway_token` from `## About` → `gateway_token`',
       '2. Replace `<gateway>` and `<gateway_token>` in the curl command above with those values',
       '3. Run the command using the `exec` tool',
       '',
