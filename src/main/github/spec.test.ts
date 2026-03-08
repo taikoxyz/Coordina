@@ -179,13 +179,6 @@ describe('generateAgentsMd', () => {
     expect(md).toContain('TOOLS.md')
   })
 
-  it('inlines teamMd when provided', () => {
-    const md = generateAgentsMd({ ...base, teamMd: '# Team: Phoenix\n\n## Members\n### bob\n- name: Bob Li\n' })
-    expect(md).toContain('# Team: Phoenix')
-    expect(md).toContain('### bob')
-    expect(md).toContain('- name: Bob Li')
-  })
-
   it('includes custom operating rules', () => {
     const md = generateAgentsMd({ ...base, operatingRules: ['Always cite sources', 'Use formal language'] })
     expect(md).toContain('- Always cite sources')

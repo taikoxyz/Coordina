@@ -54,7 +54,6 @@ export interface AgentsInput {
   hasTelegram: boolean
   hasGateways: boolean
   operatingRules?: string[]
-  teamMd?: string
 }
 
 export interface UserInput {
@@ -275,7 +274,6 @@ export function generateAgentsMd(input: AgentsInput): string {
     )
   }
 
-  if (input.teamMd) lines.push('', input.teamMd.trimEnd())
   lines.push('')
   return lines.join('\n')
 }
