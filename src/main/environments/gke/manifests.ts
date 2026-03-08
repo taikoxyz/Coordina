@@ -195,6 +195,7 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
           containers: [{
             name: 'openclaw',
             image,
+            securityContext: { runAsUser: 0 },
             ports: [{ containerPort: 18789, name: 'gateway' }],
             env: [
               { name: 'OPENCLAW_WORKSPACE_DIR', value: workspaceDir },
