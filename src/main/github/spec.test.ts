@@ -32,12 +32,10 @@ describe('generateIdentityMd', () => {
       name: 'Alice',
       role: 'Engineer',
       teamName: 'Team Phoenix',
-      teamSlug: 'team-phoenix',
       leadAgent: 'lead-agent',
       teamSize: 5,
     })
     expect(md).toContain('Team: Team Phoenix')
-    expect(md).toContain('Team slug: team-phoenix')
     expect(md).toContain('Team lead: lead-agent')
     expect(md).toContain('Team members: 5')
   })

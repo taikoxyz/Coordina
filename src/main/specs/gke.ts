@@ -217,7 +217,6 @@ const gkeDeriver: DeploymentSpecDeriver = {
         persona: agent.persona,
         avatar: agent.avatar,
         teamName: spec.name,
-        teamSlug: spec.slug,
         leadAgent: spec.leadAgent,
         teamSize: spec.agents.length,
       })

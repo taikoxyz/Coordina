@@ -8,7 +8,6 @@ export interface AgentIdentity {
   emoji?: string
   avatar?: string
   teamName?: string
-  teamSlug?: string
   leadAgent?: string
   teamSize?: number
 }
@@ -82,7 +81,6 @@ export function generateIdentityMd(agent: AgentIdentity): string {
   if (agent.emoji) lines.push(`Emoji: ${agent.emoji}`)
   if (agent.avatar) lines.push(`Avatar: ${agent.avatar}`)
   if (agent.teamName) lines.push(`Team: ${agent.teamName}`)
-  if (agent.teamSlug) lines.push(`Team slug: ${agent.teamSlug}`)
   if (agent.leadAgent) lines.push(`Team lead: ${agent.leadAgent}`)
   if (typeof agent.teamSize === 'number') lines.push(`Team members: ${agent.teamSize}`)
   return lines.join('\n') + '\n'
