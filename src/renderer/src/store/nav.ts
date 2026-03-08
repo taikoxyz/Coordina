@@ -15,6 +15,7 @@ interface NavStore {
   selectedItem: SelectedItem | null
   teamTab: TeamTab
   agentSlug: string | null
+  projectSlug: string | null
   isSettingsOpen: boolean
   isCreateDialogOpen: SidebarGroup | null
 
@@ -22,6 +23,7 @@ interface NavStore {
   selectItem: (item: SelectedItem) => void
   setTeamTab: (tab: TeamTab) => void
   selectAgent: (slug: string | null) => void
+  selectProject: (slug: string | null) => void
   setSettingsOpen: (open: boolean) => void
   setCreateDialogOpen: (group: SidebarGroup | null) => void
 }
@@ -33,6 +35,7 @@ export const useNav = create<NavStore>()(
       selectedItem: null,
       teamTab: 'specs',
       agentSlug: null,
+      projectSlug: null,
       isSettingsOpen: false,
       isCreateDialogOpen: null,
 
@@ -45,6 +48,7 @@ export const useNav = create<NavStore>()(
       selectItem: (item) => set({ selectedItem: item, teamTab: 'specs', agentSlug: null }),
       setTeamTab: (teamTab) => set({ teamTab }),
       selectAgent: (slug) => set({ agentSlug: slug }),
+      selectProject: (projectSlug) => set({ projectSlug }),
       setSettingsOpen: (isSettingsOpen) => set({ isSettingsOpen }),
       setCreateDialogOpen: (isCreateDialogOpen) => set({ isCreateDialogOpen }),
     }),
@@ -54,6 +58,7 @@ export const useNav = create<NavStore>()(
         selectedItem: state.selectedItem,
         teamTab: state.teamTab,
         agentSlug: state.agentSlug,
+        projectSlug: state.projectSlug,
       }),
     },
   ),

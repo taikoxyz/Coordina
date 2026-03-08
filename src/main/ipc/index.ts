@@ -10,6 +10,7 @@ import { registerFileHandlers } from './files'
 import { registerModelsHandlers } from './models'
 import { registerGitHandlers } from './git'
 import { registerChatHandlers } from './chat'
+import { registerProjectHandlers } from './projects'
 
 registerProviderHandlers()
 registerSettingsHandlers()
@@ -20,3 +21,4 @@ registerFileHandlers()
 registerModelsHandlers()
 registerGitHandlers()
 registerChatHandlers()
+registerProjectHandlers()

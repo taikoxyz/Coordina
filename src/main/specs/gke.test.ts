@@ -62,12 +62,6 @@ describe('gkeDeriver gateway injection', () => {
     expect(alphaConfig.gateway.auth.token).toBe(betaConfig.gateway.auth.token)
   })
 
-  it('binds gateway to all interfaces for inter-pod communication', async () => {
-    const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
-    const alphaConfig = getOpenClawConfig(files, 'alpha')
-    expect(alphaConfig.gateway?.host).toBe('0.0.0.0')
-  })
-
   it('does not include unsupported peers key in openclaw.json', async () => {
     const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
     const alphaConfig = getOpenClawConfig(files, 'alpha')

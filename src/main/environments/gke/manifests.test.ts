@@ -143,13 +143,12 @@ describe('generateTeamConfigMap', () => {
 })
 
 describe('generateAgentConfigMap', () => {
-  it('generates per-agent ConfigMap with IDENTITY.md, MEMORY.md, SOUL.md and SKILLS.md', () => {
+  it('generates per-agent ConfigMap with agent markdown files', () => {
     const yaml = generateAgentConfigMap({
       teamSlug: 'alpha',
       agentSlug: 'alice',
       namespace: 'team-alpha',
       identityMd: '# Identity',
-      memoryMd: '# Memory',
       soulMd: '# Soul',
       skillsMd: '# Skills',
       agentsMd: '# Agents',
@@ -159,7 +158,7 @@ describe('generateAgentConfigMap', () => {
     })
     expect(yaml).toContain('name: alpha-alice-config')
     expect(yaml).toContain('IDENTITY.md: |')
-    expect(yaml).toContain('MEMORY.md: |')
+    expect(yaml).not.toContain('MEMORY.md')
     expect(yaml).toContain('SOUL.md: |')
     expect(yaml).toContain('SKILLS.md: |')
     expect(yaml).toContain('AGENTS.md: |')

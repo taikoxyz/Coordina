@@ -8,6 +8,7 @@ interface ChatSendRequest {
   teamSlug: string
   envSlug?: string
   agentSlug?: string
+  projectSlug?: string
   body: unknown
 }
 
@@ -74,19 +75,19 @@ export function registerChatHandlers() {
     }
   })
 
-  ipcMain.handle('chat:history:load', async (_event, req: { teamSlug: string; envSlug?: string; agentSlug?: string }) => {
-    const { teamSlug, envSlug = '__default_env__', agentSlug = '__lead__' } = req
-    return loadRecentMessages(teamSlug, envSlug, agentSlug)
+  ipcMain.handle('chat:history:load', async (_event, req: { teamSlug: string; envSlug?: string; agentSlug?: string; projectSlug?: string }) => {
+    const { teamSlug, envSlug = '__default_env__', agentSlug = '__lead__', projectSlug = '__untagged__' } = req
+    return loadRecentMessages(teamSlug, envSlug, agentSlug, projectSlug)
   })
 
-  ipcMain.handle('chat:history:loadOlder', async (_event, req: { teamSlug: string; envSlug?: string; agentSlug?: string; offset: number }) => {
-    const { teamSlug, envSlug = '__default_env__', agentSlug = '__lead__', offset } = req
-    return loadOlderMessages(teamSlug, envSlug, agentSlug, offset)
+  ipcMain.handle('chat:history:loadOlder', async (_event, req: { teamSlug: string; envSlug?: string; agentSlug?: string; projectSlug?: string; offset: number }) => {
+    const { teamSlug, envSlug = '__default_env__', agentSlug = '__lead__', projectSlug = '__untagged__', offset } = req
+    return loadOlderMessages(teamSlug, envSlug, agentSlug, projectSlug, offset)
   })
 
-  ipcMain.handle('chat:history:append', async (_event, req: { teamSlug: string; envSlug?: string; agentSlug?: string; message: ChatMessage }) => {
-    const { teamSlug, envSlug = '__default_env__', agentSlug = '__lead__', message } = req
-    await appendChatMessage(teamSlug, envSlug, agentSlug, message)
+  ipcMain.handle('chat:history:append', async (_event, req: { teamSlug: string; envSlug?: string; agentSlug?: string; projectSlug?: string; message: ChatMessage }) => {
+    const { teamSlug, envSlug = '__default_env__', agentSlug = '__lead__', projectSlug = '__untagged__', message } = req
+    await appendChatMessage(teamSlug, envSlug, agentSlug, message, projectSlug)
     return { ok: true }
   })
 }

@@ -1,5 +1,6 @@
 import express from 'express'
 import { createGatewayRouter } from './gateway/proxy'
+import { createProjectRouter } from './gateway/projectApi'
 import { getEnvAuthToken } from './store/environments'
 
 export function createServer() {
@@ -20,8 +21,9 @@ export function createServer() {
 
   app.get('/health', (_req, res) => res.json({ ok: true }))
 
-  app.use(createGatewayRouter(getEnvAuthToken))
   app.use(express.json())
+  app.use(createProjectRouter())
+  app.use(createGatewayRouter(getEnvAuthToken))
 
   return app
 }

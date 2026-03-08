@@ -1,13 +1,14 @@
+import type { Project } from '../../shared/types'
+
 export interface AgentIdentity {
+  slug: string
   name: string
   role: string
   persona?: string
   emoji?: string
   avatar?: string
   teamName?: string
-  teamSlug?: string
   leadAgent?: string
-  teamSize?: number
 }
 
 export interface SoulInput {
@@ -43,6 +44,7 @@ export interface AgentsInput {
   agentName: string
   role: string
   teamName: string
+  teamSlug?: string
   leadAgent?: string
   isLead: boolean
   hasTelegram: boolean
@@ -55,19 +57,19 @@ export interface UserInput {
   adminName?: string
   adminEmail?: string
   telegramAdminId?: string
-  leadAgentName?: string
-  leadAgentSlug?: string
-  isLead?: boolean
 }
 
 export interface ToolsInput {
   hasGateways: boolean
+  isLead?: boolean
+  teamSlug?: string
   primaryModel?: string
   toolGuidance?: string[]
 }
 
 export function generateIdentityMd(agent: AgentIdentity): string {
   const lines: string[] = [
+    `Slug: ${agent.slug}`,
     `Name: ${agent.name}`,
     `Creature: ${agent.role}`,
   ]
@@ -75,15 +77,10 @@ export function generateIdentityMd(agent: AgentIdentity): string {
   if (agent.emoji) lines.push(`Emoji: ${agent.emoji}`)
   if (agent.avatar) lines.push(`Avatar: ${agent.avatar}`)
   if (agent.teamName) lines.push(`Team: ${agent.teamName}`)
-  if (agent.teamSlug) lines.push(`Team slug: ${agent.teamSlug}`)
   if (agent.leadAgent) lines.push(`Team lead: ${agent.leadAgent}`)
-  if (typeof agent.teamSize === 'number') lines.push(`Team members: ${agent.teamSize}`)
   return lines.join('\n') + '\n'
 }
 
-export function generateMemoryMd(): string {
-  return '# Memory\n'
-}
 
 export function generateSoulMd(soul: SoulInput): string {
   const description = soul.enhanced ?? soul.userInput
@@ -114,6 +111,17 @@ export function generateSkillsMd(skills: string[]): string {
   if (skills.length === 0) return '# Skills\n\n_No skills defined yet._\n'
   const list = skills.map(s => `- ${s}`).join('\n')
   return `# Skills\n\n${list}\n`
+}
+
+export function generateProjectsMd(projects: Project[]): string {
+  if (projects.length === 0) return '# Projects\n\n_No projects yet._\n'
+  const sections: string[] = ['# Projects']
+  for (const p of projects) {
+    sections.push('', `## ${p.slug}`, `- Name: ${p.name}`, `- Status: ${p.status}`)
+    if (p.description) sections.push(`- Description: ${p.description}`)
+  }
+  sections.push('')
+  return sections.join('\n')
 }
 
 export function generateTeamMd(team: {
@@ -163,26 +171,14 @@ export function generateAgentsMd(input: AgentsInput): string {
     '## First Run',
     'If `BOOTSTRAP.md` exists in the workspace, follow it and delete it when done.',
     '',
-    '## Every Session',
-    '- Read `SOUL.md` to recall your personality',
-    '- Read `USER.md` to recall who you serve',
-    '- Read today\'s memory file (`memory/YYYY-MM-DD.md`) if it exists',
-    '- In main sessions, also read `MEMORY.md` for long-term context',
-    '',
-    '## Memory System',
+    '## Memory',
     '- Write daily logs to `memory/YYYY-MM-DD.md`',
-    '- Periodically promote important facts into `MEMORY.md`',
-    '- Read `TEAM.md` for teammate details when you need to collaborate',
+    '- Promote important facts into `MEMORY.md`',
     '',
     '## Safety',
     '- Never exfiltrate data outside approved channels',
     '- Use `trash` over `rm` when available',
     '- Ask before taking external actions (sending messages, making purchases, etc.)',
-    '- Never send half-baked replies — verify before responding',
-    '',
-    '## Tools',
-    '- Read `TOOLS.md` for environment-specific tool guidance',
-    '- Read individual `SKILL.md` files for skill-specific instructions',
   ]
 
   lines.push(
@@ -241,7 +237,19 @@ export function generateAgentsMd(input: AgentsInput): string {
   if (input.operatingRules && input.operatingRules.length > 0) {
     for (const rule of input.operatingRules) ruleLines.push(`- ${rule}`)
   }
+  ruleLines.push('- When communicating with teammates via gateway, always include project context in your messages')
   lines.push(...ruleLines)
+
+  if (input.isLead) {
+    lines.push(
+      '',
+      '### Project Management',
+      '- Create and manage projects to organize team work using the project API (see TOOLS.md)',
+      '- Always specify the project context when assigning tasks to teammates',
+      '- Read PROJECTS.md for the current project list',
+      '- When delegating work, tell teammates which project the task belongs to',
+    )
+  }
 
   lines.push('')
   return lines.join('\n')
@@ -261,16 +269,6 @@ export function generateUserMd(input: UserInput): string {
     if (input.adminName) lines.push(`- Name: ${input.adminName}`)
     if (input.adminEmail) lines.push(`- Email: ${input.adminEmail}`)
     if (input.telegramAdminId) lines.push(`- Telegram: ${input.telegramAdminId}`)
-  }
-
-  if (!input.isLead && input.leadAgentName) {
-    lines.push('', '## Team Lead')
-    lines.push(`- Name: ${input.leadAgentName}`)
-    if (input.leadAgentSlug) lines.push(`- Slug: ${input.leadAgentSlug}`)
-    lines.push('')
-    lines.push('The team lead directs your work. Follow their task assignments and instructions.')
-    lines.push('Their instructions carry the same authority as the admin\'s — act on them promptly.')
-    lines.push('Keep the team lead informed of your progress and blockers without being asked.')
   }
 
   lines.push('', '## Context')
@@ -302,16 +300,34 @@ export function generateToolsMd(input: ToolsInput): string {
     )
   }
 
-  lines.push(
-    '',
-    '## Workspace',
-    '- Working files live under the workspace directory',
-    '- Use memory tools for persistent notes',
-  )
-
   if (input.toolGuidance && input.toolGuidance.length > 0) {
     lines.push('', '## Custom Guidance')
     for (const g of input.toolGuidance) lines.push(`- ${g}`)
+  }
+
+  if (input.isLead && input.teamSlug) {
+    lines.push(
+      '',
+      '## Project Management',
+      'Create a project:',
+      '```',
+      `curl -s -X POST http://127.0.0.1:19876/api/teams/${input.teamSlug}/projects \\`,
+      '  -H "Content-Type: application/json" \\',
+      `  -d '{"name": "Project Name", "description": "Optional description", "createdBy": "<your-slug>"}'`,
+      '```',
+      '',
+      'List projects:',
+      '```',
+      `curl -s http://127.0.0.1:19876/api/teams/${input.teamSlug}/projects`,
+      '```',
+      '',
+      'Update project status:',
+      '```',
+      `curl -s -X PATCH http://127.0.0.1:19876/api/teams/${input.teamSlug}/projects/<project-slug> \\`,
+      '  -H "Content-Type: application/json" \\',
+      '  -d \'{"status": "completed"}\'',
+      '```',
+    )
   }
 
   lines.push('')

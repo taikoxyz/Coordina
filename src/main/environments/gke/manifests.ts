@@ -37,13 +37,16 @@ export function generateTeamConfigMap(input: {
   namespace: string
   teamMd: string
   bootstrapMd: string
+  projectsMd?: string
 }): string {
-  const { teamSlug, namespace, teamMd, bootstrapMd } = input
+  const { teamSlug, namespace, teamMd, bootstrapMd, projectsMd } = input
+  const data: Record<string, string> = { 'TEAM.md': teamMd, 'BOOTSTRAP.md': bootstrapMd }
+  if (projectsMd) data['PROJECTS.md'] = projectsMd
   return generateConfigMap({
     name: `${teamSlug}-shared-config`,
     namespace,
     labels: { 'coordina.team': teamSlug },
-    data: { 'TEAM.md': teamMd, 'BOOTSTRAP.md': bootstrapMd },
+    data,
   })
 }
 
@@ -52,7 +55,6 @@ export function generateAgentConfigMap(input: {
   agentSlug: string
   namespace: string
   identityMd: string
-  memoryMd: string
   soulMd: string
   skillsMd: string
   agentsMd: string
@@ -60,12 +62,12 @@ export function generateAgentConfigMap(input: {
   toolsMd: string
   openclawJson: string
 }): string {
-  const { teamSlug, agentSlug, namespace, identityMd, memoryMd, soulMd, skillsMd, agentsMd, userMd, toolsMd, openclawJson } = input
+  const { teamSlug, agentSlug, namespace, identityMd, soulMd, skillsMd, agentsMd, userMd, toolsMd, openclawJson } = input
   return generateConfigMap({
     name: `${teamSlug}-${agentSlug}-config`,
     namespace,
     labels: { 'coordina.team': teamSlug, 'coordina.agent': agentSlug },
-    data: { 'IDENTITY.md': identityMd, 'MEMORY.md': memoryMd, 'SOUL.md': soulMd, 'SKILLS.md': skillsMd, 'AGENTS.md': agentsMd, 'USER.md': userMd, 'TOOLS.md': toolsMd, 'openclaw.json': openclawJson },
+    data: { 'IDENTITY.md': identityMd, 'SOUL.md': soulMd, 'SKILLS.md': skillsMd, 'AGENTS.md': agentsMd, 'USER.md': userMd, 'TOOLS.md': toolsMd, 'openclaw.json': openclawJson },
   })
 }
 
@@ -143,6 +145,7 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
     `mkdir -p ${stateDir} ${workspaceDir}`,
     `test -f ${workspaceDir}/BOOTSTRAP.md || cp /config/shared/BOOTSTRAP.md ${workspaceDir}/BOOTSTRAP.md`,
     `cp /config/shared/TEAM.md ${workspaceDir}/TEAM.md`,
+    `test -f /config/shared/PROJECTS.md && cp /config/shared/PROJECTS.md ${workspaceDir}/PROJECTS.md || true`,
     `cp /config/agent/IDENTITY.md ${workspaceDir}/IDENTITY.md`,
     `test -f ${workspaceDir}/MEMORY.md || cp /config/agent/MEMORY.md ${workspaceDir}/MEMORY.md`,
     `test -f ${workspaceDir}/SOUL.md || cp /config/agent/SOUL.md ${workspaceDir}/SOUL.md`,
