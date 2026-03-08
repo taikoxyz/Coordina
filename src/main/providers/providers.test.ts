@@ -40,6 +40,24 @@ describe('ollama provider', () => {
   })
 })
 
+describe('claude provider', () => {
+  it('validates API key prefix', () => {
+    const p = getProvider('claude')
+    expect(p.validate({ apiKey: 'sk-ant-abc', model: 'claude-sonnet-4-6' }).valid).toBe(true)
+    expect(p.validate({ apiKey: 'wrong', model: 'claude-sonnet-4-6' }).valid).toBe(false)
+    expect(p.validate({ apiKey: '', model: 'claude-sonnet-4-6' }).valid).toBe(false)
+  })
+  it('toOpenClawJson maps to anthropic provider', () => {
+    const p = getProvider('claude')
+    expect(p.toOpenClawJson({ apiKey: 'sk-ant-abc', model: 'claude-sonnet-4-6' }))
+      .toEqual({ agents: { defaults: { model: { primary: 'anthropic/claude-sonnet-4-6' } } }, models: { providers: { anthropic: {} } } })
+  })
+  it('toEnvVars emits ANTHROPIC_API_KEY', () => {
+    const p = getProvider('claude')
+    expect(p.toEnvVars({ apiKey: 'sk-ant-abc' })).toEqual({ ANTHROPIC_API_KEY: 'sk-ant-abc' })
+  })
+})
+
 describe('openrouter provider', () => {
   it('validates API key prefix', () => {
     const p = getProvider('openrouter')

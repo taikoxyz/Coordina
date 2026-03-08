@@ -244,6 +244,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
         operatingRules: agent.operatingRules,
         agentEmail: hasEmail ? effectiveEmail : undefined,
         teamEmail: hasEmail ? spec.teamEmail : undefined,
+        teamMd,
       })
       const userMd = generateUserMd({
         teamName: spec.name,

@@ -174,8 +174,16 @@ describe('generateAgentsMd', () => {
 
   it('includes gateway communication note when hasGateways', () => {
     const md = generateAgentsMd({ ...base, hasGateways: true })
-    expect(md).toContain('read TEAM.md for their gateway URL')
+    expect(md).toContain('Team Directory')
     expect(md).toContain('TOOLS.md')
+  })
+
+  it('inlines teamMd as Team Directory when provided', () => {
+    const md = generateAgentsMd({ ...base, teamMd: '# Team: Phoenix\n\n## Members\n### bob\n- name: Bob Li\n' })
+    expect(md).toContain('## Team Directory')
+    expect(md).toContain('# Team: Phoenix')
+    expect(md).toContain('### bob')
+    expect(md).toContain('- name: Bob Li')
   })
 
   it('includes custom operating rules', () => {
@@ -231,7 +239,7 @@ describe('generateToolsMd', () => {
     expect(md).toContain('curl -s -m 300')
     expect(md).toContain('POST <gateway>/v1/responses')
     expect(md).toContain('Authorization: Bearer <gateway_token>')
-    expect(md).toContain('Do NOT use OpenClaw node/tailnet commands')
+    expect(md).toContain('Do NOT use OpenClaw session tools (e.g. sessions_send) or node/tailnet commands')
     expect(md).toContain('"model": "anthropic/claude-sonnet-4-6"')
   })
 
