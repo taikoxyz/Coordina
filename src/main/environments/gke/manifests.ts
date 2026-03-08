@@ -37,13 +37,16 @@ export function generateTeamConfigMap(input: {
   namespace: string
   teamMd: string
   bootstrapMd: string
+  projectsMd?: string
 }): string {
-  const { teamSlug, namespace, teamMd, bootstrapMd } = input
+  const { teamSlug, namespace, teamMd, bootstrapMd, projectsMd } = input
+  const data: Record<string, string> = { 'TEAM.md': teamMd, 'BOOTSTRAP.md': bootstrapMd }
+  if (projectsMd) data['PROJECTS.md'] = projectsMd
   return generateConfigMap({
     name: `${teamSlug}-shared-config`,
     namespace,
     labels: { 'coordina.team': teamSlug },
-    data: { 'TEAM.md': teamMd, 'BOOTSTRAP.md': bootstrapMd },
+    data,
   })
 }
 
@@ -143,6 +146,7 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
     `mkdir -p ${stateDir} ${workspaceDir}`,
     `test -f ${workspaceDir}/BOOTSTRAP.md || cp /config/shared/BOOTSTRAP.md ${workspaceDir}/BOOTSTRAP.md`,
     `cp /config/shared/TEAM.md ${workspaceDir}/TEAM.md`,
+    `test -f /config/shared/PROJECTS.md && cp /config/shared/PROJECTS.md ${workspaceDir}/PROJECTS.md || true`,
     `cp /config/agent/IDENTITY.md ${workspaceDir}/IDENTITY.md`,
     `test -f ${workspaceDir}/MEMORY.md || cp /config/agent/MEMORY.md ${workspaceDir}/MEMORY.md`,
     `test -f ${workspaceDir}/SOUL.md || cp /config/agent/SOUL.md ${workspaceDir}/SOUL.md`,
@@ -195,6 +199,7 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
             env: [
               { name: 'OPENCLAW_WORKSPACE_DIR', value: workspaceDir },
               { name: 'OPENCLAW_STATE_DIR', value: stateDir },
+              { name: 'OPENCLAW_HOST', value: '0.0.0.0' },
             ],
             ...(credentialSecretName ? { envFrom: [{ secretRef: { name: credentialSecretName } }] } : {}),
             volumeMounts: containerVolumeMounts,

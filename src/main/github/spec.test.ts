@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { generateIdentityMd, generateMemoryMd, generateSoulMd, generateOpenClawJson, generateSkillsMd, generateAgentsMd, generateTeamMd, generateUserMd, generateToolsMd } from './spec'
+import { generateIdentityMd, generateMemoryMd, generateSoulMd, generateOpenClawJson, generateSkillsMd, generateAgentsMd, generateTeamMd, generateUserMd, generateToolsMd, generateProjectsMd } from './spec'
 
 describe('generateIdentityMd', () => {
   it('outputs key-value format with Name and Creature', () => {
@@ -147,7 +147,7 @@ describe('generateOpenClawJson gateway', () => {
 })
 
 describe('generateAgentsMd', () => {
-  const base = { agentName: 'Alpha', role: 'Lead', teamName: 'Team Phoenix', isLead: true, hasTelegram: false, hasGateways: false }
+  const base = { agentName: 'Alpha', agentSlug: 'alpha', role: 'Lead', teamName: 'Team Phoenix', isLead: true, hasTelegram: false, hasGateways: false, hasProjects: false }
 
   it('includes OpenClaw defaults and team operating instructions', () => {
     const md = generateAgentsMd(base)
@@ -195,6 +195,46 @@ describe('generateAgentsMd', () => {
     const md = generateAgentsMd(base)
     expect(md).toContain('### Priorities')
     expect(md).toContain('TEAM.md')
+  })
+
+  it('includes multi-project protocol when hasProjects', () => {
+    const md = generateAgentsMd({ ...base, hasProjects: true })
+    expect(md).toContain('### Multi-Project Protocol')
+    expect(md).toContain('PROJECTS.md')
+    expect(md).toContain('[project-slug]')
+  })
+
+  it('omits multi-project protocol when no projects', () => {
+    const md = generateAgentsMd(base)
+    expect(md).not.toContain('### Multi-Project Protocol')
+  })
+
+  it('includes async communication guidance when hasGateways', () => {
+    const md = generateAgentsMd({ ...base, hasGateways: true })
+    expect(md).toContain('[ASYNC]')
+    expect(md).toContain('blocking curl')
+  })
+})
+
+describe('generateProjectsMd', () => {
+  it('generates project listing with members and status', () => {
+    const md = generateProjectsMd([
+      { slug: 'alpha', name: 'Project Alpha', description: 'Frontend redesign', members: ['alice', 'bob'], status: 'active' },
+      { slug: 'beta', name: 'Project Beta', description: 'API migration', members: ['alice', 'charlie'], status: 'paused' },
+    ])
+    expect(md).toContain('# Projects')
+    expect(md).toContain('## Project Alpha')
+    expect(md).toContain('- slug: alpha')
+    expect(md).toContain('- status: active')
+    expect(md).toContain('- members: alice, bob')
+    expect(md).toContain('- workspace: projects/alpha/')
+    expect(md).toContain('## Project Beta')
+    expect(md).toContain('- status: paused')
+  })
+
+  it('shows placeholder for empty projects', () => {
+    const md = generateProjectsMd([])
+    expect(md).toContain('No projects defined')
   })
 })
 
@@ -246,31 +286,48 @@ describe('generateUserMd', () => {
 
 describe('generateToolsMd', () => {
   it('includes inter-agent communication when hasGateways', () => {
-    const md = generateToolsMd({ hasGateways: true })
+    const md = generateToolsMd({ hasGateways: true, hasProjects: false })
     expect(md).toContain('# Tools')
     expect(md).toContain('## Inter-Agent Communication')
-    expect(md).toContain('curl -s -m 300')
-    expect(md).toContain('POST <gateway>/v1/responses')
+    expect(md).toContain('### Quick Request')
+    expect(md).toContain('### Task Delegation')
+    expect(md).toContain('### Responding to Async Requests')
     expect(md).toContain('Authorization: Bearer <gateway_token>')
     expect(md).toContain('Do NOT use OpenClaw node/tailnet commands')
   })
 
+  it('includes agent gateway URL in async delegation example', () => {
+    const md = generateToolsMd({ hasGateways: true, hasProjects: false, agentGatewayUrl: 'http://agent-alice.team.svc.cluster.local:18789' })
+    expect(md).toContain('http://agent-alice.team.svc.cluster.local:18789')
+  })
+
   it('omits inter-agent section when no gateways', () => {
-    const md = generateToolsMd({ hasGateways: false })
+    const md = generateToolsMd({ hasGateways: false, hasProjects: false })
     expect(md).toContain('# Tools')
     expect(md).toContain('## Workspace')
     expect(md).not.toContain('## Inter-Agent Communication')
   })
 
+  it('includes project-scoped messages when hasProjects', () => {
+    const md = generateToolsMd({ hasGateways: true, hasProjects: true })
+    expect(md).toContain('## Project-Scoped Messages')
+    expect(md).toContain('[project-alpha]')
+  })
+
+  it('omits project-scoped messages when no projects', () => {
+    const md = generateToolsMd({ hasGateways: true, hasProjects: false })
+    expect(md).not.toContain('## Project-Scoped Messages')
+  })
+
   it('includes custom tool guidance', () => {
-    const md = generateToolsMd({ hasGateways: false, toolGuidance: ['Use exec for shell commands', 'Prefer jq for JSON'] })
+    const md = generateToolsMd({ hasGateways: false, hasProjects: false, toolGuidance: ['Use exec for shell commands', 'Prefer jq for JSON'] })
     expect(md).toContain('## Custom Guidance')
     expect(md).toContain('- Use exec for shell commands')
     expect(md).toContain('- Prefer jq for JSON')
   })
 
   it('always includes workspace section', () => {
-    const md = generateToolsMd({ hasGateways: true })
+    const md = generateToolsMd({ hasGateways: true, hasProjects: false })
     expect(md).toContain('## Workspace')
   })
 })

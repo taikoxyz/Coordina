@@ -45,6 +45,15 @@ export interface TeamSpec {
   adminName?: string
   adminEmail?: string
   teamDescription?: string
+  projects?: ProjectSpec[]
+}
+
+export interface ProjectSpec {
+  slug: string
+  name: string
+  description: string
+  members: string[]
+  status: 'active' | 'paused' | 'completed'
 }
 
 export interface PersonaTemplate {

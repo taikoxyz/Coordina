@@ -22,7 +22,6 @@ export interface OpenClawConfig {
   agents: { defaults: { model: { primary: string; fallbacks?: string[] } } }
   models: { providers: { [provider: string]: { apiKey?: string; baseUrl?: string; api?: string } } }
   gateway?: {
-    host?: string
     auth?: { token?: string }
     http?: {
       endpoints?: {
@@ -41,12 +40,14 @@ export interface OpenClawConfig {
 
 export interface AgentsInput {
   agentName: string
+  agentSlug: string
   role: string
   teamName: string
   leadAgent?: string
   isLead: boolean
   hasTelegram: boolean
   hasGateways: boolean
+  hasProjects: boolean
   operatingRules?: string[]
 }
 
@@ -62,6 +63,8 @@ export interface UserInput {
 
 export interface ToolsInput {
   hasGateways: boolean
+  hasProjects: boolean
+  agentGatewayUrl?: string
   toolGuidance?: string[]
 }
 
@@ -225,12 +228,28 @@ export function generateAgentsMd(input: AgentsInput): string {
 
   const commLines: string[] = ['', '### Communication']
   if (input.hasGateways) {
-    commLines.push('- To reach a teammate, read TEAM.md for their gateway URL and use the exec tool with curl (see TOOLS.md)')
+    commLines.push(
+      '- To reach a teammate, read TEAM.md for their gateway URL and use the exec tool with curl (see TOOLS.md)',
+      '- For quick questions (< 1 min expected response), use a blocking curl call',
+      '- For longer tasks, use the async pattern: send with `[ASYNC]` prefix so the recipient sends results back to your gateway when done',
+    )
   }
   if (input.hasTelegram) {
     commLines.push('- When `@all` is used in Telegram, you MUST respond')
   }
   if (commLines.length > 2) lines.push(...commLines)
+
+  if (input.hasProjects) {
+    lines.push(
+      '',
+      '### Multi-Project Protocol',
+      '- Read `PROJECTS.md` at session start to see active projects and your assignments',
+      '- Tag all inter-agent messages with `[project-slug]` prefix so teammates know the context',
+      '- Keep project files in `workspace/projects/<slug>/` to separate work streams',
+      '- When delegating, always specify which project the task belongs to',
+      '- You can context-switch between projects — use project directories to maintain separate state',
+    )
+  }
 
   const ruleLines: string[] = [
     '',
@@ -288,16 +307,44 @@ export function generateToolsMd(input: ToolsInput): string {
       'To message a teammate, use the `exec` tool to call their gateway HTTP API.',
       'Read TEAM.md for gateway URLs and tokens.',
       '',
-      'Example:',
+      '### Quick Request (blocking — use for short questions)',
       '```',
-      'curl -s -m 300 -X POST <gateway>/v1/responses \\',
+      'curl -s -m 60 -X POST <gateway>/v1/responses \\',
       '  -H "Authorization: Bearer <gateway_token>" \\',
       '  -H "Content-Type: application/json" \\',
-      '  -d \'{"model": "anthropic/claude-sonnet-4-6", "input": "Your message here"}\'',
+      '  -d \'{"model": "anthropic/claude-sonnet-4-6", "input": "Your question here"}\'',
       '```',
       '',
-      'The `-m 300` flag sets a 5-minute timeout. Replace `<gateway>` and `<gateway_token>` with values from TEAM.md.',
+      '### Task Delegation (non-blocking — use for tasks that take > 1 minute)',
+      'Send the task with an `[ASYNC]` prefix. The recipient will send results back to your gateway when done.',
+      '```',
+      'curl -s -m 30 -X POST <teammate-gateway>/v1/responses \\',
+      '  -H "Authorization: Bearer <gateway_token>" \\',
+      '  -H "Content-Type: application/json" \\',
+      `  -d '{"model": "anthropic/claude-sonnet-4-6", "input": "[ASYNC] <task description>. When done, send results to my gateway: ${input.agentGatewayUrl ?? '<my-gateway>'}"}' &`,
+      '```',
+      'The `&` at the end runs the curl in the background so you can continue working.',
+      '',
+      '### Responding to Async Requests',
+      'When you receive a message prefixed with `[ASYNC]`:',
+      '1. Complete the requested work',
+      '2. Send results back to the sender\'s gateway (URL will be in the message)',
+      '3. Use a blocking curl for the response since it should be a short status update',
+      '',
+      'Replace `<gateway>` and `<gateway_token>` with values from TEAM.md.',
       'Do NOT use OpenClaw node/tailnet commands.',
+    )
+  }
+
+  if (input.hasProjects) {
+    lines.push(
+      '',
+      '## Project-Scoped Messages',
+      'When messaging teammates about a specific project, prefix the message with the project slug:',
+      '```',
+      'curl ... -d \'{"input": "[project-alpha] Review the API schema changes"}\'',
+      '```',
+      'This helps teammates route context correctly when working on multiple projects.',
     )
   }
 
@@ -314,5 +361,28 @@ export function generateToolsMd(input: ToolsInput): string {
   }
 
   lines.push('')
+  return lines.join('\n')
+}
+
+export interface ProjectInput {
+  slug: string
+  name: string
+  description: string
+  members: string[]
+  status: 'active' | 'paused' | 'completed'
+}
+
+export function generateProjectsMd(projects: ProjectInput[]): string {
+  if (projects.length === 0) return '# Projects\n\n_No projects defined yet._\n'
+  const lines: string[] = ['# Projects', '']
+  for (const p of projects) {
+    lines.push(`## ${p.name}`)
+    lines.push(`- slug: ${p.slug}`)
+    lines.push(`- status: ${p.status}`)
+    lines.push(`- description: ${p.description}`)
+    lines.push(`- members: ${p.members.join(', ')}`)
+    lines.push(`- workspace: projects/${p.slug}/`)
+    lines.push('')
+  }
   return lines.join('\n')
 }

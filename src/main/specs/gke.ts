@@ -22,6 +22,7 @@ import {
   generateUserMd,
   generateToolsMd,
   generateOpenClawJson,
+  generateProjectsMd,
 } from '../github/spec'
 
 import { DEFAULT_BOOTSTRAP_INSTRUCTIONS } from './bootstrap'
@@ -106,11 +107,14 @@ const gkeDeriver: DeploymentSpecDeriver = {
       })),
     })
     const bootstrapMd = spec.startupInstructions || DEFAULT_BOOTSTRAP_INSTRUCTIONS
-    const teamConfig = generateTeamConfigMap({ teamSlug: spec.slug, namespace, teamMd, bootstrapMd })
+    const hasProjects = Boolean(spec.projects && spec.projects.length > 0)
+    const projectsMd = hasProjects ? generateProjectsMd(spec.projects!) : undefined
+    const teamConfig = generateTeamConfigMap({ teamSlug: spec.slug, namespace, teamMd, bootstrapMd, projectsMd })
     const teamConfigHash = createHash('sha256').update(teamConfig).digest('hex')
 
     files.push({ path: 'TEAM.md', content: teamMd })
     files.push({ path: 'BOOTSTRAP.md', content: bootstrapMd })
+    if (projectsMd) files.push({ path: 'PROJECTS.md', content: projectsMd })
     files.push({ path: 'configmap-shared.yaml', content: teamConfig })
 
     for (const agent of spec.agents) {
@@ -179,7 +183,6 @@ const gkeDeriver: DeploymentSpecDeriver = {
         gateway: {
           ...baseGateway,
           mode: 'local',
-          host: '0.0.0.0',
           auth: {
             ...((baseGateway.auth as Record<string, unknown> | undefined) ?? {}),
             token: agentToken,
@@ -218,14 +221,17 @@ const gkeDeriver: DeploymentSpecDeriver = {
       const memoryMd = generateMemoryMd()
       const soulMd = generateSoulMd({ userInput: agent.persona, tone: agent.tone, boundaries: agent.boundaries, values: agent.values })
       const skillsMd = generateSkillsMd(agent.skills)
+      const agentGatewayUrl = `http://agent-${agent.slug}.${namespace}.svc.cluster.local:18789`
       const agentsMd = generateAgentsMd({
         agentName: agent.name,
+        agentSlug: agent.slug,
         role: agent.role,
         teamName: spec.name,
         leadAgent: spec.leadAgent,
         isLead: agent.slug === spec.leadAgent,
         hasTelegram: hasTelegramRouting,
         hasGateways,
+        hasProjects,
         operatingRules: agent.operatingRules,
       })
       const leadAgent = spec.agents.find(a => a.slug === spec.leadAgent)
@@ -240,6 +246,8 @@ const gkeDeriver: DeploymentSpecDeriver = {
       })
       const toolsMd = generateToolsMd({
         hasGateways,
+        hasProjects,
+        agentGatewayUrl,
         toolGuidance: agent.toolGuidance,
       })
       const openclawJson = generateOpenClawJson(openclawConfigWithGateway)
