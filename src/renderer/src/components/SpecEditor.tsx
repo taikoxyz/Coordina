@@ -102,7 +102,7 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
           <hr className="border-gray-200" />
 
           <div>
-            <h4 className="text-sm font-semibold text-gray-900 mb-1">Email</h4>
+            <h4 className="text-sm font-semibold text-gray-900 mb-1">Email (Gmail only)</h4>
             <ReadField label="Team email" value={spec.teamEmail} monospace />
             <ReadField label="App password" value={emailPasswordMasked ?? undefined} monospace />
             {emailPasswordError && (
@@ -187,7 +187,7 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Email</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Email (Gmail only)</h3>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Team email</Label>
@@ -195,9 +195,9 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
                 mono
                 value={spec.teamEmail ?? ''}
                 onChange={(e) => set('teamEmail')(e.target.value || undefined)}
-                placeholder="team@domain.com"
+                placeholder="team@gmail.com"
               />
-              <p className="text-xs text-gray-400 mt-0.5">Agents get plus-addressed variants (e.g., team+agent-slug@domain.com)</p>
+              <p className="text-xs text-gray-400 mt-0.5">Gmail only. Agents get plus-addressed variants (e.g., team+agent-slug@gmail.com)</p>
             </div>
             <div>
               <Label>App password</Label>
