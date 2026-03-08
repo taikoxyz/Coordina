@@ -151,7 +151,16 @@ export function generateTeamMd(team: {
   if (team.defaultImage) lines.push(`- image: ${team.defaultImage}`)
   if (team.leadAgent) lines.push(`- lead: ${team.leadAgent}`)
   if (team.gatewayToken) lines.push(`- gateway_token: ${team.gatewayToken}`)
-  lines.push('', '## Members')
+  lines.push('')
+  if (team.gatewayToken) {
+    lines.push(
+      '## Gateway Usage',
+      'Use `gateway_token` in the `Authorization: Bearer` header when calling any teammate\'s `gateway` URL.',
+      'See TOOLS.md for curl examples and parameter details.',
+      '',
+    )
+  }
+  lines.push('## Members')
   for (const a of team.agents) {
     lines.push(`### ${a.slug}`)
     lines.push(`- name: ${a.name}`)
@@ -288,19 +297,36 @@ export function generateToolsMd(input: ToolsInput): string {
     lines.push(
       '',
       '## Inter-Agent Communication',
-      'To message a teammate, use the `exec` tool to call their gateway HTTP API.',
-      'Read TEAM.md for gateway URLs and tokens.',
+      'Use the OpenClaw gateway to message teammates via their HTTP API.',
+      'Read TEAM.md for each teammate\'s `gateway` URL and the shared `gateway_token`.',
       '',
-      'Example:',
-      '```',
+      '### Sending a message',
+      '```bash',
       'curl -s -m 300 -X POST <gateway>/v1/responses \\',
       '  -H "Authorization: Bearer <gateway_token>" \\',
       '  -H "Content-Type: application/json" \\',
       `  -d '{"model": "${input.primaryModel ?? '<model>'}", "input": "Your message here"}'`,
       '```',
       '',
-      'The `-m 300` flag sets a 5-minute timeout. Replace `<gateway>` and `<gateway_token>` with values from TEAM.md.',
-      'Do NOT use OpenClaw node/tailnet commands.',
+      '### Parameters',
+      '| Parameter | Source | Description |',
+      '|-----------|--------|-------------|',
+      '| `<gateway>` | TEAM.md → member → `gateway` | Teammate\'s gateway URL |',
+      '| `<gateway_token>` | TEAM.md → `gateway_token` | Shared team auth token |',
+      `| \`model\` | \`${input.primaryModel ?? '<model>'}\` | Model to use for the response |`,
+      '| `input` | Your message | Plain text message to the teammate |',
+      '',
+      '### Important',
+      '- Always use `-m 300` (5-minute timeout) — responses can take time',
+      '- Always include project context in your message so the recipient has full context',
+      '- Use the `exec` tool (not `bash`) to run curl commands',
+      '- Do NOT use OpenClaw node/tailnet commands — only the HTTP gateway',
+      '',
+      '### Common pitfalls',
+      '- Missing or wrong `Authorization` header → 401 error',
+      '- Forgetting `-H "Content-Type: application/json"` → 400 error',
+      '- Using single quotes inside the `-d` JSON body — use escaped double quotes instead',
+      '- Omitting `-s` flag causes noisy progress output',
     )
   }
 
