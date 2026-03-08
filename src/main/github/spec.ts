@@ -235,10 +235,20 @@ export function generateAgentsMd(input: AgentsInput): string {
 
   const commLines: string[] = ['', '### Communication']
   if (input.hasGateways) {
-    commLines.push('- To reach a teammate, read TEAM.md for their gateway URL and use the exec tool with curl (see TOOLS.md)')
+    commLines.push(
+      'All agent-to-agent communication MUST go through the gateway HTTP API — never via Telegram or any other channel.',
+      'Telegram is for admin-to-agent communication only.',
+      '',
+      'To contact a teammate:',
+      '1. Read `TEAM.md` — it lists each teammate\'s `gateway` URL and the shared `gateway_token`',
+      '2. Use the `exec` tool to run a curl POST to `<gateway>/v1/responses` (see `TOOLS.md` for the exact command)',
+      '3. Include full context in your message so the recipient can act without asking follow-up questions',
+      '',
+      'IMPORTANT: Always copy the gateway URL exactly from `TEAM.md`. Never construct or guess URLs yourself.',
+    )
   }
   if (input.hasTelegram) {
-    commLines.push('- When `@all` is used in Telegram, you MUST respond')
+    commLines.push('', '- When `@all` is used in Telegram, you MUST respond')
   }
   if (commLines.length > 2) lines.push(...commLines)
 
@@ -315,6 +325,13 @@ export function generateToolsMd(input: ToolsInput): string {
       '| `<gateway_token>` | TEAM.md → `gateway_token` | Shared team auth token |',
       `| \`model\` | \`${input.primaryModel ?? '<model>'}\` | Model to use for the response |`,
       '| `input` | Your message | Plain text message to the teammate |',
+      '',
+      '### Step-by-step: messaging a teammate',
+      '1. Read `TEAM.md` to find:',
+      '   - The teammate\'s `gateway` URL (under their `### <slug>` section)',
+      '   - The shared `gateway_token` (under `## About` → `gateway_token`)',
+      '2. Replace `<gateway>` and `<gateway_token>` in the curl command above with those values',
+      '3. Run the command using the `exec` tool',
       '',
       '### Important',
       '- Always use `-m 300` (5-minute timeout) — responses can take time',
