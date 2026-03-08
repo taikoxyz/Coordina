@@ -47,8 +47,12 @@ export function registerDeployHandlers(): void {
       })
     ))
 
+    const emailPassword = spec.teamEmail
+      ? (await getSecret(`team:${teamSlug}`, 'team-email-password')) ?? undefined
+      : undefined
+
     const deriver = getDeriver(env.type)
-    const specFiles = await deriver.derive(spec, providersMap, env.config, { agentTelegramTokens: telegramTokens })
+    const specFiles = await deriver.derive(spec, providersMap, env.config, { agentTelegramTokens: telegramTokens, teamEmailPassword: emailPassword })
     const deployValidation = validateDerivedSpecFiles(specFiles)
     if (!deployValidation.valid) {
       throw new Error(formatValidationFailure('Deployment file validation failed', deployValidation.errors))

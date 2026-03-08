@@ -56,10 +56,28 @@ export function TeamOverview({
   const [deployFiles, setDeployFiles] = useState<string[]>([])
   const [deployLogs, setDeployLogs] = useState<string[]>([])
   const [deployState, setDeployState] = useState<OverviewDeployState>('idle')
+  const [emailPassword, setEmailPassword] = useState('')
+  const [emailPasswordMasked, setEmailPasswordMasked] = useState<string | null>(null)
+  const [emailPasswordBusy, setEmailPasswordBusy] = useState(false)
+  const [emailPasswordError, setEmailPasswordError] = useState<string | null>(null)
 
   const set = useCallback((key: keyof TeamSpec) => (value: unknown) => {
     onSpecChange({ ...spec, [key]: value })
   }, [spec, onSpecChange])
+
+  useEffect(() => {
+    if (!spec.slug || !spec.teamEmail) return
+    let active = true
+    window.api
+      .invoke('teams:getTeamEmailPasswordMasked', { teamSlug: spec.slug })
+      .then((value) => {
+        if (active) setEmailPasswordMasked((value as string | null) ?? null)
+      })
+      .catch((e) => {
+        if (active) setEmailPasswordError((e as Error).message)
+      })
+    return () => { active = false }
+  }, [spec.slug, spec.teamEmail])
 
   useEffect(() => {
     return window.api.on?.('deploy:status', (data: unknown) => {
@@ -68,6 +86,35 @@ export function TeamOverview({
       setDeployLogs(prev => [...prev, line])
     })
   }, [])
+
+  const saveEmailPassword = async () => {
+    setEmailPasswordBusy(true)
+    setEmailPasswordError(null)
+    try {
+      await window.api.invoke('teams:setTeamEmailPassword', { teamSlug: spec.slug, password: emailPassword })
+      const masked = (await window.api.invoke('teams:getTeamEmailPasswordMasked', { teamSlug: spec.slug })) as string | null
+      setEmailPasswordMasked(masked)
+      setEmailPassword('')
+    } catch (e) {
+      setEmailPasswordError((e as Error).message)
+    } finally {
+      setEmailPasswordBusy(false)
+    }
+  }
+
+  const clearEmailPassword = async () => {
+    setEmailPasswordBusy(true)
+    setEmailPasswordError(null)
+    try {
+      await window.api.invoke('teams:setTeamEmailPassword', { teamSlug: spec.slug, password: '' })
+      setEmailPasswordMasked(null)
+      setEmailPassword('')
+    } catch (e) {
+      setEmailPasswordError((e as Error).message)
+    } finally {
+      setEmailPasswordBusy(false)
+    }
+  }
 
   const handleDeploy = async () => {
     if (!deployEnvSlug) return
@@ -137,6 +184,17 @@ export function TeamOverview({
           <h4 className="text-sm font-semibold text-gray-900 mb-3">Telegram integration</h4>
           <ReadField label="Group ID" value={spec.telegramGroupId} monospace />
           <ReadField label="Admin ID" value={spec.telegramAdminId} monospace />
+        </div>
+
+        <hr className="border-gray-200" />
+
+        <div>
+          <h4 className="text-sm font-semibold text-gray-900 mb-3">Email</h4>
+          <ReadField label="Team email" value={spec.teamEmail} monospace />
+          <ReadField label="App password" value={emailPasswordMasked ?? undefined} monospace />
+          {emailPasswordError && (
+            <p className="text-xs text-red-600 mt-0.5">{emailPasswordError}</p>
+          )}
         </div>
 
         <hr className="border-gray-200" />
@@ -343,6 +401,60 @@ export function TeamOverview({
               onChange={e => set('telegramAdminId')(e.target.value || undefined)}
               placeholder="123456789"
             />
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">Email</h3>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label>Team email</Label>
+            <Input
+              mono
+              value={spec.teamEmail ?? ''}
+              onChange={e => set('teamEmail')(e.target.value || undefined)}
+              placeholder="team@domain.com"
+            />
+            <p className="text-xs text-gray-400 mt-0.5">Agents get plus-addressed variants (e.g., team+agent-slug@domain.com)</p>
+          </div>
+          <div>
+            <Label>App password</Label>
+            <div className="flex items-center gap-1.5">
+              <Input
+                mono
+                type="password"
+                value={emailPassword}
+                onChange={(e) => setEmailPassword(e.target.value)}
+                placeholder={emailPasswordMasked ? 'Update password' : 'Google app password'}
+              />
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={saveEmailPassword}
+                disabled={emailPasswordBusy || !spec.slug || !spec.teamEmail}
+                className="shrink-0"
+              >
+                Save
+              </Button>
+              {emailPasswordMasked && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={clearEmailPassword}
+                  disabled={emailPasswordBusy}
+                  className="shrink-0"
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+            {emailPasswordMasked && (
+              <p className="text-xs text-gray-400 font-mono mt-0.5">{emailPasswordMasked}</p>
+            )}
+            {emailPasswordError && (
+              <p className="text-xs text-red-600 mt-0.5">{emailPasswordError}</p>
+            )}
           </div>
         </div>
       </div>

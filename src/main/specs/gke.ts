@@ -24,6 +24,7 @@ import {
   generateProjectsMd,
 } from '../github/spec'
 
+import { deriveAgentEmail } from '../../shared/email'
 import { DEFAULT_BOOTSTRAP_INSTRUCTIONS } from './bootstrap'
 import { registerDeriver } from './base'
 import type { DeploymentSpecDeriver } from './base'
@@ -95,11 +96,16 @@ const gkeDeriver: DeploymentSpecDeriver = {
       telegramGroupId,
       telegramAdminId,
       gatewayToken: teamGatewayToken,
-      agents: spec.agents.map(a => ({
-        ...a,
-        isLead: a.slug === spec.leadAgent,
-        gatewayUrl: `http://agent-${a.slug}.${namespace}.svc.cluster.local:18789`,
-      })),
+      agents: spec.agents.map(a => {
+        const aIsLead = a.slug === spec.leadAgent
+        const aDerived = spec.teamEmail ? deriveAgentEmail(spec.teamEmail, a.slug, aIsLead) : undefined
+        return {
+          ...a,
+          email: a.email || aDerived,
+          isLead: aIsLead,
+          gatewayUrl: `http://agent-${a.slug}.${namespace}.svc.cluster.local:18789`,
+        }
+      }),
     })
     const bootstrapMd = spec.startupInstructions || DEFAULT_BOOTSTRAP_INSTRUCTIONS
     const projects = await listProjects(spec.slug)
@@ -113,6 +119,9 @@ const gkeDeriver: DeploymentSpecDeriver = {
     files.push({ path: 'configmap-shared.yaml', content: teamConfig })
 
     for (const agent of spec.agents) {
+      const isLead = agent.slug === spec.leadAgent
+      const derivedEmail = spec.teamEmail ? deriveAgentEmail(spec.teamEmail, agent.slug, isLead) : undefined
+      const effectiveEmail = agent.email || derivedEmail
       const providerRecord = providers.get(agent.provider)
       let modelProvider
       try { modelProvider = providerRecord ? getProvider(providerRecord.type) : undefined } catch { /* unknown type */ }
@@ -201,6 +210,12 @@ const gkeDeriver: DeploymentSpecDeriver = {
         ...(hasTelegramRouting && telegramBotToken
           ? { TELEGRAM_BOT_TOKEN: telegramBotToken }
           : {}),
+        ...(spec.teamEmail && secrets?.teamEmailPassword && effectiveEmail ? {
+          EMAIL_ADDRESS: effectiveEmail,
+          EMAIL_IMAP_HOST: 'imap.gmail.com',
+          EMAIL_SMTP_HOST: 'smtp.gmail.com',
+          EMAIL_PASSWORD: secrets.teamEmailPassword,
+        } : {}),
       }
       const credentialSecretName = `${spec.slug}-${agent.slug}-credentials`
       files.push({ path: `agents/${agent.slug}/pvc.yaml`, content: generateAgentPvc({ teamSlug: spec.slug, agentSlug: agent.slug, namespace, diskGi: agent.diskGi }) })
@@ -211,6 +226,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
         role: agent.role,
         persona: agent.persona,
         avatar: agent.avatar,
+        email: effectiveEmail,
         teamName: spec.name,
         leadAgent: spec.leadAgent,
       })
@@ -225,6 +241,8 @@ const gkeDeriver: DeploymentSpecDeriver = {
         hasTelegram: hasTelegramRouting,
         hasGateways,
         operatingRules: agent.operatingRules,
+        agentEmail: effectiveEmail,
+        teamEmail: spec.teamEmail,
       })
       const userMd = generateUserMd({
         teamName: spec.name,
@@ -238,6 +256,9 @@ const gkeDeriver: DeploymentSpecDeriver = {
         teamSlug: spec.slug,
         primaryModel: openclawConfig.agents?.defaults?.model?.primary,
         toolGuidance: agent.toolGuidance,
+        agentEmail: effectiveEmail,
+        teamEmail: spec.teamEmail,
+        hasEmail: Boolean(spec.teamEmail && secrets?.teamEmailPassword),
       })
       const openclawJson = generateOpenClawJson(openclawConfigWithGateway)
       const agentConfigMap = generateAgentConfigMap({

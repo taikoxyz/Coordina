@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Crown, Pencil, Send } from 'lucide-react'
+import { deriveAgentEmail } from '../../../../shared/email'
 import { deriveSlug } from '../../../../shared/slug'
 import type { AgentSpec } from '../../../../shared/types'
 import { PERSONA_CATALOG, getPersonasByDivision } from '../../../../shared/personaCatalog'
@@ -19,6 +20,8 @@ interface Props {
   isSaving: boolean
   onChange: (updated: AgentSpec) => void
   onDelete: () => void
+  teamEmail?: string
+  isLead?: boolean
 }
 
 export function AgentCard({
@@ -34,7 +37,11 @@ export function AgentCard({
   isSaving,
   onChange,
   onDelete,
+  teamEmail,
+  isLead,
 }: Props) {
+  const derivedEmail = teamEmail ? deriveAgentEmail(teamEmail, agent.slug, isLead ?? false) : undefined
+  const effectiveEmail = agent.email || derivedEmail
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [telegramToken, setTelegramToken] = useState('')
   const [tokenMasked, setTokenMasked] = useState<string | null>(null)
@@ -329,6 +336,19 @@ export function AgentCard({
               </div>
             </div>
 
+            <div>
+              <Label>Email override</Label>
+              <Input
+                mono
+                value={agent.email ?? ''}
+                onChange={(e) => set('email')(e.target.value || undefined)}
+                placeholder={derivedEmail ?? 'No team email configured'}
+              />
+              {!agent.email && derivedEmail && (
+                <p className="text-xs text-gray-400 font-mono mt-0.5">Auto: {derivedEmail}</p>
+              )}
+            </div>
+
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label>Container image</Label>
@@ -387,6 +407,16 @@ export function AgentCard({
               <ReadField label="Token" value={tokenMasked ?? undefined} monospace />
               {tokenError && (
                 <p className="text-xs text-red-600 mt-0.5">{tokenError}</p>
+              )}
+            </div>
+
+            <hr className="border-gray-200" />
+
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900 mb-1">Email</h4>
+              <ReadField label="Email" value={effectiveEmail} monospace />
+              {agent.email && derivedEmail && agent.email !== derivedEmail && (
+                <p className="text-xs text-amber-600 mt-0.5">Override (derived: {derivedEmail})</p>
               )}
             </div>
 

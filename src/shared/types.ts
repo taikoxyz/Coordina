@@ -44,6 +44,7 @@ export interface TeamSpec {
   lastDeployedAt?: number
   adminName?: string
   adminEmail?: string
+  teamEmail?: string
   teamDescription?: string
 }
 
