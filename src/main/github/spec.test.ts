@@ -239,7 +239,7 @@ describe('generateToolsMd', () => {
     expect(md).toContain('curl -s -m 300')
     expect(md).toContain('POST <gateway>/v1/responses')
     expect(md).toContain('Authorization: Bearer <gateway_token>')
-    expect(md).toContain('Do NOT use OpenClaw node/tailnet commands')
+    expect(md).toContain('Do NOT use OpenClaw session tools (e.g. sessions_send) or node/tailnet commands')
     expect(md).toContain('"model": "anthropic/claude-sonnet-4-6"')
   })
 

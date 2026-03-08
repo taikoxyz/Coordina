@@ -327,7 +327,7 @@ export function generateToolsMd(input: ToolsInput): string {
       '- Always use `-m 300` (5-minute timeout) — responses can take time',
       '- Always write JSON to a file first — never pass JSON directly in `-d \'...\'`',
       '- Use the `exec` tool (not `bash`) to run curl commands',
-      '- Do NOT use OpenClaw node/tailnet commands — only the HTTP gateway',
+      '- Do NOT use OpenClaw session tools (e.g. sessions_send) or node/tailnet commands — only the HTTP gateway curl approach above',
     )
   }
 
