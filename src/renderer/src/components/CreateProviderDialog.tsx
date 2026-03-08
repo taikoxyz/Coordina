@@ -5,9 +5,9 @@ import { useProviders, useSaveProvider } from '../hooks/useProviders'
 import type { ProviderRecord } from '../../../shared/types'
 import { Button, Input, Select, Label, DialogShell } from './ui'
 
-const PROVIDER_TYPES = ['anthropic', 'openai', 'deepseek', 'openrouter', 'minimax', 'ollama']
+const PROVIDER_TYPES = ['claude', 'anthropic', 'openai', 'deepseek', 'openrouter', 'minimax', 'ollama']
 const PROVIDER_NAMES: Record<string, string> = {
-  anthropic: 'Anthropic', openai: 'OpenAI', deepseek: 'DeepSeek', openrouter: 'OpenRouter', minimax: 'MiniMax', ollama: 'Ollama',
+  claude: 'Claude', anthropic: 'Anthropic', openai: 'OpenAI', deepseek: 'DeepSeek', openrouter: 'OpenRouter', minimax: 'MiniMax', ollama: 'Ollama',
 }
 
 type KeyStatus = 'idle' | 'checking' | 'valid' | 'error'
@@ -26,7 +26,7 @@ export function CreateProviderDialog() {
   const saveProvider = useSaveProvider()
   const isOpen = isCreateDialogOpen === 'providers'
 
-  const [type, setType] = useState('anthropic')
+  const [type, setType] = useState('claude')
   const [credential, setCredential] = useState('')
   const [keyStatus, setKeyStatus] = useState<KeyStatus>('idle')
   const [keyError, setKeyError] = useState<string | null>(null)
