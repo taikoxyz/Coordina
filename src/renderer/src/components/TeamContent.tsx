@@ -215,6 +215,8 @@ export function TeamContent({ slug }: { slug: string }) {
                     isSaving={saveTeam.isPending}
                     onChange={(updated) => updateAgent(index, updated)}
                     onDelete={() => deleteAgent(index)}
+                    teamEmail={localSpec.teamEmail}
+                    isLead={agent.slug === localSpec.leadAgent}
                   />
                 </div>
               </div>
