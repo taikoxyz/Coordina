@@ -179,6 +179,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
         gateway: {
           ...baseGateway,
           mode: 'local',
+          host: '0.0.0.0',
           auth: {
             ...((baseGateway.auth as Record<string, unknown> | undefined) ?? {}),
             token: agentToken,
