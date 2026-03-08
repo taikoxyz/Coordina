@@ -50,6 +50,22 @@ export function registerTeamHandlers(): void {
     return { ok: true, cleared: false }
   })
 
+  ipcMain.handle('teams:getTeamEmailPasswordMasked', async (_e, data: { teamSlug: string }) => {
+    const password = await getSecret(`team:${data.teamSlug}`, 'team-email-password')
+    if (!password) return null
+    return password.length > 10 ? `${password.slice(0, 4)}••••${password.slice(-4)}` : '••••••••'
+  })
+
+  ipcMain.handle('teams:setTeamEmailPassword', async (_e, data: { teamSlug: string; password?: string }) => {
+    const password = data.password?.trim()
+    if (!password) {
+      await deleteSecret(`team:${data.teamSlug}`, 'team-email-password')
+      return { ok: true, cleared: true }
+    }
+    await setSecret(`team:${data.teamSlug}`, 'team-email-password', password)
+    return { ok: true, cleared: false }
+  })
+
   ipcMain.handle('teams:derive', async (_e, slug: string) => {
     try { await runPipeline(slug); return { ok: true } }
     catch (e) { return { ok: false, reason: e instanceof Error ? e.message : String(e) } }

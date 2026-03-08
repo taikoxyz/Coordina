@@ -163,6 +163,8 @@ export function AgentsTab({ spec, onSpecChange, onSave, onSaveSpec, isSaving }: 
                   updateAgent(selectedAgentIndex, updated)
                 }}
                 onDelete={() => deleteAgent(selectedAgentIndex)}
+                teamEmail={spec.teamEmail}
+                isLead={activeAgent.slug === spec.leadAgent}
               />
             </div>
           )}

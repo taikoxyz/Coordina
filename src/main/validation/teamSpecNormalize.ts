@@ -43,6 +43,7 @@ export function normalizeTeamSpec(spec: TeamSpec): TeamSpec {
     name: normalizeOptional(spec.name) ?? '',
     telegramGroupId: normalizeOptional(spec.telegramGroupId),
     telegramAdminId: normalizeOptional(spec.telegramAdminId),
+    teamEmail: normalizeOptional(spec.teamEmail),
     defaultImage: normalizeOptional(spec.defaultImage),
     defaultDiskGi: normalizePositiveInt(spec.defaultDiskGi),
     leadAgent: normalizedLead && normalizedAgents.some(a => a.slug === normalizedLead) ? normalizedLead : undefined,

@@ -4,6 +4,7 @@ import { TeamSpec, ProviderRecord, SpecFile } from '../../shared/types'
 
 export interface DeriveSecrets {
   agentTelegramTokens?: Record<string, string | undefined>
+  teamEmailPassword?: string
 }
 
 export interface DeploymentSpecDeriver {

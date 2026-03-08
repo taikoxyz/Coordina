@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Pencil, FileJson } from 'lucide-react'
 import type { TeamSpec } from '../../../shared/types'
 import { Button, Input, Label, ReadField, Textarea } from './ui'
@@ -21,6 +21,50 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
     },
     [spec, onSpecChange],
   )
+
+  const [emailPassword, setEmailPassword] = useState('')
+  const [emailPasswordMasked, setEmailPasswordMasked] = useState<string | null>(null)
+  const [emailPasswordBusy, setEmailPasswordBusy] = useState(false)
+  const [emailPasswordError, setEmailPasswordError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!spec.slug || !spec.teamEmail) { setEmailPasswordMasked(null); return }
+    let active = true
+    window.api
+      .invoke('teams:getTeamEmailPasswordMasked', { teamSlug: spec.slug })
+      .then((value) => { if (active) setEmailPasswordMasked((value as string | null) ?? null) })
+      .catch((e) => { if (active) setEmailPasswordError((e as Error).message) })
+    return () => { active = false }
+  }, [spec.slug, spec.teamEmail])
+
+  const saveEmailPassword = async () => {
+    setEmailPasswordBusy(true)
+    setEmailPasswordError(null)
+    try {
+      await window.api.invoke('teams:setTeamEmailPassword', { teamSlug: spec.slug, password: emailPassword })
+      const masked = (await window.api.invoke('teams:getTeamEmailPasswordMasked', { teamSlug: spec.slug })) as string | null
+      setEmailPasswordMasked(masked)
+      setEmailPassword('')
+    } catch (e) {
+      setEmailPasswordError((e as Error).message)
+    } finally {
+      setEmailPasswordBusy(false)
+    }
+  }
+
+  const clearEmailPassword = async () => {
+    setEmailPasswordBusy(true)
+    setEmailPasswordError(null)
+    try {
+      await window.api.invoke('teams:setTeamEmailPassword', { teamSlug: spec.slug, password: '' })
+      setEmailPasswordMasked(null)
+      setEmailPassword('')
+    } catch (e) {
+      setEmailPasswordError((e as Error).message)
+    } finally {
+      setEmailPasswordBusy(false)
+    }
+  }
 
   if (!isEditing) {
     return (
@@ -53,6 +97,17 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
             <h4 className="text-sm font-semibold text-gray-900 mb-1">Telegram integration</h4>
             <ReadField label="Group ID" value={spec.telegramGroupId} monospace />
             <ReadField label="Admin ID" value={spec.telegramAdminId} monospace />
+          </div>
+
+          <hr className="border-gray-200" />
+
+          <div>
+            <h4 className="text-sm font-semibold text-gray-900 mb-1">Email (Gmail only)</h4>
+            <ReadField label="Team email" value={spec.teamEmail} monospace />
+            <ReadField label="App password" value={emailPasswordMasked ?? undefined} monospace />
+            {emailPasswordError && (
+              <p className="text-xs text-red-600 mt-0.5">{emailPasswordError}</p>
+            )}
           </div>
 
           <hr className="border-gray-200" />
@@ -127,6 +182,60 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
                 onChange={(e) => set('telegramAdminId')(e.target.value || undefined)}
                 placeholder="123456789"
               />
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Email (Gmail only)</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Team email</Label>
+              <Input
+                mono
+                value={spec.teamEmail ?? ''}
+                onChange={(e) => set('teamEmail')(e.target.value || undefined)}
+                placeholder="team@gmail.com"
+              />
+              <p className="text-xs text-gray-400 mt-0.5">Gmail only. Agents get plus-addressed variants (e.g., team+agent-slug@gmail.com)</p>
+            </div>
+            <div>
+              <Label>App password</Label>
+              <div className="flex items-center gap-1.5">
+                <Input
+                  mono
+                  type="password"
+                  value={emailPassword}
+                  onChange={(e) => setEmailPassword(e.target.value)}
+                  placeholder={emailPasswordMasked ? 'Update password' : 'Google app password'}
+                />
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => void saveEmailPassword()}
+                  disabled={emailPasswordBusy || !spec.slug || !spec.teamEmail}
+                  className="shrink-0"
+                >
+                  Save
+                </Button>
+                {emailPasswordMasked && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => void clearEmailPassword()}
+                    disabled={emailPasswordBusy}
+                    className="shrink-0"
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+              {emailPasswordMasked && (
+                <p className="text-xs text-gray-400 font-mono mt-0.5">{emailPasswordMasked}</p>
+              )}
+              {emailPasswordError && (
+                <p className="text-xs text-red-600 mt-0.5">{emailPasswordError}</p>
+              )}
             </div>
           </div>
         </div>
