@@ -174,9 +174,17 @@ describe('generateAgentsMd', () => {
 
   it('includes gateway communication note when hasGateways', () => {
     const md = generateAgentsMd({ ...base, hasGateways: true })
-    expect(md).toContain('Read `TEAM.md`')
+    expect(md).toContain('Team Directory')
     expect(md).toContain('find them by name')
     expect(md).toContain('TOOLS.md')
+  })
+
+  it('inlines teamMd as Team Directory when provided', () => {
+    const md = generateAgentsMd({ ...base, teamMd: '# Team: Phoenix\n\n## Members\n### bob\n- name: Bob Li\n' })
+    expect(md).toContain('## Team Directory')
+    expect(md).toContain('# Team: Phoenix')
+    expect(md).toContain('### bob')
+    expect(md).toContain('- name: Bob Li')
   })
 
   it('includes custom operating rules', () => {

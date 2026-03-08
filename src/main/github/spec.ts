@@ -54,6 +54,7 @@ export interface AgentsInput {
   hasTelegram: boolean
   hasGateways: boolean
   operatingRules?: string[]
+  teamMd?: string
 }
 
 export interface UserInput {
@@ -240,11 +241,11 @@ export function generateAgentsMd(input: AgentsInput): string {
       'Telegram is for admin-to-agent communication only.',
       '',
       'To contact a teammate:',
-      '1. Read `TEAM.md` — each member is listed as `### <slug>` with a `- name:` field; find them by name if you only know their first name',
+      '1. Look up the teammate in the **Team Directory** section at the bottom of this file — each member is listed as `### <slug>` with `- name:`, `- gateway:`, and the shared `gateway_token`',
       '2. Use the `exec` tool to run a curl POST to `<gateway>/v1/responses` (see `TOOLS.md` for the exact command)',
       '3. Include full context in your message so the recipient can act without asking follow-up questions',
       '',
-      'IMPORTANT: Always copy the gateway URL exactly from `TEAM.md`. Never construct or guess URLs yourself.',
+      'IMPORTANT: Always copy the gateway URL exactly from the Team Directory. Never construct or guess URLs yourself.',
     )
   }
   if (input.hasTelegram) {
@@ -274,6 +275,9 @@ export function generateAgentsMd(input: AgentsInput): string {
     )
   }
 
+  if (input.teamMd) {
+    lines.push('', '---', '', '## Team Directory', '', input.teamMd.trimEnd())
+  }
   lines.push('')
   return lines.join('\n')
 }
@@ -308,44 +312,41 @@ export function generateToolsMd(input: ToolsInput): string {
       '',
       '## Inter-Agent Communication',
       'Use the OpenClaw gateway to message teammates via their HTTP API.',
-      'Read TEAM.md for each teammate\'s `gateway` URL and the shared `gateway_token`.',
+      'Find each teammate\'s `gateway` URL and the shared `gateway_token` in the **Team Directory** section of `AGENTS.md`.',
       '',
       '### Sending a message',
+      'Write the JSON body to a temp file, then curl with `@file` to avoid shell quoting issues:',
       '```bash',
+      `printf '{"model": "${input.primaryModel ?? '<model>'}", "input": "<your message>"}' > /tmp/msg.json`,
       'curl -s -m 300 -X POST <gateway>/v1/responses \\',
       '  -H "Authorization: Bearer <gateway_token>" \\',
       '  -H "Content-Type: application/json" \\',
-      `  -d '{"model": "${input.primaryModel ?? '<model>'}", "input": "Your message here"}'`,
+      '  -d @/tmp/msg.json',
       '```',
       '',
       '### Parameters',
       '| Parameter | Source | Description |',
       '|-----------|--------|-------------|',
-      '| `<gateway>` | TEAM.md → member → `gateway` | Teammate\'s gateway URL |',
-      '| `<gateway_token>` | TEAM.md → `gateway_token` | Shared team auth token |',
+      '| `<gateway>` | AGENTS.md → Team Directory → member → `gateway` | Teammate\'s gateway URL |',
+      '| `<gateway_token>` | AGENTS.md → Team Directory → `gateway_token` | Shared team auth token |',
       `| \`model\` | \`${input.primaryModel ?? '<model>'}\` | Model to use for the response |`,
       '| `input` | Your message | Plain text message to the teammate |',
       '',
       '### Step-by-step: messaging a teammate',
-      '1. Read `TEAM.md` to find the teammate:',
+      '1. Look up the teammate in the **Team Directory** section of `AGENTS.md`:',
       '   - Each member is listed as `### <slug>` with `- name: <full name>` below it',
       '   - Search by the `name:` field if you only know the teammate\'s first or full name',
       '   - Copy the teammate\'s `gateway` URL from their section',
-      '   - Copy the shared `gateway_token` from `## About` → `gateway_token`',
-      '2. Replace `<gateway>` and `<gateway_token>` in the curl command above with those values',
-      '3. Run the command using the `exec` tool',
+      '   - Copy the shared `gateway_token` from the Team Directory `## About` section',
+      '2. Write the JSON body to `/tmp/msg.json` using `printf` — put your full message in the `input` field',
+      '3. Run the `curl` command using the `exec` tool with `-d @/tmp/msg.json`',
       '',
       '### Important',
       '- Always use `-m 300` (5-minute timeout) — responses can take time',
       '- Always include project context in your message so the recipient has full context',
       '- Use the `exec` tool (not `bash`) to run curl commands',
       '- Do NOT use OpenClaw node/tailnet commands — only the HTTP gateway',
-      '',
-      '### Common pitfalls',
-      '- Missing or wrong `Authorization` header → 401 error',
-      '- Forgetting `-H "Content-Type: application/json"` → 400 error',
-      '- Using single quotes inside the `-d` JSON body — use escaped double quotes instead',
-      '- Omitting `-s` flag causes noisy progress output',
+      '- Always write JSON to a file first — never pass JSON directly in `-d \'...\'` to avoid shell quoting errors',
     )
   }
 

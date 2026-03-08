@@ -225,6 +225,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
         hasTelegram: hasTelegramRouting,
         hasGateways,
         operatingRules: agent.operatingRules,
+        teamMd,
       })
       const userMd = generateUserMd({
         teamName: spec.name,
