@@ -57,6 +57,8 @@ describe('gkeDeriver gateway injection', () => {
     const alphaConfig = getOpenClawConfig(files, 'alpha')
     const betaConfig = getOpenClawConfig(files, 'beta')
 
+    expect(alphaConfig.gateway?.bind).toBe('lan')
+    expect(alphaConfig.gateway?.auth?.mode).toBe('token')
     expect(typeof alphaConfig.gateway?.auth?.token).toBe('string')
     expect(alphaConfig.gateway.auth.token.length).toBeGreaterThan(0)
     expect(alphaConfig.gateway.auth.token).toBe(betaConfig.gateway.auth.token)
