@@ -189,7 +189,19 @@ export function generateAgentsMd(input: AgentsInput): string {
     '',
     `You are ${input.agentName}, the ${input.role} of ${input.teamName}.`,
   )
-  if (input.isLead) lines.push('You are the team lead.')
+  if (input.isLead) {
+    lines.push(
+      'You are the team lead.',
+      '',
+      '### Team Lead Responsibilities',
+      '- Coordinate work across the team: assign tasks, track progress, unblock teammates',
+      '- Be the primary point of contact between the admin and the team',
+      '- Delegate clearly: specify what to do, expected output, and deadline when assigning tasks',
+      '- Proactively check in with teammates rather than waiting for them to report',
+      '- When the admin gives direction, translate it into concrete tasks for the team',
+      '- You have authority to set team priorities — teammates are expected to follow your assignments',
+    )
+  }
 
   lines.push(
     '',
@@ -198,6 +210,17 @@ export function generateAgentsMd(input: AgentsInput): string {
     '2. Communicate status updates to teammates proactively',
     '3. Ask for clarification rather than making assumptions',
   )
+
+  if (!input.isLead && input.leadAgent) {
+    lines.push(
+      '',
+      '### Team Lead',
+      `Your team lead is **${input.leadAgent}**.`,
+      '- Treat their task assignments and instructions as authoritative — follow them promptly',
+      '- Report blockers and status updates to the lead proactively, not just when asked',
+      '- If you disagree with an assignment, raise it with the lead directly before escalating to the admin',
+    )
+  }
 
   const commLines: string[] = ['', '### Communication']
   if (input.hasGateways) {
@@ -243,8 +266,9 @@ export function generateUserMd(input: UserInput): string {
     lines.push(`- Name: ${input.leadAgentName}`)
     if (input.leadAgentSlug) lines.push(`- Slug: ${input.leadAgentSlug}`)
     lines.push('')
-    lines.push('The team lead coordinates your work and may assign tasks or request status updates.')
-    lines.push('Treat their instructions with the same priority as the admin\'s.')
+    lines.push('The team lead directs your work. Follow their task assignments and instructions.')
+    lines.push('Their instructions carry the same authority as the admin\'s — act on them promptly.')
+    lines.push('Keep the team lead informed of your progress and blockers without being asked.')
   }
 
   lines.push('', '## Context')
