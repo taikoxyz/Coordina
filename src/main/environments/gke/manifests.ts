@@ -128,6 +128,7 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
   const resourceName = `agent-${agentSlug}`
   const stateDir = '/agent-data/openclaw/state'
   const workspaceDir = '/agent-data/openclaw/workspace'
+  const toolsDir = '/agent-data/openclaw/tools'
 
   const volumes: unknown[] = [
     { name: 'agent-data', persistentVolumeClaim: { claimName: `${teamSlug}-agent-${agentSlug}` } },
@@ -142,7 +143,7 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
   ]
 
   const initSeedCmd = [
-    `mkdir -p ${stateDir} ${workspaceDir}`,
+    `mkdir -p ${stateDir} ${workspaceDir} ${toolsDir}/bin ${toolsDir}/cargo/bin`,
     `test -f ${workspaceDir}/BOOTSTRAP.md || cp /config/shared/BOOTSTRAP.md ${workspaceDir}/BOOTSTRAP.md`,
     `cp /config/shared/TEAM.md ${workspaceDir}/TEAM.md`,
     `test -f /config/shared/PROJECTS.md && cp /config/shared/PROJECTS.md ${workspaceDir}/PROJECTS.md || true`,
@@ -198,6 +199,12 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
             env: [
               { name: 'OPENCLAW_WORKSPACE_DIR', value: workspaceDir },
               { name: 'OPENCLAW_STATE_DIR', value: stateDir },
+              { name: 'NPM_CONFIG_PREFIX', value: toolsDir },
+              { name: 'PYTHONUSERBASE', value: toolsDir },
+              { name: 'PIP_USER', value: 'true' },
+              { name: 'GOPATH', value: toolsDir },
+              { name: 'CARGO_HOME', value: `${toolsDir}/cargo` },
+              { name: 'PATH', value: `${toolsDir}/bin:${toolsDir}/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin` },
             ],
             ...(credentialSecretName ? { envFrom: [{ secretRef: { name: credentialSecretName } }] } : {}),
             volumeMounts: containerVolumeMounts,

@@ -416,6 +416,20 @@ export function generateToolsMd(input: ToolsInput): string {
     )
   }
 
+  lines.push(
+    '',
+    '## Installing Tools',
+    'You can install tools directly — no sudo or elevated privileges needed.',
+    'All tools install to `/agent-data/openclaw/tools/` which is on your PATH and persists across restarts.',
+    '',
+    '| Manager | Command | Notes |',
+    '|---------|---------|-------|',
+    '| npm | `npm install -g <pkg>` | NPM_CONFIG_PREFIX is pre-configured |',
+    '| pip | `pip install <pkg>` | PIP_USER=true, installs to PYTHONUSERBASE |',
+    '| go | `go install <pkg>@latest` | GOPATH is set |',
+    '| cargo | `cargo install <pkg>` | CARGO_HOME is set |',
+  )
+
   lines.push('')
   return lines.join('\n')
 }
