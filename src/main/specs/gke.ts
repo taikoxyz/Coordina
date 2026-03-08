@@ -91,6 +91,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
     files.push({ path: 'storageclass.yaml', content: generateStorageClass({ teamSlug: spec.slug }) })
 
     const hasGateways = true
+    const hasEmail = Boolean(spec.teamEmail && secrets?.teamEmailPassword)
     const teamMd = generateTeamMd({
       ...spec,
       telegramGroupId,
@@ -98,7 +99,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
       gatewayToken: teamGatewayToken,
       agents: spec.agents.map(a => {
         const aIsLead = a.slug === spec.leadAgent
-        const aDerived = spec.teamEmail ? deriveAgentEmail(spec.teamEmail, a.slug, aIsLead) : undefined
+        const aDerived = hasEmail ? deriveAgentEmail(spec.teamEmail!, a.slug, aIsLead) : undefined
         return {
           ...a,
           email: a.email || aDerived,
@@ -120,7 +121,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
 
     for (const agent of spec.agents) {
       const isLead = agent.slug === spec.leadAgent
-      const derivedEmail = spec.teamEmail ? deriveAgentEmail(spec.teamEmail, agent.slug, isLead) : undefined
+      const derivedEmail = hasEmail ? deriveAgentEmail(spec.teamEmail!, agent.slug, isLead) : undefined
       const effectiveEmail = agent.email || derivedEmail
       const providerRecord = providers.get(agent.provider)
       let modelProvider
@@ -226,7 +227,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
         role: agent.role,
         persona: agent.persona,
         avatar: agent.avatar,
-        email: effectiveEmail,
+        email: hasEmail ? effectiveEmail : undefined,
         teamName: spec.name,
         leadAgent: spec.leadAgent,
       })
@@ -241,8 +242,8 @@ const gkeDeriver: DeploymentSpecDeriver = {
         hasTelegram: hasTelegramRouting,
         hasGateways,
         operatingRules: agent.operatingRules,
-        agentEmail: effectiveEmail,
-        teamEmail: spec.teamEmail,
+        agentEmail: hasEmail ? effectiveEmail : undefined,
+        teamEmail: hasEmail ? spec.teamEmail : undefined,
       })
       const userMd = generateUserMd({
         teamName: spec.name,
@@ -256,9 +257,9 @@ const gkeDeriver: DeploymentSpecDeriver = {
         teamSlug: spec.slug,
         primaryModel: openclawConfig.agents?.defaults?.model?.primary,
         toolGuidance: agent.toolGuidance,
-        agentEmail: effectiveEmail,
-        teamEmail: spec.teamEmail,
-        hasEmail: Boolean(spec.teamEmail && secrets?.teamEmailPassword),
+        agentEmail: hasEmail ? effectiveEmail : undefined,
+        teamEmail: hasEmail ? spec.teamEmail : undefined,
+        hasEmail,
       })
       const openclawJson = generateOpenClawJson(openclawConfigWithGateway)
       const agentConfigMap = generateAgentConfigMap({
