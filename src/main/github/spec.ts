@@ -54,6 +54,7 @@ export interface AgentsInput {
   hasTelegram: boolean
   hasGateways: boolean
   operatingRules?: string[]
+  teamMd?: string
 }
 
 export interface UserInput {
@@ -152,14 +153,6 @@ export function generateTeamMd(team: {
   if (team.leadAgent) lines.push(`- lead: ${team.leadAgent}`)
   if (team.gatewayToken) lines.push(`- gateway_token: ${team.gatewayToken}`)
   lines.push('')
-  if (team.gatewayToken) {
-    lines.push(
-      '## Gateway Usage',
-      'Use `gateway_token` in the `Authorization: Bearer` header when calling any teammate\'s `gateway` URL.',
-      'See TOOLS.md for curl examples and parameter details.',
-      '',
-    )
-  }
   lines.push('## Members')
   for (const a of team.agents) {
     lines.push(`### ${a.slug}`)
@@ -239,12 +232,7 @@ export function generateAgentsMd(input: AgentsInput): string {
       'All agent-to-agent communication MUST go through the gateway HTTP API — never via Telegram or any other channel.',
       'Telegram is for admin-to-agent communication only.',
       '',
-      'To contact a teammate:',
-      '1. Read `TEAM.md` — it lists each teammate\'s `gateway` URL and the shared `gateway_token`',
-      '2. Use the `exec` tool to run a curl POST to `<gateway>/v1/responses` (see `TOOLS.md` for the exact command)',
-      '3. Include full context in your message so the recipient can act without asking follow-up questions',
-      '',
-      'IMPORTANT: Always copy the gateway URL exactly from `TEAM.md`. Never construct or guess URLs yourself.',
+      'To message a teammate, find their `gateway` URL in the **Team Directory** at the bottom of this file, then follow the curl instructions in `TOOLS.md`.',
     )
   }
   if (input.hasTelegram) {
@@ -260,7 +248,6 @@ export function generateAgentsMd(input: AgentsInput): string {
   if (input.operatingRules && input.operatingRules.length > 0) {
     for (const rule of input.operatingRules) ruleLines.push(`- ${rule}`)
   }
-  ruleLines.push('- When communicating with teammates via gateway, always include project context in your messages')
   lines.push(...ruleLines)
 
   if (input.isLead) {
@@ -274,6 +261,9 @@ export function generateAgentsMd(input: AgentsInput): string {
     )
   }
 
+  if (input.teamMd) {
+    lines.push('', '---', '', '## Team Directory', '', input.teamMd.trimEnd())
+  }
   lines.push('')
   return lines.join('\n')
 }
@@ -308,42 +298,36 @@ export function generateToolsMd(input: ToolsInput): string {
       '',
       '## Inter-Agent Communication',
       'Use the OpenClaw gateway to message teammates via their HTTP API.',
-      'Read TEAM.md for each teammate\'s `gateway` URL and the shared `gateway_token`.',
+      'Find each teammate\'s `gateway` URL and the shared `gateway_token` in the **Team Directory** section of `AGENTS.md`.',
       '',
       '### Sending a message',
+      'Write the JSON body to a temp file, then curl with `@file` to avoid shell quoting issues:',
       '```bash',
+      `printf '{"model": "${input.primaryModel ?? '<model>'}", "input": "<your message>"}' > /tmp/msg.json`,
       'curl -s -m 300 -X POST <gateway>/v1/responses \\',
       '  -H "Authorization: Bearer <gateway_token>" \\',
       '  -H "Content-Type: application/json" \\',
-      `  -d '{"model": "${input.primaryModel ?? '<model>'}", "input": "Your message here"}'`,
+      '  -d @/tmp/msg.json',
       '```',
       '',
       '### Parameters',
       '| Parameter | Source | Description |',
       '|-----------|--------|-------------|',
-      '| `<gateway>` | TEAM.md → member → `gateway` | Teammate\'s gateway URL |',
-      '| `<gateway_token>` | TEAM.md → `gateway_token` | Shared team auth token |',
+      '| `<gateway>` | AGENTS.md → Team Directory → member → `gateway` | Teammate\'s gateway URL |',
+      '| `<gateway_token>` | AGENTS.md → Team Directory → `gateway_token` | Shared team auth token |',
       `| \`model\` | \`${input.primaryModel ?? '<model>'}\` | Model to use for the response |`,
       '| `input` | Your message | Plain text message to the teammate |',
       '',
-      '### Step-by-step: messaging a teammate',
-      '1. Read `TEAM.md` to find:',
-      '   - The teammate\'s `gateway` URL (under their `### <slug>` section)',
-      '   - The shared `gateway_token` (under `## About` → `gateway_token`)',
-      '2. Replace `<gateway>` and `<gateway_token>` in the curl command above with those values',
-      '3. Run the command using the `exec` tool',
+      '### Steps',
+      '1. Find the teammate\'s `gateway` URL and the shared `gateway_token` in the **Team Directory** of `AGENTS.md` (search by `name:` if you only know their first name)',
+      '2. Write the JSON body to `/tmp/msg.json` using `printf` — include full project context in your message',
+      '3. Run the `curl` command with the `exec` tool',
       '',
-      '### Important',
+      '### Rules',
       '- Always use `-m 300` (5-minute timeout) — responses can take time',
-      '- Always include project context in your message so the recipient has full context',
+      '- Always write JSON to a file first — never pass JSON directly in `-d \'...\'`',
       '- Use the `exec` tool (not `bash`) to run curl commands',
-      '- Do NOT use OpenClaw node/tailnet commands — only the HTTP gateway',
-      '',
-      '### Common pitfalls',
-      '- Missing or wrong `Authorization` header → 401 error',
-      '- Forgetting `-H "Content-Type: application/json"` → 400 error',
-      '- Using single quotes inside the `-d` JSON body — use escaped double quotes instead',
-      '- Omitting `-s` flag causes noisy progress output',
+      '- Do NOT use OpenClaw session tools (e.g. sessions_send) or node/tailnet commands — only the HTTP gateway curl approach above',
     )
   }
 
