@@ -230,7 +230,7 @@ describe('generateUserMd', () => {
     expect(md).toContain('## Team Lead')
     expect(md).toContain('- Name: Alpha')
     expect(md).toContain('- Slug: alpha')
-    expect(md).toContain('team lead coordinates your work')
+    expect(md).toContain('team lead directs your work')
   })
 
   it('omits team lead section for the lead agent', () => {
