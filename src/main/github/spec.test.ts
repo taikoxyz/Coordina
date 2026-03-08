@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { generateIdentityMd, generateMemoryMd, generateSoulMd, generateOpenClawJson, generateSkillsMd, generateAgentsMd, generateTeamMd, generateUserMd, generateToolsMd } from './spec'
+import { generateIdentityMd, generateSoulMd, generateOpenClawJson, generateSkillsMd, generateAgentsMd, generateTeamMd, generateUserMd, generateToolsMd } from './spec'
 
 describe('generateIdentityMd', () => {
   it('outputs key-value format with Name and Creature', () => {
@@ -33,20 +33,13 @@ describe('generateIdentityMd', () => {
       role: 'Engineer',
       teamName: 'Team Phoenix',
       leadAgent: 'lead-agent',
-      teamSize: 5,
     })
     expect(md).toContain('Team: Team Phoenix')
     expect(md).toContain('Team lead: lead-agent')
-    expect(md).toContain('Team members: 5')
+    expect(md).not.toContain('Team members')
   })
 })
 
-describe('generateMemoryMd', () => {
-  it('returns minimal seed', () => {
-    const md = generateMemoryMd()
-    expect(md).toBe('# Memory\n')
-  })
-})
 
 describe('generateSoulMd', () => {
   it('uses enhanced text when provided', () => {
@@ -151,8 +144,7 @@ describe('generateAgentsMd', () => {
   it('includes OpenClaw defaults and team operating instructions', () => {
     const md = generateAgentsMd(base)
     expect(md).toContain('# Agents')
-    expect(md).toContain('## Every Session')
-    expect(md).toContain('## Memory System')
+    expect(md).toContain('## Memory')
     expect(md).toContain('## Safety')
     expect(md).toContain('## Team Operating Instructions')
     expect(md).toContain('You are Alpha, the Lead of Team Phoenix.')
@@ -193,7 +185,6 @@ describe('generateAgentsMd', () => {
   it('includes priorities section under team instructions', () => {
     const md = generateAgentsMd(base)
     expect(md).toContain('### Priorities')
-    expect(md).toContain('TEAM.md')
   })
 })
 
@@ -224,21 +215,8 @@ describe('generateUserMd', () => {
     expect(md).not.toContain('Telegram:')
   })
 
-  it('includes team lead section for non-lead agents', () => {
-    const md = generateUserMd({ teamName: 'Team Phoenix', leadAgentName: 'Alpha', leadAgentSlug: 'alpha', isLead: false })
-    expect(md).toContain('## Team Lead')
-    expect(md).toContain('- Name: Alpha')
-    expect(md).toContain('- Slug: alpha')
-    expect(md).toContain('team lead directs your work')
-  })
-
-  it('omits team lead section for the lead agent', () => {
-    const md = generateUserMd({ teamName: 'Team Phoenix', leadAgentName: 'Alpha', leadAgentSlug: 'alpha', isLead: true })
-    expect(md).not.toContain('## Team Lead')
-  })
-
-  it('omits team lead section when no lead agent defined', () => {
-    const md = generateUserMd({ teamName: 'Team Phoenix', isLead: false })
+  it('omits team lead section (handled by AGENTS.md)', () => {
+    const md = generateUserMd({ teamName: 'Team Phoenix' })
     expect(md).not.toContain('## Team Lead')
   })
 })
@@ -263,7 +241,6 @@ describe('generateToolsMd', () => {
   it('omits inter-agent section when no gateways', () => {
     const md = generateToolsMd({ hasGateways: false })
     expect(md).toContain('# Tools')
-    expect(md).toContain('## Workspace')
     expect(md).not.toContain('## Inter-Agent Communication')
   })
 
@@ -274,9 +251,9 @@ describe('generateToolsMd', () => {
     expect(md).toContain('- Prefer jq for JSON')
   })
 
-  it('always includes workspace section', () => {
+  it('does not include generic workspace section', () => {
     const md = generateToolsMd({ hasGateways: true })
-    expect(md).toContain('## Workspace')
+    expect(md).not.toContain('## Workspace')
   })
 })
 

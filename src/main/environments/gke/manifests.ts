@@ -55,7 +55,6 @@ export function generateAgentConfigMap(input: {
   agentSlug: string
   namespace: string
   identityMd: string
-  memoryMd: string
   soulMd: string
   skillsMd: string
   agentsMd: string
@@ -63,12 +62,12 @@ export function generateAgentConfigMap(input: {
   toolsMd: string
   openclawJson: string
 }): string {
-  const { teamSlug, agentSlug, namespace, identityMd, memoryMd, soulMd, skillsMd, agentsMd, userMd, toolsMd, openclawJson } = input
+  const { teamSlug, agentSlug, namespace, identityMd, soulMd, skillsMd, agentsMd, userMd, toolsMd, openclawJson } = input
   return generateConfigMap({
     name: `${teamSlug}-${agentSlug}-config`,
     namespace,
     labels: { 'coordina.team': teamSlug, 'coordina.agent': agentSlug },
-    data: { 'IDENTITY.md': identityMd, 'MEMORY.md': memoryMd, 'SOUL.md': soulMd, 'SKILLS.md': skillsMd, 'AGENTS.md': agentsMd, 'USER.md': userMd, 'TOOLS.md': toolsMd, 'openclaw.json': openclawJson },
+    data: { 'IDENTITY.md': identityMd, 'SOUL.md': soulMd, 'SKILLS.md': skillsMd, 'AGENTS.md': agentsMd, 'USER.md': userMd, 'TOOLS.md': toolsMd, 'openclaw.json': openclawJson },
   })
 }
 

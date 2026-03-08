@@ -15,7 +15,6 @@ import {
 import {
   generateTeamMd,
   generateIdentityMd,
-  generateMemoryMd,
   generateSoulMd,
   generateSkillsMd,
   generateAgentsMd,
@@ -184,7 +183,6 @@ const gkeDeriver: DeploymentSpecDeriver = {
         gateway: {
           ...baseGateway,
           mode: 'local',
-          host: '0.0.0.0',
           auth: {
             ...((baseGateway.auth as Record<string, unknown> | undefined) ?? {}),
             token: agentToken,
@@ -218,9 +216,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
         avatar: agent.avatar,
         teamName: spec.name,
         leadAgent: spec.leadAgent,
-        teamSize: spec.agents.length,
       })
-      const memoryMd = generateMemoryMd()
       const soulMd = generateSoulMd({ userInput: agent.persona, tone: agent.tone, boundaries: agent.boundaries, values: agent.values })
       const skillsMd = generateSkillsMd(agent.skills)
       const agentsMd = generateAgentsMd({
@@ -233,15 +229,11 @@ const gkeDeriver: DeploymentSpecDeriver = {
         hasGateways,
         operatingRules: agent.operatingRules,
       })
-      const leadAgent = spec.agents.find(a => a.slug === spec.leadAgent)
       const userMd = generateUserMd({
         teamName: spec.name,
         adminName: spec.adminName,
         adminEmail: spec.adminEmail,
         telegramAdminId,
-        isLead: agent.slug === spec.leadAgent,
-        leadAgentName: leadAgent?.name,
-        leadAgentSlug: leadAgent?.slug,
       })
       const toolsMd = generateToolsMd({
         hasGateways,
@@ -256,7 +248,6 @@ const gkeDeriver: DeploymentSpecDeriver = {
         agentSlug: agent.slug,
         namespace,
         identityMd,
-        memoryMd,
         soulMd,
         skillsMd,
         agentsMd,
@@ -267,7 +258,6 @@ const gkeDeriver: DeploymentSpecDeriver = {
       const agentConfigHash = createHash('sha256').update(agentConfigMap).digest('hex')
 
       files.push({ path: `agents/${agent.slug}/IDENTITY.md`, content: identityMd })
-      files.push({ path: `agents/${agent.slug}/MEMORY.md`, content: memoryMd })
       files.push({ path: `agents/${agent.slug}/SOUL.md`, content: soulMd })
       files.push({ path: `agents/${agent.slug}/SKILLS.md`, content: skillsMd })
       files.push({ path: `agents/${agent.slug}/AGENTS.md`, content: agentsMd })

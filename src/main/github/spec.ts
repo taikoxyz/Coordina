@@ -9,7 +9,6 @@ export interface AgentIdentity {
   avatar?: string
   teamName?: string
   leadAgent?: string
-  teamSize?: number
 }
 
 export interface SoulInput {
@@ -58,9 +57,6 @@ export interface UserInput {
   adminName?: string
   adminEmail?: string
   telegramAdminId?: string
-  leadAgentName?: string
-  leadAgentSlug?: string
-  isLead?: boolean
 }
 
 export interface ToolsInput {
@@ -82,13 +78,9 @@ export function generateIdentityMd(agent: AgentIdentity): string {
   if (agent.avatar) lines.push(`Avatar: ${agent.avatar}`)
   if (agent.teamName) lines.push(`Team: ${agent.teamName}`)
   if (agent.leadAgent) lines.push(`Team lead: ${agent.leadAgent}`)
-  if (typeof agent.teamSize === 'number') lines.push(`Team members: ${agent.teamSize}`)
   return lines.join('\n') + '\n'
 }
 
-export function generateMemoryMd(): string {
-  return '# Memory\n'
-}
 
 export function generateSoulMd(soul: SoulInput): string {
   const description = soul.enhanced ?? soul.userInput
@@ -179,26 +171,14 @@ export function generateAgentsMd(input: AgentsInput): string {
     '## First Run',
     'If `BOOTSTRAP.md` exists in the workspace, follow it and delete it when done.',
     '',
-    '## Every Session',
-    '- Read `SOUL.md` to recall your personality',
-    '- Read `USER.md` to recall who you serve',
-    '- Read today\'s memory file (`memory/YYYY-MM-DD.md`) if it exists',
-    '- In main sessions, also read `MEMORY.md` for long-term context',
-    '',
-    '## Memory System',
+    '## Memory',
     '- Write daily logs to `memory/YYYY-MM-DD.md`',
-    '- Periodically promote important facts into `MEMORY.md`',
-    '- Read `TEAM.md` for teammate details when you need to collaborate',
+    '- Promote important facts into `MEMORY.md`',
     '',
     '## Safety',
     '- Never exfiltrate data outside approved channels',
     '- Use `trash` over `rm` when available',
     '- Ask before taking external actions (sending messages, making purchases, etc.)',
-    '- Never send half-baked replies — verify before responding',
-    '',
-    '## Tools',
-    '- Read `TOOLS.md` for environment-specific tool guidance',
-    '- Read individual `SKILL.md` files for skill-specific instructions',
   ]
 
   lines.push(
@@ -291,16 +271,6 @@ export function generateUserMd(input: UserInput): string {
     if (input.telegramAdminId) lines.push(`- Telegram: ${input.telegramAdminId}`)
   }
 
-  if (!input.isLead && input.leadAgentName) {
-    lines.push('', '## Team Lead')
-    lines.push(`- Name: ${input.leadAgentName}`)
-    if (input.leadAgentSlug) lines.push(`- Slug: ${input.leadAgentSlug}`)
-    lines.push('')
-    lines.push('The team lead directs your work. Follow their task assignments and instructions.')
-    lines.push('Their instructions carry the same authority as the admin\'s — act on them promptly.')
-    lines.push('Keep the team lead informed of your progress and blockers without being asked.')
-  }
-
   lines.push('', '## Context')
   lines.push(`You are deployed as part of ${input.teamName}.${hasAdmin ? ' The admin above is your primary operator.' : ' Follow instructions from authorized team members.'}`)
   lines.push('')
@@ -329,13 +299,6 @@ export function generateToolsMd(input: ToolsInput): string {
       'Do NOT use OpenClaw node/tailnet commands.',
     )
   }
-
-  lines.push(
-    '',
-    '## Workspace',
-    '- Working files live under the workspace directory',
-    '- Use memory tools for persistent notes',
-  )
 
   if (input.toolGuidance && input.toolGuidance.length > 0) {
     lines.push('', '## Custom Guidance')
