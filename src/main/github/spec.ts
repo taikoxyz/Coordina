@@ -243,6 +243,8 @@ export function generateAgentsMd(input: AgentsInput): string {
       '1. Read `TEAM.md` — it lists each teammate\'s `gateway` URL and the shared `gateway_token`',
       '2. Use the `exec` tool to run a curl POST to `<gateway>/v1/responses` (see `TOOLS.md` for the exact command)',
       '3. Include full context in your message so the recipient can act without asking follow-up questions',
+      '',
+      'IMPORTANT: Always copy the gateway URL exactly from `TEAM.md`. Never construct or guess URLs yourself.',
     )
   }
   if (input.hasTelegram) {
