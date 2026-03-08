@@ -5,6 +5,11 @@ export const DEFAULT_BOOTSTRAP_INSTRUCTIONS = `# Bootstrap Instructions
 - Check available disk space on /workspace
 
 ## Tool Installation
+- Tools install to /agent-data/openclaw/tools/ (on PATH, persists across restarts)
+- npm: \`npm install -g <package>\` (no sudo needed, NPM_CONFIG_PREFIX is set)
+- Python: \`pip install <package>\` (PIP_USER=true, installs to PYTHONUSERBASE)
+- Go: \`go install <package>@latest\` (GOPATH is set)
+- Cargo: \`cargo install <package>\` (CARGO_HOME is set)
 - Install project dependencies as defined in the team configuration
 - Configure git with the agent's identity (name and email from IDENTITY.md)
 
