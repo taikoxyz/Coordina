@@ -5,7 +5,7 @@ import { useNav } from '../store/nav'
 import { Button, Card, CardContent, ReadField } from './ui'
 
 const PROVIDER_NAMES: Record<string, string> = {
-  anthropic: 'Anthropic', openai: 'OpenAI', deepseek: 'DeepSeek', openrouter: 'OpenRouter', ollama: 'Ollama',
+  claude: 'Claude', anthropic: 'Anthropic', openai: 'OpenAI', deepseek: 'DeepSeek', openrouter: 'OpenRouter', minimax: 'MiniMax', ollama: 'Ollama',
 }
 
 export function ProviderDetail({ slug }: { slug: string }) {

@@ -34,7 +34,7 @@ export function createModel(
   const modelId = (config.model as string | undefined) || DEFAULT_MODELS[type] || 'default'
   const key = apiKey ?? ''
 
-  if (type === 'anthropic') {
+  if (type === 'anthropic' || type === 'claude') {
     return createAnthropic({ apiKey: key })(modelId)
   }
   if (type === 'google') {
