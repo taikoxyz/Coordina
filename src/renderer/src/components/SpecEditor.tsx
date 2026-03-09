@@ -34,6 +34,18 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
   const [ghTokenError, setGhTokenError] = useState<string | null>(null)
   const [mcRegState, setMcRegState] = useState<'idle' | 'registering' | 'done' | 'error'>('idle')
   const [mcUrl, setMcUrl] = useState<string | null>(null)
+  const [mcAdminPassword, setMcAdminPassword] = useState<string | null>(null)
+  const [mcPasswordCopied, setMcPasswordCopied] = useState(false)
+
+  useEffect(() => {
+    if (!spec.slug || spec.missionControlEnabled === false) return
+    let active = true
+    window.api
+      .invoke('teams:getMcAdminPassword', { teamSlug: spec.slug })
+      .then((value) => { if (active) setMcAdminPassword((value as string | null) ?? null) })
+      .catch(() => { /* ignore */ })
+    return () => { active = false }
+  }, [spec.slug, spec.missionControlEnabled])
 
   useEffect(() => {
     if (!spec.slug) return
@@ -449,7 +461,24 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Admin password</Label>
-                  <Input mono type="password" value={spec.mcAdminPassword ?? ''} onChange={(e) => set('mcAdminPassword')(e.target.value || undefined)} />
+                  <div className="flex items-center gap-1.5">
+                    <Input mono value={mcAdminPassword ? '•'.repeat(mcAdminPassword.length) : '—'} readOnly className="flex-1" />
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="shrink-0"
+                      disabled={!mcAdminPassword}
+                      onClick={() => {
+                        if (!mcAdminPassword) return
+                        void navigator.clipboard.writeText(mcAdminPassword)
+                        setMcPasswordCopied(true)
+                        setTimeout(() => setMcPasswordCopied(false), 1500)
+                      }}
+                    >
+                      {mcPasswordCopied ? <Check className="w-3 h-3" /> : 'Copy'}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5">Derived from team signing key</p>
                 </div>
                 <div>
                   <Label>API key</Label>
