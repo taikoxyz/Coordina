@@ -13,8 +13,11 @@ export interface OAuthConfig {
   clientSecret: string
 }
 
-export const authenticateProvider = (slug: string, config: OAuthConfig): Promise<string> =>
-  new Promise((resolve, reject) => {
+export const authenticateProvider = (slug: string, config: OAuthConfig): Promise<string> => {
+  if (config.authUrl.startsWith('PLACEHOLDER') || config.tokenUrl.startsWith('PLACEHOLDER') || config.clientId.startsWith('PLACEHOLDER')) {
+    return Promise.reject(new Error('OAuth not configured yet — replace placeholder authUrl, tokenUrl, and clientId in the provider module'))
+  }
+  return new Promise((resolve, reject) => {
     let handled = false
     let win: BrowserWindow | null = null
 
@@ -82,3 +85,4 @@ export const authenticateProvider = (slug: string, config: OAuthConfig): Promise
 
     server.on('error', reject)
   })
+}
