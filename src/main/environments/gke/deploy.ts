@@ -211,6 +211,11 @@ export async function* deployTeam(
     ...specFiles.filter(f => f.path.includes('/statefulset.yaml')).map(f => f.path),
     ...specFiles.filter(f => f.path.includes('/service.yaml')).map(f => f.path),
     'ingress.yaml',
+    'mission-control/secret.yaml',
+    'mission-control/pvc.yaml',
+    'mission-control/deployment.yaml',
+    'mission-control/service.yaml',
+    'mission-control/ingress.yaml',
   ]
 
   for (const path of orderedPaths) {
