@@ -74,7 +74,7 @@ async function applyManifest(client: k8s.KubernetesObjectApi, content: string): 
           results.push({ resource, status: 'error', message: String(createErr) })
         }
       } else if (err.code === 422 || err.statusCode === 422) {
-        results.push({ resource, status: 'exists', message: 'spec immutable, delete and redeploy with keepDisks=false to update' })
+        results.push({ resource, status: 'exists', message: 'spec immutable, redeploy with recreateDisks=true to update' })
       } else {
         results.push({ resource, status: 'error', message: String(e) })
       }
@@ -221,24 +221,33 @@ export async function* deployTeam(
   }
 
   const fallbackZone = config.diskZone ?? toZone(config.clusterZone)
-  const pvcList = await coreApi.listNamespacedPersistentVolumeClaim({ namespace, labelSelector: `coordina.team=${teamSlug}` })
-    .catch(() => ({ items: [] } as { items: k8s.V1PersistentVolumeClaim[] }))
-  for (const pvc of pvcList.items ?? []) {
-    const agentSlug = pvc.metadata?.labels?.['coordina.agent']
-    const pvName = pvc.spec?.volumeName
-    if (!agentSlug || !pvName) continue
-    const pv = await coreApi.readPersistentVolume({ name: pvName }).catch(() => null)
-    const volumeHandle = pv?.spec?.csi?.volumeHandle
-    if (!volumeHandle) continue
-    const parts = volumeHandle.split('/')
-    const diskName = parts[parts.length - 1]
-    const zone = parts[3] ?? fallbackZone
-    try {
-      labelDisk(config.projectId, zone, diskName, { 'coordina-team': teamSlug, 'coordina-agent': agentSlug })
-    } catch {
-      yield { resource: `DiskLabel/${diskName}`, status: 'error', message: 'Failed to label GCP disk — tag-based deletion may miss this disk' }
+  const labelAgentDisks = async function* (): AsyncGenerator<DeployStatus> {
+    const pvcList = await coreApi.listNamespacedPersistentVolumeClaim({ namespace, labelSelector: `coordina.team=${teamSlug}` })
+      .catch(() => ({ items: [] } as { items: k8s.V1PersistentVolumeClaim[] }))
+    for (const pvc of pvcList.items ?? []) {
+      const agentSlug = pvc.metadata?.labels?.['coordina.agent']
+      if (!agentSlug) continue
+      let pvName = pvc.spec?.volumeName
+      if (!pvName) {
+        await new Promise(r => setTimeout(r, 5000))
+        const refreshed = await coreApi.readNamespacedPersistentVolumeClaim({ name: pvc.metadata!.name!, namespace }).catch(() => null)
+        pvName = refreshed?.spec?.volumeName
+      }
+      if (!pvName) continue
+      const pv = await coreApi.readPersistentVolume({ name: pvName }).catch(() => null)
+      const volumeHandle = pv?.spec?.csi?.volumeHandle
+      if (!volumeHandle) continue
+      const parts = volumeHandle.split('/')
+      const diskName = parts[parts.length - 1]
+      const zone = parts[3] ?? fallbackZone
+      try {
+        labelDisk(config.projectId, zone, diskName, { 'coordina-team': teamSlug, 'coordina-agent': agentSlug })
+      } catch {
+        yield { resource: `DiskLabel/${diskName}`, status: 'error', message: 'Failed to label GCP disk — tag-based deletion may miss this disk' }
+      }
     }
   }
+  yield* labelAgentDisks()
 }
 
 export async function* undeployTeam(teamSlug: string, config: GkeDeployConfig, options: { deleteDisks?: boolean } = {}): AsyncGenerator<DeployStatus> {
