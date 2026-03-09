@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertCircle, Check, Loader2, Pencil, Rocket, X } from 'lucide-react'
+import { AlertCircle, Check, ExternalLink, Loader2, Pencil, Rocket, X } from 'lucide-react'
 import type { EnvironmentRecord, TeamSpec } from '../../../../shared/types'
 import { Badge, Button, Input, Label, ReadField, Select, Textarea } from '../ui'
 
@@ -58,6 +58,8 @@ export function TeamOverview({
   const [deployState, setDeployState] = useState<OverviewDeployState>('idle')
   const [emailPassword, setEmailPassword] = useState('')
   const [emailPasswordMasked, setEmailPasswordMasked] = useState<string | null>(null)
+  const [mcRegState, setMcRegState] = useState<'idle' | 'registering' | 'done' | 'error'>('idle')
+  const [mcUrl, setMcUrl] = useState<string | null>(null)
   const [emailPasswordBusy, setEmailPasswordBusy] = useState(false)
   const [emailPasswordError, setEmailPasswordError] = useState<string | null>(null)
 
@@ -115,6 +117,18 @@ export function TeamOverview({
       setEmailPasswordBusy(false)
     }
   }
+
+  const handleRegisterMC = useCallback(async () => {
+    if (!spec.deployedEnvSlug) return
+    setMcRegState('registering')
+    const result = await window.api.invoke('mc:registerAgents', { teamSlug: spec.slug, envSlug: spec.deployedEnvSlug }) as { ok: boolean; reason?: string; mcUrl?: string }
+    if (result.ok) {
+      setMcRegState('done')
+      if (result.mcUrl) setMcUrl(result.mcUrl)
+    } else {
+      setMcRegState('error')
+    }
+  }, [spec.deployedEnvSlug, spec.slug])
 
   const handleDeploy = async () => {
     if (!deployEnvSlug) return
@@ -269,6 +283,44 @@ export function TeamOverview({
             </div>
           )}
         </div>
+
+        {spec.missionControlEnabled !== false && spec.deployedEnvSlug && (
+          <>
+            <hr className="border-gray-200" />
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-900">Mission Control</h4>
+                  <p className="text-sm text-gray-500 mt-1">Register agents with the monitoring dashboard after each deploy.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {mcUrl && (
+                    <a href={mcUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700">
+                      Open dashboard <ExternalLink className="w-3 h-3" />
+                    </a>
+                  )}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => void handleRegisterMC()}
+                    disabled={mcRegState === 'registering'}
+                  >
+                    {mcRegState === 'registering' ? (
+                      <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Registering…</>
+                    ) : mcRegState === 'done' ? (
+                      <><Check className="w-3 h-3 mr-1" />Registered</>
+                    ) : 'Register agents'}
+                  </Button>
+                </div>
+              </div>
+              {mcRegState === 'error' && (
+                <p className="text-xs text-red-600 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />Registration failed — is Mission Control configured in GKE settings?
+                </p>
+              )}
+            </div>
+          </>
+        )}
 
       </div>
       </div>
@@ -497,6 +549,25 @@ export function TeamOverview({
             onChange={e => set('startupInstructions')(e.target.value || undefined)}
             placeholder="Custom bootstrap instructions..."
           />
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">Mission Control</h3>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs text-gray-600">Deploy Mission Control alongside this team's agents.</p>
+            <p className="text-xs text-gray-400 mt-0.5">Requires Mission Control to be configured in GKE settings.</p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              className="sr-only peer"
+              checked={spec.missionControlEnabled !== false}
+              onChange={(e) => set('missionControlEnabled')(e.target.checked)}
+            />
+            <div className="w-8 h-4 bg-gray-200 peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-4 peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all" />
+          </label>
         </div>
       </div>
     </div>

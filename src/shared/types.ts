@@ -47,6 +47,7 @@ export interface TeamSpec {
   adminEmail?: string
   teamEmail?: string
   teamDescription?: string
+  missionControlEnabled?: boolean
 }
 
 export interface PersonaTemplate {

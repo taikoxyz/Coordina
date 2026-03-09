@@ -316,7 +316,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
     }
 
     const mc = (envConfig as { missionControl?: MissionControlConfig }).missionControl
-    if (mc?.enabled) {
+    if (mc?.enabled && spec.missionControlEnabled !== false) {
       const leadSlug = spec.leadAgent ?? spec.agents[0]?.slug ?? ''
       files.push({ path: 'mission-control/secret.yaml', content: generateMissionControlSecret({ namespace, adminPassword: mc.adminPassword, sessionSecret: mc.sessionSecret, apiKey: mc.apiKey, leadAgentSlug: leadSlug, domain: mc.domain }) })
       files.push({ path: 'mission-control/pvc.yaml', content: generateMissionControlPvc({ namespace }) })
