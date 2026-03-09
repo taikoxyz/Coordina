@@ -51,8 +51,10 @@ describe('GKE deriver with Mission Control', () => {
     expect(paths).not.toContain('mission-control/secret.yaml')
   })
 
-  it('throws when MC is enabled per-team but no image configured globally', async () => {
+  it('uses default ghcr image when no image configured globally', async () => {
     const deriver = getDeriver('gke')
-    await expect(deriver.derive(TEAM, {})).rejects.toThrow('no Docker image is configured')
+    const files = await deriver.derive(TEAM, {})
+    const deployment = files.find(f => f.path === 'mission-control/deployment.yaml')
+    expect(deployment?.content).toContain('ghcr.io/builderz-labs/mission-control:latest')
   })
 })
