@@ -4,15 +4,18 @@ import { persist } from 'zustand/middleware'
 export type SelectedItem =
   | { type: 'team'; slug: string }
   | { type: 'agent'; teamSlug: string; agentSlug: string }
+  | { type: 'settings' }
 
 export type ContentTab = 'deploy' | 'spec' | 'files' | 'connect'
+
+export type SettingsSection = 'general' | 'openrouter' | 'google-cloud' | 'patterns-soul' | 'patterns-agents' | 'patterns-lead' | 'patterns-user'
 
 interface NavStore {
   selectedItem: SelectedItem | null
   contentTab: ContentTab
   expandedTeams: string[]
   projectSlug: string | null
-  isSettingsOpen: boolean
+  settingsSection: SettingsSection
   isCreateDialogOpen: 'teams' | null
   deployingTeamSlug: string | null
   deployingAgentSlug: string | null
@@ -20,7 +23,8 @@ interface NavStore {
   selectItem: (item: SelectedItem) => void
   setContentTab: (tab: ContentTab) => void
   toggleTeam: (slug: string) => void
-  setSettingsOpen: (open: boolean) => void
+  setSettingsSection: (section: SettingsSection) => void
+  openSettings: (section?: SettingsSection) => void
   setCreateDialogOpen: (group: 'teams' | null) => void
   selectProject: (slug: string | null) => void
   setDeploying: (teamSlug: string | null, agentSlug?: string | null) => void
@@ -31,22 +35,23 @@ export const useNav = create<NavStore>()(
     (set) => ({
       selectedItem: null,
       contentTab: 'deploy',
+      settingsSection: 'general' as SettingsSection,
       expandedTeams: [],
       projectSlug: null,
-      isSettingsOpen: false,
       isCreateDialogOpen: null,
       deployingTeamSlug: null,
       deployingAgentSlug: null,
 
       selectItem: (item) => set({ selectedItem: item, contentTab: 'deploy' }),
       setContentTab: (contentTab) => set({ contentTab }),
+      setSettingsSection: (settingsSection) => set({ settingsSection }),
+      openSettings: (section) => set({ selectedItem: { type: 'settings' }, settingsSection: section ?? 'general' }),
       toggleTeam: (slug) =>
         set((s) => ({
           expandedTeams: s.expandedTeams.includes(slug)
             ? s.expandedTeams.filter((t) => t !== slug)
             : [...s.expandedTeams, slug],
         })),
-      setSettingsOpen: (isSettingsOpen) => set({ isSettingsOpen }),
       setCreateDialogOpen: (isCreateDialogOpen) => set({ isCreateDialogOpen }),
       selectProject: (projectSlug) => set({ projectSlug }),
       setDeploying: (teamSlug, agentSlug) => set({ deployingTeamSlug: teamSlug, deployingAgentSlug: agentSlug ?? null }),

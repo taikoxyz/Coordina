@@ -8,7 +8,7 @@ import type { AgentSpec } from '../../../shared/types'
 import { DEFAULT_AGENT_NAME_THEME, generateAutoAgentIdentities } from '../../../shared/agentNames'
 
 export function AppSidebar() {
-  const { selectedItem, selectItem, expandedTeams, toggleTeam, setSettingsOpen, setCreateDialogOpen, deployingTeamSlug, deployingAgentSlug } = useNav()
+  const { selectedItem, selectItem, expandedTeams, toggleTeam, openSettings, setCreateDialogOpen, deployingTeamSlug, deployingAgentSlug } = useNav()
   const { data: teams } = useTeams()
   const saveTeam = useSaveTeam()
   const { data: settings } = useSettings()
@@ -138,8 +138,13 @@ export function AppSidebar() {
           Add team
         </button>
         <button
-          onClick={() => setSettingsOpen(true)}
-          className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-white hover:text-gray-700"
+          onClick={() => openSettings()}
+          className={cn(
+            'rounded-md p-1.5 transition-colors',
+            selectedItem?.type === 'settings'
+              ? 'bg-white text-gray-900'
+              : 'text-gray-400 hover:bg-white hover:text-gray-700',
+          )}
         >
           <Settings className="h-4 w-4" />
         </button>

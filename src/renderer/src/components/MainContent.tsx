@@ -7,6 +7,7 @@ import { DeployPanel } from './DeployPanel'
 import { SpecJsonPanel } from './SpecJsonPanel'
 import { FileBrowser } from './files/FileBrowser'
 import { ConnectPane } from './agent/ConnectPane'
+import { SettingsPage } from './SettingsPage'
 import { EmptyState } from './EmptyState'
 import { cn } from '../lib/utils'
 
@@ -61,6 +62,10 @@ export function MainContent() {
         description="Select a team from the sidebar or create a new one to get started."
       />
     )
+  }
+
+  if (selectedItem.type === 'settings') {
+    return <SettingsPage />
   }
 
   const teamSlug = selectedItem.type === 'team' ? selectedItem.slug : selectedItem.teamSlug

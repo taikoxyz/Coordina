@@ -23,7 +23,7 @@ importers:
       '@assistant-ui/react':
         specifier: ^0.12.15
         version: 0.12.15(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(use-sync-external-store@1.6.0(react@19.2.4))
-      '@dicebear/bottts':
+      '@dicebear/bottts-neutral':
         specifier: ^9.4.0
         version: 9.4.0(@dicebear/core@9.4.0)
       '@dicebear/core':
@@ -465,8 +465,8 @@ packages:
     resolution: {integrity: sha512-0cp4PsWQ/9avqTVMCtZ+GirikIA36ikvjtHweU4/j8yLtgObI0+JUPhYFScgwlteveGB1rt3Cm8UhN04XayDig==}
     engines: {node: '>= 8.9.0'}
 
-  '@dicebear/bottts@9.4.0':
-    resolution: {integrity: sha512-vuFC5HRfzla7YH2s02CBrxBr+ninbZu9PtO3a72JoO8Da02/POI7RF3WjjlzfRG4+i5NHyn77gKsl2cy8rTTXA==}
+  '@dicebear/bottts-neutral@9.4.0':
+    resolution: {integrity: sha512-ACIM6Cu0es4TdMA0jHUlKtWh50AZS0HJ5ykeBueZpPhMMGbjkRV90Sit/4+I2ghTOZ6Veug+UjEKz4VUbkfKwA==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       '@dicebear/core': ^9.0.0
@@ -6154,7 +6154,7 @@ snapshots:
       ajv: 6.14.0
       ajv-keywords: 3.5.2(ajv@6.14.0)
 
-  '@dicebear/bottts@9.4.0(@dicebear/core@9.4.0)':
+  '@dicebear/bottts-neutral@9.4.0(@dicebear/core@9.4.0)':
     dependencies:
       '@dicebear/core': 9.4.0
 
