@@ -10,7 +10,6 @@ vi.mock('../store/providers', () => ({ getOpenRouterApiKey: vi.fn().mockResolved
 vi.mock('../providers/base', () => ({
   openrouterToOpenClawJson: vi.fn().mockReturnValue({
     agents: { defaults: { model: { primary: 'openrouter/anthropic/claude-sonnet-4-6' } } },
-    models: { providers: { openrouter: { baseUrl: 'https://openrouter.ai/api/v1', api: 'openai-completions', models: [{ id: 'anthropic/claude-sonnet-4-6' }] } } },
   }),
   openrouterToEnvVars: vi.fn().mockReturnValue({ OPENROUTER_API_KEY: 'or-test-key' }),
 }))
