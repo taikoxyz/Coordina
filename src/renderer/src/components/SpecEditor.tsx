@@ -112,7 +112,7 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
 
           <div>
             <h4 className="text-sm font-semibold text-gray-900 mb-1">Resources</h4>
-            <ReadField label="Container image" value={spec.defaultImage} />
+            <ReadField label="Container image" value={spec.defaultImage} defaultValue="alpine/openclaw:latest" />
             <ReadField label="CPU (cores)" value={spec.defaultCpu} defaultValue={1} />
             <ReadField label="Disk (Gi)" value={spec.defaultDiskGi} defaultValue={10} />
           </div>
