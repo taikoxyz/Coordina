@@ -236,10 +236,9 @@ export function generateAgentsMd(input: AgentsInput): string {
   const commLines: string[] = ['', '### Communication']
   if (input.hasGateways) {
     commLines.push(
-      'All agent-to-agent communication MUST go through the gateway HTTP API — never via Telegram or any other channel.',
+      'Agent-to-agent communication MUST use the gateway HTTP API — never Telegram or any other channel.',
       'Telegram is for admin-to-agent communication only.',
-      '',
-      'To message a teammate, find their `gateway` URL in the **Team Directory** at the bottom of this file, then follow the curl instructions in `TOOLS.md`.',
+      'See `TOOLS.md → Inter-Agent Communication` for the full curl workflow, parameters, and rules.',
     )
   }
   if (input.hasTelegram) {
@@ -345,9 +344,13 @@ export function generateToolsMd(input: ToolsInput): string {
       '4. Run the `curl` command with the `exec` tool',
       '',
       '### Rules',
+      '- Verify the agent is reachable before messaging: `GET /v1/version`',
+      '- Use standardized JSON payloads for all requests — see the curl example above for the required shape',
+      '- Check the agent\'s `IDENTITY.md` for preferred communication protocols before messaging',
       '- Always use `-m 300` (5-minute timeout) — responses can take time',
       '- Always write JSON to a file first — never pass JSON directly in `-d \'...\'`',
       '- Use the `exec` tool (not `bash`) to run curl commands',
+      '- If the gateway returns unexpected content, verify the endpoint and token, then retry once',
       '- Do NOT use OpenClaw session tools (e.g. sessions_send) or node/tailnet commands — only the HTTP gateway curl approach above',
     )
   }
