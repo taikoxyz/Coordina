@@ -1,4 +1,4 @@
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Github } from 'lucide-react'
 import { useNav } from '../store/nav'
 import type { SettingsSection } from '../store/nav'
 import { useTeams } from '../hooks/useTeams'
@@ -89,6 +89,17 @@ export function SettingsPage() {
             </div>
           )
         })}
+        <div className="mt-auto px-4 py-4 border-t border-gray-100">
+          <a
+            href="https://github.com/dantaik/Coordina"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <Github className="w-3.5 h-3.5" />
+            GitHub
+          </a>
+        </div>
       </nav>
 
       <div className="flex-1 overflow-y-auto">
