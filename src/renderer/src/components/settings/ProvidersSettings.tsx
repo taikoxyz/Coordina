@@ -1,13 +1,14 @@
 import { useState } from 'react'
-import { useProviders, useSaveProvider, useDeleteProvider } from '../../hooks/useProviders'
-import { Trash2, Plus, Check, X, Loader2 } from 'lucide-react'
+import { useProviders, useSaveProvider, useDeleteProvider, useOAuthProvider } from '../../hooks/useProviders'
+import { Trash2, Plus, Check, X, Loader2, RefreshCw } from 'lucide-react'
 import type { ProviderRecord } from '../../../../shared/types'
 import { Button, Input, Select, Label } from '../ui'
 
-const PROVIDER_TYPES = ['anthropic', 'openai', 'deepseek', 'openrouter', 'ollama']
+const PROVIDER_TYPES = ['anthropic', 'openai', 'deepseek', 'openrouter', 'minimax', 'ollama']
 const PROVIDER_NAMES: Record<string, string> = {
-  anthropic: 'Anthropic', openai: 'OpenAI', deepseek: 'DeepSeek', openrouter: 'OpenRouter', ollama: 'Ollama'
+  anthropic: 'Anthropic', openai: 'OpenAI', deepseek: 'DeepSeek', openrouter: 'OpenRouter', minimax: 'MiniMax', ollama: 'Ollama'
 }
+const OAUTH_PROVIDERS = new Set(['anthropic', 'openai', 'deepseek', 'openrouter', 'minimax'])
 
 type KeyStatus = 'idle' | 'checking' | 'valid' | 'error'
 interface EditState {
@@ -26,10 +27,12 @@ export function ProvidersSettings() {
   const { data: providers, isLoading } = useProviders()
   const saveProvider = useSaveProvider()
   const deleteProvider = useDeleteProvider()
+  const oauthProvider = useOAuthProvider()
 
   const [editing, setEditing] = useState<EditState | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [reconnectTarget, setReconnectTarget] = useState<string | null>(null)
 
   const handleCredentialBlur = async () => {
     if (!editing || !editing.credential.trim()) return
@@ -53,6 +56,26 @@ export function ProvidersSettings() {
 
   const handleTypeChange = (type: string) => {
     setEditing(e => e ? { ...e, type, credential: '', keyStatus: 'idle', keyError: null, models: [], model: '' } : null)
+  }
+
+  const handleOAuthConnect = async () => {
+    if (!editing) return
+    const slug = toSlug(editing.type, providers ?? [])
+    setEditing(e => e ? { ...e, keyStatus: 'checking', keyError: null, models: [], model: '' } : null)
+    const result = await oauthProvider.mutateAsync({ slug, type: editing.type })
+    if (result.ok) {
+      const models = result.models ?? []
+      setEditing(e => e ? { ...e, keyStatus: 'valid', models, model: models[0] ?? '' } : null)
+    } else {
+      setEditing(e => e ? { ...e, keyStatus: 'error', keyError: result.error ?? 'Authentication failed' } : null)
+    }
+  }
+
+  const handleReconnect = async (p: ProviderRecord) => {
+    setReconnectTarget(p.slug)
+    const result = await oauthProvider.mutateAsync({ slug: p.slug, type: p.type })
+    setReconnectTarget(null)
+    if (!result.ok) setSaveError(result.error ?? 'Reconnection failed')
   }
 
   const handleSave = async () => {
@@ -104,21 +127,37 @@ export function ProvidersSettings() {
           </div>
 
           <div>
-            <Label>{credentialLabel(editing.type)}</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                mono
-                className="flex-1"
-                type={editing.type === 'ollama' ? 'text' : 'password'}
-                value={editing.credential}
-                onChange={e => setEditing({ ...editing, credential: e.target.value, keyStatus: 'idle', keyError: null, models: [], model: '' })}
-                onBlur={handleCredentialBlur}
-                placeholder={credentialPlaceholder(editing.type)}
-              />
-              {editing.keyStatus === 'checking' && <Loader2 className="w-4 h-4 text-gray-400 animate-spin shrink-0" />}
-              {editing.keyStatus === 'valid' && <Check className="w-4 h-4 text-green-500 shrink-0" />}
-              {editing.keyStatus === 'error' && <X className="w-4 h-4 text-red-500 shrink-0" />}
-            </div>
+            {OAUTH_PROVIDERS.has(editing.type) ? (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="primary"
+                  onClick={() => void handleOAuthConnect()}
+                  disabled={editing.keyStatus === 'checking'}
+                >
+                  {editing.keyStatus === 'checking' ? <Loader2 className="w-4 h-4 animate-spin" /> : `Connect with ${PROVIDER_NAMES[editing.type]}`}
+                </Button>
+                {editing.keyStatus === 'valid' && <Check className="w-4 h-4 text-green-500 shrink-0" />}
+                {editing.keyStatus === 'error' && <X className="w-4 h-4 text-red-500 shrink-0" />}
+              </div>
+            ) : (
+              <>
+                <Label>{credentialLabel(editing.type)}</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    mono
+                    className="flex-1"
+                    type="text"
+                    value={editing.credential}
+                    onChange={e => setEditing({ ...editing, credential: e.target.value, keyStatus: 'idle', keyError: null, models: [], model: '' })}
+                    onBlur={handleCredentialBlur}
+                    placeholder={credentialPlaceholder(editing.type)}
+                  />
+                  {editing.keyStatus === 'checking' && <Loader2 className="w-4 h-4 text-gray-400 animate-spin shrink-0" />}
+                  {editing.keyStatus === 'valid' && <Check className="w-4 h-4 text-green-500 shrink-0" />}
+                  {editing.keyStatus === 'error' && <X className="w-4 h-4 text-red-500 shrink-0" />}
+                </div>
+              </>
+            )}
             {editing.keyStatus === 'error' && editing.keyError && (
               <p className="text-xs text-red-600 mt-1">{editing.keyError}</p>
             )}
@@ -168,11 +207,28 @@ export function ProvidersSettings() {
                 <div className="text-sm font-medium text-gray-900">{p.name}</div>
                 <div className="text-xs text-gray-400 font-mono truncate">
                   {p.model}
-                  {p.maskedApiKey && <span className="ml-2">{p.maskedApiKey}</span>}
+                  {OAUTH_PROVIDERS.has(p.type)
+                    ? <span className="ml-2 text-green-600">Connected</span>
+                    : p.maskedApiKey && <span className="ml-2">{p.maskedApiKey}</span>
+                  }
                 </div>
               </div>
             </div>
-            <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+              {OAUTH_PROVIDERS.has(p.type) && deleteTarget !== p.slug && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => void handleReconnect(p)}
+                  disabled={reconnectTarget === p.slug}
+                  title="Reconnect"
+                >
+                  {reconnectTarget === p.slug
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <RefreshCw className="w-3.5 h-3.5" />
+                  }
+                </Button>
+              )}
               {deleteTarget === p.slug ? (
                 <div className="flex items-center gap-1.5">
                   <Button

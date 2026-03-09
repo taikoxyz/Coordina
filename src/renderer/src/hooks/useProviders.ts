@@ -28,3 +28,12 @@ export const useDeleteProvider = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['providers'] }),
   })
 }
+
+export const useOAuthProvider = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { slug: string; type: string }) =>
+      window.api.invoke('providers:oauth', data) as Promise<{ ok: boolean; models?: string[]; error?: string }>,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['providers'] }),
+  })
+}

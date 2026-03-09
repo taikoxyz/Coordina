@@ -18,12 +18,22 @@ export interface OpenClawModelConfig {
   models: { providers: { [provider: string]: { apiKey?: string; baseUrl?: string; api?: string } } }
 }
 
+export interface OAuthProviderConfig {
+  authUrl: string
+  tokenUrl: string
+  scopes: string[]
+  clientId: string
+  clientSecret: string
+}
+
 export interface ModelProvider {
   id: string
   displayName: string
   defaultModel: string
   configSchema: object
   supportedModels: { id: string; displayName: string }[]
+  authType: 'apiKey' | 'oauth'
+  oauthConfig?: OAuthProviderConfig
   validate(config: unknown): ValidationResult
   testConnection(config: unknown): Promise<ValidationResult>
   listModels(config: unknown): Promise<string[]>

@@ -8,11 +8,18 @@ const minimax: ModelProvider = {
   id: 'minimax',
   displayName: 'MiniMax',
   defaultModel: 'MiniMax-Text-01',
+  authType: 'oauth',
+  oauthConfig: {
+    authUrl: 'PLACEHOLDER_MINIMAX_AUTH_URL',
+    tokenUrl: 'PLACEHOLDER_MINIMAX_TOKEN_URL',
+    scopes: ['openid'],
+    clientId: 'PLACEHOLDER_MINIMAX_CLIENT_ID',
+    clientSecret: 'PLACEHOLDER_MINIMAX_CLIENT_SECRET',
+  },
   configSchema: {
     type: 'object',
-    required: ['apiKey', 'model'],
+    required: ['model'],
     properties: {
-      apiKey: { type: 'string', title: 'API Key', description: 'Your MiniMax API key', format: 'password' },
       model: { type: 'string', title: 'Model', enum: STATIC_MODELS, default: 'MiniMax-Text-01' },
     },
   },
@@ -21,9 +28,7 @@ const minimax: ModelProvider = {
     { id: 'MiniMax-01', displayName: 'MiniMax 01' },
     { id: 'abab6.5s-chat', displayName: 'ABAB 6.5S Chat' },
   ],
-  validate(config) {
-    const c = config as { apiKey?: string }
-    if (!c.apiKey) return { valid: false, errors: ['API key is required'] }
+  validate() {
     return { valid: true }
   },
   async testConnection(config) {

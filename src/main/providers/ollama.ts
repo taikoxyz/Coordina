@@ -4,6 +4,7 @@ const ollama: ModelProvider = {
   id: 'ollama',
   displayName: 'Ollama',
   defaultModel: 'llama3',
+  authType: 'apiKey',
   configSchema: {
     type: 'object',
     required: ['baseUrl', 'model'],

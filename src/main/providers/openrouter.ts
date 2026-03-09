@@ -4,11 +4,18 @@ const openrouter: ModelProvider = {
   id: 'openrouter',
   displayName: 'OpenRouter',
   defaultModel: 'openai/gpt-4o',
+  authType: 'oauth',
+  oauthConfig: {
+    authUrl: 'PLACEHOLDER_OPENROUTER_AUTH_URL',
+    tokenUrl: 'PLACEHOLDER_OPENROUTER_TOKEN_URL',
+    scopes: ['openid'],
+    clientId: 'PLACEHOLDER_OPENROUTER_CLIENT_ID',
+    clientSecret: 'PLACEHOLDER_OPENROUTER_CLIENT_SECRET',
+  },
   configSchema: {
     type: 'object',
-    required: ['apiKey', 'model'],
+    required: ['model'],
     properties: {
-      apiKey: { type: 'string', title: 'API Key', description: 'Your OpenRouter API key (sk-or-...)', format: 'password' },
       model: { type: 'string', title: 'Model', description: 'Model identifier (e.g. openai/gpt-4o, anthropic/claude-sonnet-4-6)', default: 'openai/gpt-4o' },
     },
   },
@@ -18,9 +25,7 @@ const openrouter: ModelProvider = {
     { id: 'google/gemini-pro-1.5', displayName: 'Gemini Pro 1.5 (via OpenRouter)' },
     { id: 'meta-llama/llama-3.1-70b-instruct', displayName: 'Llama 3.1 70B (via OpenRouter)' },
   ],
-  validate(config) {
-    const c = config as { apiKey?: string; model?: string }
-    if (!c.apiKey?.startsWith('sk-or-')) return { valid: false, errors: ['API key must start with sk-or-'] }
+  validate() {
     return { valid: true }
   },
   async testConnection(config) {

@@ -4,11 +4,18 @@ const deepseek: ModelProvider = {
   id: 'deepseek',
   displayName: 'DeepSeek',
   defaultModel: 'deepseek-chat',
+  authType: 'oauth',
+  oauthConfig: {
+    authUrl: 'PLACEHOLDER_DEEPSEEK_AUTH_URL',
+    tokenUrl: 'PLACEHOLDER_DEEPSEEK_TOKEN_URL',
+    scopes: ['openid'],
+    clientId: 'PLACEHOLDER_DEEPSEEK_CLIENT_ID',
+    clientSecret: 'PLACEHOLDER_DEEPSEEK_CLIENT_SECRET',
+  },
   configSchema: {
     type: 'object',
-    required: ['apiKey', 'model'],
+    required: ['model'],
     properties: {
-      apiKey: { type: 'string', title: 'API Key', description: 'Your DeepSeek API key', format: 'password' },
       model: { type: 'string', title: 'Model', enum: ['deepseek-chat', 'deepseek-reasoner'], default: 'deepseek-chat' },
     },
   },
@@ -16,9 +23,7 @@ const deepseek: ModelProvider = {
     { id: 'deepseek-chat', displayName: 'DeepSeek Chat' },
     { id: 'deepseek-reasoner', displayName: 'DeepSeek Reasoner' },
   ],
-  validate(config) {
-    const c = config as { apiKey?: string; model?: string }
-    if (!c.apiKey) return { valid: false, errors: ['API key is required'] }
+  validate() {
     return { valid: true }
   },
   async testConnection(config) {

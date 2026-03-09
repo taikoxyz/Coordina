@@ -4,11 +4,18 @@ const openai: ModelProvider = {
   id: 'openai',
   displayName: 'OpenAI',
   defaultModel: 'gpt-4o',
+  authType: 'oauth',
+  oauthConfig: {
+    authUrl: 'PLACEHOLDER_OPENAI_AUTH_URL',
+    tokenUrl: 'PLACEHOLDER_OPENAI_TOKEN_URL',
+    scopes: ['openid', 'profile'],
+    clientId: 'PLACEHOLDER_OPENAI_CLIENT_ID',
+    clientSecret: 'PLACEHOLDER_OPENAI_CLIENT_SECRET',
+  },
   configSchema: {
     type: 'object',
-    required: ['apiKey', 'model'],
+    required: ['model'],
     properties: {
-      apiKey: { type: 'string', title: 'API Key', description: 'Your OpenAI API key (sk-...)', format: 'password' },
       model: { type: 'string', title: 'Model', enum: ['gpt-4o', 'gpt-4o-mini', 'o1', 'o1-mini', 'o3-mini'], default: 'gpt-4o' },
     },
   },
@@ -19,9 +26,7 @@ const openai: ModelProvider = {
     { id: 'o1-mini', displayName: 'o1 Mini' },
     { id: 'o3-mini', displayName: 'o3 Mini' },
   ],
-  validate(config) {
-    const c = config as { apiKey?: string; model?: string }
-    if (!c.apiKey?.startsWith('sk-')) return { valid: false, errors: ['API key must start with sk-'] }
+  validate() {
     return { valid: true }
   },
   async testConnection(config) {

@@ -4,11 +4,18 @@ const anthropic: ModelProvider = {
   id: 'anthropic',
   displayName: 'Anthropic',
   defaultModel: 'claude-sonnet-4-6',
+  authType: 'oauth',
+  oauthConfig: {
+    authUrl: 'PLACEHOLDER_ANTHROPIC_AUTH_URL',
+    tokenUrl: 'PLACEHOLDER_ANTHROPIC_TOKEN_URL',
+    scopes: ['models:read', 'completions:write'],
+    clientId: 'PLACEHOLDER_ANTHROPIC_CLIENT_ID',
+    clientSecret: 'PLACEHOLDER_ANTHROPIC_CLIENT_SECRET',
+  },
   configSchema: {
     type: 'object',
-    required: ['apiKey', 'model'],
+    required: ['model'],
     properties: {
-      apiKey: { type: 'string', title: 'API Key', description: 'Your Anthropic API key (sk-ant-...)', format: 'password' },
       model: { type: 'string', title: 'Model', enum: ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001'], default: 'claude-sonnet-4-6' },
     },
   },
@@ -17,9 +24,7 @@ const anthropic: ModelProvider = {
     { id: 'claude-sonnet-4-6', displayName: 'Claude Sonnet 4.6' },
     { id: 'claude-haiku-4-5-20251001', displayName: 'Claude Haiku 4.5' },
   ],
-  validate(config) {
-    const c = config as { apiKey?: string; model?: string }
-    if (!c.apiKey?.startsWith('sk-ant-')) return { valid: false, errors: ['API key must start with sk-ant-'] }
+  validate() {
     return { valid: true }
   },
   async testConnection(config) {
@@ -29,14 +34,14 @@ const anthropic: ModelProvider = {
   async listModels(config) {
     const c = config as { apiKey?: string }
     const res = await fetchWithTimeout('https://api.anthropic.com/v1/models', {
-      headers: { 'x-api-key': c.apiKey ?? '', 'anthropic-version': '2023-06-01' },
+      headers: { Authorization: `Bearer ${c.apiKey ?? ''}`, 'anthropic-version': '2023-06-01' },
     })
     if (!res.ok) {
       const body = await res.json().catch(() => ({})) as { error?: { message?: string } }
       throw new Error(body.error?.message ?? `HTTP ${res.status}`)
     }
     const body = await res.json() as { data?: { id: string }[] }
-    return body.data?.map(m => m.id).sort() ?? []
+    return body.data?.map(m => m.id).filter(id => id.startsWith('claude')).sort() ?? []
   },
   toOpenClawJson(config) {
     const c = config as { model: string }

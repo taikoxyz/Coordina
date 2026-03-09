@@ -3,6 +3,7 @@
 import { ipcMain } from 'electron'
 import { listProviders, getProvider as getProviderFile, saveProvider, deleteProvider, getProviderApiKey, setProviderApiKey } from '../store/providers'
 import { getProvider } from '../providers/base'
+import { authenticateProvider } from '../providers/oauth'
 import '../providers/index'
 import type { ProviderRecord } from '../../shared/types'
 
@@ -33,10 +34,24 @@ export function registerProviderHandlers(): void {
     }
   })
 
+  ipcMain.handle('providers:oauth', async (_e, data: { slug: string; type: string }) => {
+    try {
+      const modelProvider = getProvider(data.type)
+      if (modelProvider.authType !== 'oauth' || !modelProvider.oauthConfig) {
+        return { ok: false, error: 'Provider does not support OAuth' }
+      }
+      const token = await authenticateProvider(data.slug, modelProvider.oauthConfig)
+      const models = await modelProvider.listModels({ apiKey: token })
+      return { ok: true, models }
+    } catch (e) {
+      return { ok: false, error: (e as Error).message }
+    }
+  })
+
   ipcMain.handle('providers:save', async (_e, data: ProviderRecord & { apiKey?: string }) => {
     const { apiKey, ...record } = data
     const modelProvider = getProvider(record.type)
-    if (apiKey) {
+    if (modelProvider.authType === 'apiKey' && apiKey) {
       const formatResult = modelProvider.validate({ apiKey })
       if (!formatResult.valid) return { ok: false, errors: formatResult.errors }
       const testResult = await modelProvider.testConnection({ apiKey })

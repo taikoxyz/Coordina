@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Loader2, Check, X } from 'lucide-react'
 import { useNav } from '../store/nav'
-import { useProviders, useSaveProvider } from '../hooks/useProviders'
+import { useProviders, useSaveProvider, useOAuthProvider } from '../hooks/useProviders'
 import type { ProviderRecord } from '../../../shared/types'
 import { Button, Input, Select, Label, DialogShell } from './ui'
 
@@ -9,6 +9,7 @@ const PROVIDER_TYPES = ['claude', 'anthropic', 'openai', 'deepseek', 'openrouter
 const PROVIDER_NAMES: Record<string, string> = {
   claude: 'Claude', anthropic: 'Anthropic', openai: 'OpenAI', deepseek: 'DeepSeek', openrouter: 'OpenRouter', minimax: 'MiniMax', ollama: 'Ollama',
 }
+const OAUTH_PROVIDERS = new Set(['claude', 'anthropic', 'openai', 'deepseek', 'openrouter', 'minimax'])
 
 type KeyStatus = 'idle' | 'checking' | 'valid' | 'error'
 
@@ -24,6 +25,7 @@ export function CreateProviderDialog() {
   const { isCreateDialogOpen, setCreateDialogOpen, selectItem } = useNav()
   const { data: providers } = useProviders()
   const saveProvider = useSaveProvider()
+  const oauthProvider = useOAuthProvider()
   const isOpen = isCreateDialogOpen === 'providers'
 
   const [type, setType] = useState('claude')
@@ -80,6 +82,24 @@ export function CreateProviderDialog() {
     setModel('')
   }
 
+  const handleOAuthConnect = async () => {
+    const slug = toSlug(type, providers ?? [])
+    setKeyStatus('checking')
+    setKeyError(null)
+    setModels([])
+    setModel('')
+    const result = await oauthProvider.mutateAsync({ slug, type })
+    if (result.ok) {
+      const m = result.models ?? []
+      setKeyStatus('valid')
+      setModels(m)
+      setModel(m[0] ?? '')
+    } else {
+      setKeyStatus('error')
+      setKeyError(result.error ?? 'Authentication failed')
+    }
+  }
+
   const handleSave = async () => {
     if (keyStatus !== 'valid' || !model) return
     const slug = toSlug(type, providers ?? [])
@@ -124,27 +144,43 @@ export function CreateProviderDialog() {
         </div>
 
         <div>
-          <Label>{credentialLabel(type)}</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              mono
-              className="flex-1"
-              type={type === 'ollama' ? 'text' : 'password'}
-              value={credential}
-              onChange={(e) => {
-                setCredential(e.target.value)
-                setKeyStatus('idle')
-                setKeyError(null)
-                setModels([])
-                setModel('')
-              }}
-              onBlur={() => void handleCredentialBlur()}
-              placeholder={credentialPlaceholder(type)}
-            />
-            {keyStatus === 'checking' && <Loader2 className="w-4 h-4 text-gray-400 animate-spin shrink-0" />}
-            {keyStatus === 'valid' && <Check className="w-4 h-4 text-green-500 shrink-0" />}
-            {keyStatus === 'error' && <X className="w-4 h-4 text-red-500 shrink-0" />}
-          </div>
+          {OAUTH_PROVIDERS.has(type) ? (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="primary"
+                onClick={() => void handleOAuthConnect()}
+                disabled={keyStatus === 'checking'}
+              >
+                {keyStatus === 'checking' ? <Loader2 className="w-4 h-4 animate-spin" /> : `Connect with ${PROVIDER_NAMES[type]}`}
+              </Button>
+              {keyStatus === 'valid' && <Check className="w-4 h-4 text-green-500 shrink-0" />}
+              {keyStatus === 'error' && <X className="w-4 h-4 text-red-500 shrink-0" />}
+            </div>
+          ) : (
+            <>
+              <Label>{credentialLabel(type)}</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  mono
+                  className="flex-1"
+                  type="text"
+                  value={credential}
+                  onChange={(e) => {
+                    setCredential(e.target.value)
+                    setKeyStatus('idle')
+                    setKeyError(null)
+                    setModels([])
+                    setModel('')
+                  }}
+                  onBlur={() => void handleCredentialBlur()}
+                  placeholder={credentialPlaceholder(type)}
+                />
+                {keyStatus === 'checking' && <Loader2 className="w-4 h-4 text-gray-400 animate-spin shrink-0" />}
+                {keyStatus === 'valid' && <Check className="w-4 h-4 text-green-500 shrink-0" />}
+                {keyStatus === 'error' && <X className="w-4 h-4 text-red-500 shrink-0" />}
+              </div>
+            </>
+          )}
           {keyStatus === 'error' && keyError && (
             <p className="text-xs text-red-600 mt-1">{keyError}</p>
           )}
