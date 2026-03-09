@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DeployStatus } from '../../../shared/types'
 
 const {
+  mockDeleteDisk,
+  mockListDisksByLabels,
   mockObjectApi,
   mockCoreApi,
   mockAppsApi,
@@ -13,6 +15,8 @@ const {
   MockAppsV1Api,
   MockNetworkingV1Api,
 } = vi.hoisted(() => {
+  const mockDeleteDisk = vi.fn()
+  const mockListDisksByLabels = vi.fn()
   class MockCoreV1Api {}
   class MockAppsV1Api {}
   class MockNetworkingV1Api {}
@@ -24,6 +28,9 @@ const {
     },
     mockCoreApi: {
       deleteNamespacedPersistentVolumeClaim: vi.fn(),
+      deletePersistentVolume: vi.fn(),
+      readNamespacedPersistentVolumeClaim: vi.fn(),
+      readPersistentVolume: vi.fn(),
       deleteNamespacedSecret: vi.fn(),
       deleteNamespacedService: vi.fn(),
       deleteNamespacedConfigMap: vi.fn(),
@@ -42,11 +49,20 @@ const {
       deleteCollectionNamespacedIngress: vi.fn(),
     },
     mockGetCluster: vi.fn(),
+    mockDeleteDisk,
+    mockListDisksByLabels,
     MockCoreV1Api,
     MockAppsV1Api,
     MockNetworkingV1Api,
   }
 })
+
+vi.mock('./gcloud', () => ({
+  deleteDisk: mockDeleteDisk,
+  labelDisk: vi.fn(),
+  listDisksByLabels: mockListDisksByLabels,
+  toZone: (location: string) => /^[a-z]+-[a-z]+[0-9]+-[a-z]$/.test(location) ? location : `${location}-c`,
+}))
 
 vi.mock('./auth', () => ({
   getOAuth2Client: vi.fn(async () => ({
@@ -81,7 +97,7 @@ vi.mock('@kubernetes/client-node', () => {
   }
 })
 
-import { deployTeam, getTeamStatus } from './deploy'
+import { deployTeam, getTeamStatus, undeployTeam, undeployAgent } from './deploy'
 import type { GkeDeployConfig } from './deploy'
 
 const config: GkeDeployConfig = {
@@ -101,6 +117,9 @@ beforeEach(() => {
   mockObjectApi.create.mockResolvedValue({})
 
   mockCoreApi.deleteNamespacedPersistentVolumeClaim.mockResolvedValue({})
+  mockCoreApi.deletePersistentVolume.mockResolvedValue({})
+  mockCoreApi.readNamespacedPersistentVolumeClaim.mockResolvedValue({ spec: {} })
+  mockCoreApi.readPersistentVolume.mockResolvedValue({ spec: {} })
   mockCoreApi.listNamespacedPersistentVolumeClaim.mockResolvedValue({ items: [] })
   mockCoreApi.deleteNamespacedSecret.mockResolvedValue({})
   mockCoreApi.deleteNamespacedService.mockResolvedValue({})
@@ -109,6 +128,8 @@ beforeEach(() => {
   mockCoreApi.deleteCollectionNamespacedService.mockResolvedValue({})
   mockCoreApi.listNamespacedPod.mockResolvedValue({ items: [] })
   mockCoreApi.readNamespacedPod.mockResolvedValue({ status: { phase: 'Running' } })
+
+  mockListDisksByLabels.mockReturnValue([])
 
   mockAppsApi.deleteNamespacedStatefulSet.mockResolvedValue({})
   mockAppsApi.listNamespacedStatefulSet.mockResolvedValue({ items: [] })
@@ -175,6 +196,55 @@ describe('deployTeam', () => {
     }
 
     expect(mockAppsApi.deleteNamespacedStatefulSet).toHaveBeenCalledWith({ name: 'agent-alice', namespace: 'alpha' })
+  })
+})
+
+describe('undeployTeam', () => {
+  it('deletes all GCP disks by team tag when deleteDisks=true', async () => {
+    mockListDisksByLabels.mockReturnValue([
+      { name: 'gke-disk-abc123', zone: 'us-central1-a' },
+      { name: 'gke-disk-orphan', zone: 'us-central1-a' },
+    ])
+
+    const statuses: DeployStatus[] = []
+    for await (const s of undeployTeam('team', config, { deleteDisks: true })) statuses.push(s)
+
+    expect(mockListDisksByLabels).toHaveBeenCalledWith('my-proj', { 'coordina-team': 'team' })
+    expect(mockDeleteDisk).toHaveBeenCalledWith('my-proj', 'us-central1-a', 'gke-disk-abc123')
+    expect(mockDeleteDisk).toHaveBeenCalledWith('my-proj', 'us-central1-a', 'gke-disk-orphan')
+    expect(statuses.some(s => s.resource === 'Disk/gke-disk-orphan' && s.status === 'deleted')).toBe(true)
+  })
+
+  it('does not delete GCP disks when deleteDisks=false', async () => {
+    for await (const _ of undeployTeam('team', config, { deleteDisks: false })) { /* drain */ }
+    expect(mockCoreApi.deleteNamespacedPersistentVolumeClaim).not.toHaveBeenCalled()
+    expect(mockListDisksByLabels).not.toHaveBeenCalled()
+    expect(mockDeleteDisk).not.toHaveBeenCalled()
+  })
+})
+
+describe('undeployAgent', () => {
+  it('deletes PVC, PV, and GCP disk by tag when deleteDisks=true', async () => {
+    mockCoreApi.readNamespacedPersistentVolumeClaim.mockResolvedValue({
+      spec: { volumeName: 'pvc-def456' },
+    })
+    mockListDisksByLabels.mockReturnValue([
+      { name: 'gke-disk-def456', zone: 'us-central1-a' },
+    ])
+
+    const statuses: DeployStatus[] = []
+    for await (const s of undeployAgent('team', 'alice', config, { deleteDisks: true })) statuses.push(s)
+
+    expect(mockCoreApi.deleteNamespacedPersistentVolumeClaim).toHaveBeenCalledWith({ name: 'team-agent-alice', namespace: 'team' })
+    expect(mockCoreApi.deletePersistentVolume).toHaveBeenCalledWith({ name: 'pvc-def456' })
+    expect(mockListDisksByLabels).toHaveBeenCalledWith('my-proj', { 'coordina-team': 'team', 'coordina-agent': 'alice' })
+    expect(mockDeleteDisk).toHaveBeenCalledWith('my-proj', 'us-central1-a', 'gke-disk-def456')
+  })
+
+  it('does not delete GCP disk when deleteDisks=false', async () => {
+    for await (const _ of undeployAgent('team', 'alice', config, { deleteDisks: false })) { /* drain */ }
+    expect(mockListDisksByLabels).not.toHaveBeenCalled()
+    expect(mockDeleteDisk).not.toHaveBeenCalled()
   })
 })
 

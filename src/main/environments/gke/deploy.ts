@@ -10,6 +10,7 @@ import crypto from 'crypto'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import { getOAuth2Client } from './auth'
+import { deleteDisk, labelDisk, listDisksByLabels, toZone } from './gcloud'
 import type { DeployOptions, DeployStatus, AgentStatus, SpecFile } from '../../../shared/types'
 
 const execFileAsync = promisify(execFile)
@@ -218,6 +219,22 @@ export async function* deployTeam(
     if (!file) continue
     for (const s of await applyManifest(client, file.content)) yield s
   }
+
+  const fallbackZone = config.diskZone ?? toZone(config.clusterZone)
+  const pvcList = await coreApi.listNamespacedPersistentVolumeClaim({ namespace, labelSelector: `coordina.team=${teamSlug}` })
+    .catch(() => ({ items: [] } as { items: k8s.V1PersistentVolumeClaim[] }))
+  for (const pvc of pvcList.items ?? []) {
+    const agentSlug = pvc.metadata?.labels?.['coordina.agent']
+    const pvName = pvc.spec?.volumeName
+    if (!agentSlug || !pvName) continue
+    const pv = await coreApi.readPersistentVolume({ name: pvName }).catch(() => null)
+    const volumeHandle = pv?.spec?.csi?.volumeHandle
+    if (!volumeHandle) continue
+    const parts = volumeHandle.split('/')
+    const diskName = parts[parts.length - 1]
+    const zone = parts[3] ?? fallbackZone
+    labelDisk(config.projectId, zone, diskName, { 'coordina-team': teamSlug, 'coordina-agent': agentSlug })
+  }
 }
 
 export async function* undeployTeam(teamSlug: string, config: GkeDeployConfig, options: { deleteDisks?: boolean } = {}): AsyncGenerator<DeployStatus> {
@@ -237,15 +254,11 @@ export async function* undeployTeam(teamSlug: string, config: GkeDeployConfig, o
   }
 
   if (options.deleteDisks) {
-    try {
-      const pvcList = await coreApi.listNamespacedPersistentVolumeClaim({ namespace })
-      for (const pvc of pvcList.items ?? []) {
-        const name = pvc.metadata?.name
-        if (!name) continue
-        try { await coreApi.deleteNamespacedPersistentVolumeClaim({ name, namespace }); yield { resource: `PVC/${name}`, status: 'deleted' } }
-        catch { yield { resource: `PVC/${name}`, status: 'error' } }
-      }
-    } catch { yield { resource: 'PVCs', status: 'error' } }
+    const disks = listDisksByLabels(config.projectId, { 'coordina-team': teamSlug })
+    for (const disk of disks) {
+      deleteDisk(config.projectId, disk.zone, disk.name)
+      yield { resource: `Disk/${disk.name}`, status: 'deleted' }
+    }
   }
 }
 
@@ -266,8 +279,22 @@ export async function* undeployAgent(teamSlug: string, agentSlug: string, config
 
   if (options.deleteDisks) {
     const pvcName = `${teamSlug}-agent-${agentSlug}`
-    try { await coreApi.deleteNamespacedPersistentVolumeClaim({ name: pvcName, namespace }); yield { resource: `PVC/${pvcName}`, status: 'deleted' } }
-    catch { yield { resource: `PVC/${pvcName}`, status: 'error' } }
+    try {
+      const pvc = await coreApi.readNamespacedPersistentVolumeClaim({ name: pvcName, namespace }).catch(() => null)
+      const pvName = pvc?.spec?.volumeName
+      await tryDelete(() => coreApi.deleteNamespacedPersistentVolumeClaim({ name: pvcName, namespace }))
+      yield { resource: `PVC/${pvcName}`, status: 'deleted' }
+      if (pvName) {
+        await tryDelete(() => coreApi.deletePersistentVolume({ name: pvName }))
+        yield { resource: `PV/${pvName}`, status: 'deleted' }
+      }
+    } catch { yield { resource: `PVC/${pvcName}`, status: 'error' } }
+
+    const disks = listDisksByLabels(config.projectId, { 'coordina-team': teamSlug, 'coordina-agent': agentSlug })
+    for (const disk of disks) {
+      deleteDisk(config.projectId, disk.zone, disk.name)
+      yield { resource: `Disk/${disk.name}`, status: 'deleted' }
+    }
   }
 }
 
