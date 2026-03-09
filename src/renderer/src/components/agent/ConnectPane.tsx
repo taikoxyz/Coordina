@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, Copy, Terminal } from 'lucide-react'
+import { Check, Copy } from 'lucide-react'
 import { useEnvironment } from '../../hooks/useEnvironments'
 
 interface GkeConfig {
@@ -62,13 +62,8 @@ export function ConnectPane({ teamSlug, agentSlug, envSlug }: {
   const missing = !projectId || !clusterName || !clusterZone
 
   return (
-    <div className="flex-1 overflow-y-auto p-6">
+    <div className="h-full overflow-y-auto p-6">
       <div className="max-w-xl mx-auto space-y-6">
-        <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-          <Terminal className="w-4 h-4" />
-          Connect to OpenClaw CLI
-        </div>
-
         <p className="text-sm text-gray-500">
           Access the OpenClaw CLI directly inside the running pod to configure models,
           channels, skills, and other settings not available in this app.
