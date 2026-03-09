@@ -220,6 +220,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
         } : {}),
       }
       const credentialSecretName = `${spec.slug}-${agent.slug}-credentials`
+      const credentialsHash = createHash('sha256').update(JSON.stringify(envVarsWithTelegram)).digest('hex')
       files.push({ path: `agents/${agent.slug}/pvc.yaml`, content: generateAgentPvc({ teamSlug: spec.slug, agentSlug: agent.slug, namespace, diskGi: agent.diskGi }) })
       files.push({ path: `agents/${agent.slug}/credentials.yaml`, content: generateProviderSecret({ teamSlug: spec.slug, providerSlug: 'openrouter', agentSlug: agent.slug, namespace, envVars: envVarsWithTelegram }) })
       const identityMd = generateIdentityMd({
@@ -296,6 +297,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
         podAnnotations: {
           'coordina/shared-config-hash': teamConfigHash,
           'coordina/agent-config-hash': agentConfigHash,
+          'coordina/credentials-hash': credentialsHash,
         },
       }) })
       files.push({ path: `agents/${agent.slug}/service.yaml`, content: generateAgentService({ teamSlug: spec.slug, agentSlug: agent.slug, namespace }) })
