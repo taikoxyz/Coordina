@@ -345,14 +345,13 @@ const gkeDeriver: DeploymentSpecDeriver = {
     }
 
     const mc = (envConfig as { missionControl?: MissionControlConfig }).missionControl
+    const DEFAULT_MC_IMAGE = 'alpine/mission-control:latest'
     if (spec.missionControlEnabled !== false) {
-      if (!mc?.enabled || !mc.image) {
-        throw new Error('Mission Control is enabled for this team but not configured globally. Go to Settings → Mission Control to set the Docker image.')
-      }
+      const mcImage = mc?.image || DEFAULT_MC_IMAGE
       const leadSlug = spec.leadAgent ?? spec.agents[0]?.slug ?? ''
       files.push({ path: 'mission-control/secret.yaml', content: generateMissionControlSecret({ namespace, adminPassword: deriveMcAdminPassword(seed), sessionSecret: deriveMcSessionSecret(seed), apiKey: deriveMcApiKey(seed), leadAgentSlug: leadSlug }) })
       files.push({ path: 'mission-control/pvc.yaml', content: generateMissionControlPvc({ namespace }) })
-      files.push({ path: 'mission-control/deployment.yaml', content: generateMissionControlDeployment({ namespace, image: mc.image }) })
+      files.push({ path: 'mission-control/deployment.yaml', content: generateMissionControlDeployment({ namespace, image: mcImage }) })
       files.push({ path: 'mission-control/service.yaml', content: generateMissionControlService({ namespace }) })
     }
 

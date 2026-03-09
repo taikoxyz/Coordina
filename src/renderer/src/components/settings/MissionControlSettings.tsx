@@ -59,8 +59,9 @@ export function MissionControlSettings() {
             mono
             value={image}
             onChange={(e) => setImage(e.target.value)}
-            placeholder="gcr.io/my-project/mission-control:latest"
+            placeholder="alpine/mission-control:latest"
           />
+          <p className="text-xs text-gray-400 mt-0.5">Leave blank to use the default: alpine/mission-control:latest</p>
         </div>
       )}
 
