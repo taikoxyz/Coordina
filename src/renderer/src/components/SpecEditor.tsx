@@ -122,7 +122,7 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
 
           <div>
             <h4 className="text-sm font-semibold text-gray-900 mb-1">OpenClaw</h4>
-            <ReadField label="Bootstrap" value={spec.startupInstructions?.trim() || undefined} monospace />
+            <ReadField label="Bootstrap" value={spec.startupInstructions?.trim() || undefined} monospace full />
           </div>
         </div>
       </div>
