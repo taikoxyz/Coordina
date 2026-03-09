@@ -164,7 +164,7 @@ export function DeployPanel({
     } finally {
       setDeploying(null)
     }
-  }, [gkeConfig, spec, deleteDisks, isAnyDeploying])
+  }, [gkeConfig, spec, deleteDisks, isAnyDeploying, agentSlug])
 
   if (!spec) {
     return (
