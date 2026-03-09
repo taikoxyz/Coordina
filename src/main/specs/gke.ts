@@ -35,6 +35,7 @@ import { getOpenRouterApiKey } from '../store/providers'
 import { saveTeam } from '../store/teams'
 import { resolveGatewayMode } from '../gateway/mode'
 import { listProjects } from '../store/projects'
+import { getSettings } from '../store/settings'
 
 function deriveAgentToken(seed: string, agentSlug: string): string {
   return createHmac('sha256', seed).update(agentSlug).digest('hex').slice(0, 48)
@@ -79,6 +80,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
     const telegramAdminId = spec.telegramAdminId?.trim()
     const workspaceDir = '/agent-data/openclaw/workspace'
     const files: SpecFile[] = []
+    const { derivationPatterns } = await getSettings()
 
     if (!spec.signingKey) {
       spec = { ...spec, signingKey: randomBytes(32).toString('hex') }
@@ -233,7 +235,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
         teamName: spec.name,
         leadAgent: spec.leadAgent,
       })
-      const soulMd = generateSoulMd({ userInput: agent.persona, tone: agent.tone, boundaries: agent.boundaries, values: agent.values })
+      const soulMd = generateSoulMd({ userInput: agent.persona, tone: agent.tone, boundaries: agent.boundaries, values: agent.values }, derivationPatterns?.soul)
       const skillsMd = generateSkillsMd(agent.skills)
       const agentsMd = generateAgentsMd({
         agentName: agent.name,
@@ -247,13 +249,13 @@ const gkeDeriver: DeploymentSpecDeriver = {
         agentEmail: hasEmail ? effectiveEmail : undefined,
         teamEmail: hasEmail ? spec.teamEmail : undefined,
         teamMd,
-      })
+      }, derivationPatterns?.agents)
       const userMd = generateUserMd({
         teamName: spec.name,
         adminName: spec.adminName,
         adminEmail: spec.adminEmail,
         telegramAdminId,
-      })
+      }, derivationPatterns?.user)
       const toolsMd = generateToolsMd({
         hasGateways,
         isLead: agent.slug === spec.leadAgent,

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppSidebar } from './components/AppSidebar'
 import { MainContent } from './components/MainContent'
-import { SettingsDialog } from './components/SettingsDialog'
 import { CreateTeamDialog } from './components/CreateTeamDialog'
 import { useTeams } from './hooks/useTeams'
 import { useNav } from './store/nav'
@@ -27,11 +26,10 @@ function AppContent() {
 
   return (
     <div className="flex h-screen bg-background text-foreground">
-      <AppSidebar />
+      {selectedItem?.type !== 'settings' && <AppSidebar />}
       <main className="flex-1 overflow-hidden">
         <MainContent />
       </main>
-      <SettingsDialog />
       <CreateTeamDialog />
     </div>
   )

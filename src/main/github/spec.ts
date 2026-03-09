@@ -1,4 +1,15 @@
-import type { Project } from '../../shared/types'
+import type { Project, DerivationPatterns } from '../../shared/types'
+import {
+  DEFAULT_CORE_TRUTHS,
+  DEFAULT_CONTINUITY,
+  DEFAULT_FIRST_RUN,
+  DEFAULT_MEMORY_RULES,
+  DEFAULT_SAFETY_RULES,
+  DEFAULT_PRIORITIES,
+  DEFAULT_TEAM_LEAD_RESPONSIBILITIES,
+  DEFAULT_RULE,
+  DEFAULT_USER_INTRO,
+} from '../../shared/derivationDefaults'
 
 export interface AgentIdentity {
   slug: string
@@ -94,24 +105,22 @@ export function generateIdentityMd(agent: AgentIdentity): string {
 }
 
 
-export function generateSoulMd(soul: SoulInput): string {
+export function generateSoulMd(soul: SoulInput, patterns?: DerivationPatterns['soul']): string {
   const description = soul.enhanced ?? soul.userInput
+  const truths = patterns?.coreTruths ?? DEFAULT_CORE_TRUTHS
   const sections: string[] = [
     '# Soul',
     '',
     '## Core Truths',
-    '- Be genuinely helpful, not performatively helpful',
-    '- Have real opinions and share them when relevant',
-    '- Be resourceful — try before asking',
-    '- Earn trust through competence, not compliance',
-    '- Remember you are a guest in the user\'s environment',
+    truths.map(t => `- ${t}`).join('\n'),
     '',
     description,
   ]
   if (soul.tone) sections.push('', `## Tone`, soul.tone)
   if (soul.values && soul.values.length > 0) sections.push('', `## Values`, soul.values.map(v => `- ${v}`).join('\n'))
   if (soul.boundaries && soul.boundaries.length > 0) sections.push('', `## Boundaries`, soul.boundaries.map(b => `- ${b}`).join('\n'))
-  sections.push('', '## Continuity', 'Files are your memory. Read and update them.')
+  const continuityText = patterns?.continuity ?? DEFAULT_CONTINUITY
+  sections.push('', '## Continuity', continuityText)
   return sections.join('\n') + '\n'
 }
 
@@ -177,21 +186,18 @@ export function generateTeamMd(team: {
   return lines.join('\n')
 }
 
-export function generateAgentsMd(input: AgentsInput): string {
+export function generateAgentsMd(input: AgentsInput, patterns?: DerivationPatterns['agents']): string {
   const lines: string[] = [
     '# Agents',
     '',
     '## First Run',
-    'If `BOOTSTRAP.md` exists in the workspace, follow it and delete it when done.',
+    patterns?.firstRun ?? DEFAULT_FIRST_RUN,
     '',
     '## Memory',
-    '- Write daily logs to `memory/YYYY-MM-DD.md`',
-    '- Promote important facts into `MEMORY.md`',
+    ...(patterns?.memoryRules ?? DEFAULT_MEMORY_RULES).map(r => `- ${r}`),
     '',
     '## Safety',
-    '- Never exfiltrate data outside approved channels',
-    '- Use `trash` over `rm` when available',
-    '- Ask before taking external actions (sending messages, making purchases, etc.)',
+    ...(patterns?.safetyRules ?? DEFAULT_SAFETY_RULES).map(r => `- ${r}`),
   ]
 
   lines.push(
@@ -205,21 +211,14 @@ export function generateAgentsMd(input: AgentsInput): string {
       'You are the team lead.',
       '',
       '### Team Lead Responsibilities',
-      '- Coordinate work across the team: assign tasks, track progress, unblock teammates',
-      '- Be the primary point of contact between the admin and the team',
-      '- Delegate clearly: specify what to do, expected output, and deadline when assigning tasks',
-      '- Proactively check in with teammates rather than waiting for them to report',
-      '- When the admin gives direction, translate it into concrete tasks for the team',
-      '- You have authority to set team priorities — teammates are expected to follow your assignments',
+      ...(patterns?.teamLeadResponsibilities ?? DEFAULT_TEAM_LEAD_RESPONSIBILITIES).map(r => `- ${r}`),
     )
   }
 
   lines.push(
     '',
     '### Priorities',
-    '1. Complete assigned tasks thoroughly before starting new ones',
-    '2. Communicate status updates to teammates proactively',
-    '3. Ask for clarification rather than making assumptions',
+    ...(patterns?.priorities ?? DEFAULT_PRIORITIES).map((p, i) => `${i + 1}. ${p}`),
   )
 
   if (!input.isLead && input.leadAgent) {
@@ -260,7 +259,7 @@ export function generateAgentsMd(input: AgentsInput): string {
   const ruleLines: string[] = [
     '',
     '### Rules',
-    '- Always verify your understanding before executing complex tasks',
+    `- ${patterns?.defaultRule ?? DEFAULT_RULE}`,
   ]
   if (input.operatingRules && input.operatingRules.length > 0) {
     for (const rule of input.operatingRules) ruleLines.push(`- ${rule}`)
@@ -285,13 +284,9 @@ export function generateAgentsMd(input: AgentsInput): string {
   return lines.join('\n')
 }
 
-export function generateUserMd(input: UserInput): string {
-  const lines: string[] = [
-    '# User',
-    '',
-    'You are learning about a person, not building a dossier.',
-    'Update this file as you learn more about your operator\'s preferences.',
-  ]
+export function generateUserMd(input: UserInput, patterns?: DerivationPatterns['user']): string {
+  const intro = patterns?.introLines ?? DEFAULT_USER_INTRO
+  const lines: string[] = ['# User', '', ...intro]
 
   const hasAdmin = input.adminName || input.adminEmail || input.telegramAdminId
   if (hasAdmin) {

@@ -66,7 +66,26 @@ export interface EnvironmentRecord {
   config: Record<string, unknown>
 }
 
+export interface DerivationPatterns {
+  soul?: {
+    coreTruths?: string[]
+    continuity?: string
+  }
+  agents?: {
+    firstRun?: string
+    memoryRules?: string[]
+    safetyRules?: string[]
+    priorities?: string[]
+    teamLeadResponsibilities?: string[]
+    defaultRule?: string
+  }
+  user?: {
+    introLines?: string[]
+  }
+}
+
 export interface AppSettings {
+  derivationPatterns?: DerivationPatterns
   gitEnabled?: boolean
   gitRepoPath?: string
   agentNameTheme?: AgentNameTheme
