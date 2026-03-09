@@ -161,20 +161,6 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
       </div>
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="max-w-2xl mx-auto space-y-5 py-4 px-6">
-          <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">About</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Name</Label>
-              <Input value={spec.name} onChange={(e) => set('name')(e.target.value)} placeholder="My Team" />
-            </div>
-            <div>
-              <Label>Slug</Label>
-              <Input mono value={spec.slug} onChange={(e) => set('slug')(e.target.value)} placeholder="my-team" />
-            </div>
-          </div>
-        </div>
-
         <div>
           <h3 className="text-sm font-semibold text-gray-900 mb-3">Telegram</h3>
           <div className="grid grid-cols-2 gap-3">
