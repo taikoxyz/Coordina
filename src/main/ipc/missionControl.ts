@@ -7,6 +7,7 @@ import * as k8s from '@kubernetes/client-node'
 import { getEnvironment } from '../store/environments'
 import { getTeam } from '../store/teams'
 import { buildKubeConfig } from '../environments/gke/deploy'
+import { deriveMcApiKey } from '../specs/gke'
 import type { MissionControlConfig } from '../../shared/types'
 
 export interface AgentRegistrationEntry {
@@ -27,7 +28,7 @@ export async function registerAgentsWithMissionControl(opts: RegisterOptions): P
 
   for (const agent of agents) {
     if (!agent.isLead) {
-      await fetch(`${mcUrl}/api/gateways`, {
+      const gwRes = await fetch(`${mcUrl}/api/gateways`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -36,15 +37,17 @@ export async function registerAgentsWithMissionControl(opts: RegisterOptions): P
           port: 18789,
         }),
       })
+      if (!gwRes.ok) throw new Error(`MC API error ${gwRes.status} on /api/gateways: ${await gwRes.text().catch(() => '')}`)
     }
   }
 
   for (const agent of agents) {
-    await fetch(`${mcUrl}/api/agents`, {
+    const agentRes = await fetch(`${mcUrl}/api/agents`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ name: agent.slug, status: 'active' }),
     })
+    if (!agentRes.ok) throw new Error(`MC API error ${agentRes.status} on /api/agents: ${await agentRes.text().catch(() => '')}`)
   }
 }
 
@@ -77,7 +80,8 @@ export function registerMissionControlHandlers(): void {
 
     const mc = (env.config as { missionControl?: MissionControlConfig }).missionControl
     if (!mc?.enabled) return { ok: false, reason: 'Mission Control not configured in GKE settings' }
-    if (!team.mcApiKey) return { ok: false, reason: 'API key not set on team' }
+    if (!team.signingKey) return { ok: false, reason: 'Signing key not set on team' }
+    const apiKey = deriveMcApiKey(team.signingKey)
 
     const gkeConfig = env.config as { projectId: string; clusterName: string; clusterZone: string; clientId: string; clientSecret: string }
     const kc = await buildKubeConfig({ slug: envSlug, projectId: gkeConfig.projectId, clusterName: gkeConfig.clusterName, clusterZone: gkeConfig.clusterZone, clientId: gkeConfig.clientId, clientSecret: gkeConfig.clientSecret })
@@ -85,7 +89,7 @@ export function registerMissionControlHandlers(): void {
 
     try {
       await withMcPortForward(kc, teamSlug, (mcUrl) =>
-        registerAgentsWithMissionControl({ mcUrl, apiKey: team.mcApiKey!, namespace: teamSlug, agents })
+        registerAgentsWithMissionControl({ mcUrl, apiKey, namespace: teamSlug, agents })
       )
       return { ok: true }
     } catch (e) {
