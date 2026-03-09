@@ -334,7 +334,7 @@ export function AgentCard({
                     mono
                     value={agent.image ?? ''}
                     onChange={(e) => set('image')(e.target.value || undefined)}
-                    placeholder={defaultImage ?? 'Inherited from team'}
+                    placeholder="—"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
