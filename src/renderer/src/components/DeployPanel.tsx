@@ -199,16 +199,18 @@ export function DeployPanel({
               Deploy Agent{isDeploying ? ' ...' : ''}
             </Button>
           )}
-          <Button
-            variant={agentSlug ? 'secondary' : 'dark'}
-            onClick={() => { setDeployScope('team'); setShowDeployDialog(true) }}
-            disabled={buttonDisabled}
-            title={disabledTitle}
-          >
-              <Loader2 className={`w-3.5 h-3.5 ${isDeploying && !agentSlug ? 'animate-spin' : 'hidden'}`} />
-              <Rocket className={`w-3.5 h-3.5 ${isDeploying && !agentSlug ? 'hidden' : ''}`} />
-              Deploy Team{isDeploying && !agentSlug ? ' ...' : ''}
-          </Button>
+          {!agentSlug && (
+            <Button
+              variant="dark"
+              onClick={() => { setDeployScope('team'); setShowDeployDialog(true) }}
+              disabled={buttonDisabled}
+              title={disabledTitle}
+            >
+              <Loader2 className={`w-3.5 h-3.5 ${isDeploying ? 'animate-spin' : 'hidden'}`} />
+              <Rocket className={`w-3.5 h-3.5 ${isDeploying ? 'hidden' : ''}`} />
+              Deploy Team{isDeploying ? ' ...' : ''}
+            </Button>
+          )}
           {agentSlug && (
             <Button
               variant="ghost-destructive"
@@ -220,15 +222,17 @@ export function DeployPanel({
               Delete Agent
             </Button>
           )}
-          <Button
-            variant="ghost-destructive"
-            onClick={() => { setDeleteDisks(false); setDeleteScope('team'); setShowDeleteDialog(true) }}
-            disabled={buttonDisabled}
-            title={disabledTitle}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            Delete Team
-          </Button>
+          {!agentSlug && (
+            <Button
+              variant="ghost-destructive"
+              onClick={() => { setDeleteDisks(false); setDeleteScope('team'); setShowDeleteDialog(true) }}
+              disabled={buttonDisabled}
+              title={disabledTitle}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete Team
+            </Button>
+          )}
           {(deployState === 'done' || deployState === 'error') && (
             <Badge
               variant={deployState === 'done' ? 'success' : 'destructive'}
