@@ -291,15 +291,29 @@ export async function execInPod(
     const stderr = new PassThrough()
     const chunks: Buffer[] = []
     const errChunks: Buffer[] = []
+    let settled = false
+    const timer = setTimeout(() => {
+      if (settled) return
+      settled = true
+      stdout.destroy()
+      stderr.destroy()
+      reject(new Error('exec timed out after 15s'))
+    }, 15_000)
+    const settle = (fn: (v: unknown) => void, v: unknown): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      fn(v)
+    }
     stdout.on('data', (chunk: Buffer) => chunks.push(chunk))
     stderr.on('data', (chunk: Buffer) => errChunks.push(chunk))
     exec.exec(namespace, podName, 'openclaw', command, stdout, stderr, null, false, (status) => {
       if (status.status === 'Success') {
-        resolve(Buffer.concat(chunks).toString('utf-8'))
+        settle(resolve, Buffer.concat(chunks).toString('utf-8'))
       } else {
         const errMsg = Buffer.concat(errChunks).toString('utf-8').trim() || status.message || 'exec failed'
-        reject(new Error(errMsg))
+        settle(reject, new Error(errMsg))
       }
-    }).catch(reject)
+    }).catch((err) => settle(reject, err))
   })
 }
