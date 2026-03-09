@@ -30,7 +30,7 @@ import { registerDeriver } from './base'
 import type { DeploymentSpecDeriver } from './base'
 import type { DeriveSecrets } from './base'
 import type { TeamSpec, SpecFile } from '../../shared/types'
-import { openrouterToOpenClawJson, openrouterToEnvVars } from '../providers/base'
+import { openrouterToOpenClawJson, openrouterToEnvVars, testOpenRouterConnection } from '../providers/base'
 import { getOpenRouterApiKey } from '../store/providers'
 import { saveTeam } from '../store/teams'
 import { resolveGatewayMode } from '../gateway/mode'
@@ -120,6 +120,13 @@ const gkeDeriver: DeploymentSpecDeriver = {
     files.push({ path: 'configmap-shared.yaml', content: teamConfig })
 
     const openrouterApiKey = await getOpenRouterApiKey()
+    if (!openrouterApiKey) {
+      throw new Error('OpenRouter API key is not configured. Go to Settings → OpenRouter to connect your account.')
+    }
+    const keyCheck = await testOpenRouterConnection(openrouterApiKey)
+    if (!keyCheck.valid) {
+      throw new Error(`OpenRouter API key is invalid or expired: ${keyCheck.error ?? 'unknown error'}. Go to Settings → OpenRouter to reconnect.`)
+    }
 
     for (const agent of spec.agents) {
       const isLead = agent.slug === spec.leadAgent
@@ -127,7 +134,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
       const effectiveEmail = agent.email || derivedEmail
       const models = agent.models.length > 0 ? agent.models : ['anthropic/claude-sonnet-4-6']
       const openclawConfig = openrouterToOpenClawJson(models)
-      const envVars = openrouterToEnvVars(openrouterApiKey ?? '')
+      const envVars = openrouterToEnvVars(openrouterApiKey)
 
       const agentToken = teamGatewayToken
       const telegramBot = agent.telegramBot?.trim()

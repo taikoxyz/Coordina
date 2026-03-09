@@ -12,6 +12,7 @@ vi.mock('../providers/base', () => ({
     agents: { defaults: { model: { primary: 'openrouter/anthropic/claude-sonnet-4-6' } } },
   }),
   openrouterToEnvVars: vi.fn().mockReturnValue({ OPENROUTER_API_KEY: 'or-test-key' }),
+  testOpenRouterConnection: vi.fn().mockResolvedValue({ valid: true }),
 }))
 
 const teamSpec: TeamSpec = {
