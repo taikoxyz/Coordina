@@ -130,13 +130,15 @@ export async function* deployTeam(
   const existingStatefulSetNames = (existingStatefulSetList.items ?? []).map(s => s.metadata?.name).filter((name): name is string => Boolean(name))
 
   const removedAgentSlugs = new Set<string>()
-  for (const name of existingPodNames) {
-    const slug = parseAgentSlugFromPodName(name)
-    if (slug && !desiredAgentSlugs.has(slug)) removedAgentSlugs.add(slug)
-  }
-  for (const name of existingStatefulSetNames) {
-    const slug = parseAgentSlugFromStatefulSetName(name)
-    if (slug && !desiredAgentSlugs.has(slug)) removedAgentSlugs.add(slug)
+  if (!options.partialDeploy) {
+    for (const name of existingPodNames) {
+      const slug = parseAgentSlugFromPodName(name)
+      if (slug && !desiredAgentSlugs.has(slug)) removedAgentSlugs.add(slug)
+    }
+    for (const name of existingStatefulSetNames) {
+      const slug = parseAgentSlugFromStatefulSetName(name)
+      if (slug && !desiredAgentSlugs.has(slug)) removedAgentSlugs.add(slug)
+    }
   }
 
   for (const agentSlug of [...removedAgentSlugs].sort()) {

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { cn } from '@renderer/lib/utils'
+import { Tooltip } from './tooltip'
 
 interface ReadFieldProps {
   label: string
@@ -22,8 +23,12 @@ function ReadField({ label, value, monospace = false, defaultValue, full = false
   if (full) {
     return (
       <div className="py-0.5">
-        <div className="text-xs font-medium text-muted-foreground mb-0.5" title={tooltip}>
-          {label}{tooltip && <span className="text-gray-300 cursor-help ml-0.5">ⓘ</span>}
+        <div className="text-xs font-medium text-muted-foreground mb-0.5">
+          {label}{tooltip && (
+            <Tooltip content={tooltip}>
+              <span className="text-gray-300 cursor-help ml-0.5">ⓘ</span>
+            </Tooltip>
+          )}
         </div>
         <div
           className={cn(

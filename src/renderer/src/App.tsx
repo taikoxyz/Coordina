@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppSidebar } from './components/AppSidebar'
 import { MainContent } from './components/MainContent'
 import { CreateTeamDialog } from './components/CreateTeamDialog'
+import { TooltipProvider } from './components/ui/tooltip'
 import { useTeams } from './hooks/useTeams'
 import { useNav } from './store/nav'
 import './assets/main.css'
@@ -38,7 +39,9 @@ function AppContent() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppContent />
+      <TooltipProvider>
+        <AppContent />
+      </TooltipProvider>
     </QueryClientProvider>
   )
 }

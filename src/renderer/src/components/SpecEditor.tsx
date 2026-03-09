@@ -74,7 +74,7 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
         <div className="shrink-0 border-b border-gray-200">
           <div className="max-w-2xl mx-auto px-6 h-11 flex items-center justify-between">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
-              Team overview
+              {spec.name || 'Team overview'}
             </div>
             <Button variant="ghost" size="icon" onClick={onEdit} title="Edit team">
               <Pencil className="w-4 h-4" />
@@ -85,7 +85,6 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
           <div className="max-w-2xl mx-auto space-y-4 py-4 px-6">
             <div>
             <h4 className="text-sm font-semibold text-gray-900 mb-1">About</h4>
-            <ReadField label="Name" value={spec.name} />
             <ReadField label="Slug" value={spec.slug} monospace />
             <ReadField label="Agents" value={spec.agents.length} />
           </div>
