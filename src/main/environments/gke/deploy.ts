@@ -163,7 +163,14 @@ export async function* deployTeam(
     const pvcList = await coreApi.listNamespacedPersistentVolumeClaim({ namespace })
       .catch(() => ({ items: [] } as { items: k8s.V1PersistentVolumeClaim[] }))
     for (const pvc of pvcList.items ?? []) {
-      if (pvc.metadata?.name) existingPvcNames.add(pvc.metadata.name)
+      const name = pvc.metadata?.name
+      if (!name) continue
+      if (pvc.status?.phase === 'Lost') {
+        await tryDelete(() => coreApi.deleteNamespacedPersistentVolumeClaim({ name, namespace }))
+        yield { resource: `PVC/${name}`, status: 'deleted', message: 'Removed stale PVC (Lost phase)' }
+        continue
+      }
+      existingPvcNames.add(name)
     }
   }
 
