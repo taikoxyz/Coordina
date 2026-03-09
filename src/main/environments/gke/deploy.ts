@@ -91,6 +91,7 @@ export async function* deployTeam(
   const coreApi = kc.makeApiClient(k8s.CoreV1Api)
   const appsApi = kc.makeApiClient(k8s.AppsV1Api)
   const networkingApi = kc.makeApiClient(k8s.NetworkingV1Api)
+  const batchApi = kc.makeApiClient(k8s.BatchV1Api)
   const namespace = teamSlug
   const hasIngressManifest = specFiles.some(f => f.path === 'ingress.yaml')
   const desiredStatefulSetNames = specFiles
@@ -113,6 +114,25 @@ export async function* deployTeam(
       yield { resource: `Ingress/${teamSlug}`, status: 'deleted', message: 'Removed stale ingress (port-forward mode)' }
     } catch {
       // Ignore cleanup failures and continue deploying core resources.
+    }
+  }
+
+  // When Mission Control is disabled for this deploy, remove its pod and associated resources.
+  const hasMcManifest = specFiles.some(f => f.path === 'mission-control/deployment.yaml')
+  if (!hasMcManifest) {
+    for (const [resource, fn] of [
+      ['Deployment/mission-control', () => appsApi.deleteNamespacedDeployment({ name: 'mission-control', namespace })],
+      ['Service/mission-control', () => coreApi.deleteNamespacedService({ name: 'mission-control', namespace })],
+      ['Ingress/mission-control', () => networkingApi.deleteNamespacedIngress({ name: 'mission-control', namespace })],
+      ['CronJob/agent-heartbeat-relay', () => batchApi.deleteNamespacedCronJob({ name: 'agent-heartbeat-relay', namespace })],
+      ['Secret/mission-control-env', () => coreApi.deleteNamespacedSecret({ name: 'mission-control-env', namespace })],
+    ] as [string, () => Promise<unknown>][]) {
+      try {
+        await fn()
+        yield { resource, status: 'deleted', message: 'Mission Control disabled' }
+      } catch {
+        // Resource may not exist — skip silently.
+      }
     }
   }
 
