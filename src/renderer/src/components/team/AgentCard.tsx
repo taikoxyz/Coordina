@@ -119,6 +119,21 @@ export function AgentCard({
     }
   }
 
+  const syncAvatar = async () => {
+    setTokenBusy(true)
+    setTokenError(null)
+    try {
+      await window.api.invoke('teams:syncAgentTelegramAvatar', {
+        teamSlug,
+        agentSlug: agent.slug,
+      })
+    } catch (e) {
+      setTokenError((e as Error).message)
+    } finally {
+      setTokenBusy(false)
+    }
+  }
+
   return (
     <div className="space-y-3">
         {isEditing ? (
@@ -280,6 +295,18 @@ export function AgentCard({
                         className="shrink-0"
                       >
                         Clear
+                      </Button>
+                    )}
+                    {tokenMasked && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={syncAvatar}
+                        disabled={tokenBusy}
+                        className="shrink-0"
+                        title="Push agent avatar to Telegram bot profile photo"
+                      >
+                        Sync Avatar
                       </Button>
                     )}
                   </div>
