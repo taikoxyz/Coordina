@@ -306,3 +306,165 @@ export function generateIngress(input: {
   }
   return yaml.dump(manifest)
 }
+
+export interface MissionControlSecretInput {
+  namespace: string
+  adminPassword: string
+  sessionSecret: string
+  apiKey: string
+  leadAgentSlug: string
+  domain: string
+}
+
+export function generateMissionControlSecret(input: MissionControlSecretInput): string {
+  const { namespace, adminPassword, sessionSecret, apiKey, leadAgentSlug, domain } = input
+  const manifest = {
+    apiVersion: 'v1',
+    kind: 'Secret',
+    type: 'Opaque',
+    metadata: { name: 'mission-control-env', namespace, labels: { 'coordina.component': 'mission-control' } },
+    stringData: {
+      MC_ADMIN_PASSWORD: adminPassword,
+      MC_SESSION_SECRET: sessionSecret,
+      API_KEY: apiKey,
+      OPENCLAW_GATEWAY_HOST: `agent-${leadAgentSlug}.${namespace}.svc.cluster.local`,
+      OPENCLAW_GATEWAY_PORT: '18789',
+      OPENCLAW_GATEWAY_TOKEN: '',
+      NEXT_PUBLIC_GATEWAY_HOST: domain,
+      NEXT_PUBLIC_GATEWAY_PORT: '443',
+      NEXT_PUBLIC_GATEWAY_PROTOCOL: 'wss',
+      MC_CLAUDE_HOME: '',
+    },
+  }
+  return yaml.dump(manifest)
+}
+
+export function generateMissionControlPvc(input: { namespace: string }): string {
+  const { namespace } = input
+  const manifest = {
+    apiVersion: 'v1',
+    kind: 'PersistentVolumeClaim',
+    metadata: { name: 'mission-control-data', namespace, labels: { 'coordina.component': 'mission-control' } },
+    spec: {
+      accessModes: ['ReadWriteOnce'],
+      resources: { requests: { storage: '5Gi' } },
+      storageClassName: 'standard-rwo',
+    },
+  }
+  return yaml.dump(manifest)
+}
+
+export function generateMissionControlDeployment(input: { namespace: string; image: string }): string {
+  const { namespace, image } = input
+  const manifest = {
+    apiVersion: 'apps/v1',
+    kind: 'Deployment',
+    metadata: { name: 'mission-control', namespace, labels: { app: 'mission-control', 'coordina.component': 'mission-control' } },
+    spec: {
+      replicas: 1,
+      selector: { matchLabels: { app: 'mission-control' } },
+      template: {
+        metadata: { labels: { app: 'mission-control' } },
+        spec: {
+          containers: [{
+            name: 'mission-control',
+            image,
+            ports: [{ containerPort: 3000 }],
+            envFrom: [{ secretRef: { name: 'mission-control-env' } }],
+            volumeMounts: [{ name: 'data', mountPath: '/app/.data' }],
+            readinessProbe: {
+              httpGet: { path: '/api/health', port: 3000 },
+              initialDelaySeconds: 15,
+              periodSeconds: 10,
+            },
+          }],
+          volumes: [{ name: 'data', persistentVolumeClaim: { claimName: 'mission-control-data' } }],
+        },
+      },
+    },
+  }
+  return yaml.dump(manifest)
+}
+
+export function generateMissionControlService(input: { namespace: string }): string {
+  const { namespace } = input
+  const manifest = {
+    apiVersion: 'v1',
+    kind: 'Service',
+    metadata: { name: 'mission-control', namespace, labels: { 'coordina.component': 'mission-control' } },
+    spec: {
+      selector: { app: 'mission-control' },
+      ports: [{ name: 'http', port: 3000, targetPort: 3000 }],
+      type: 'ClusterIP',
+    },
+  }
+  return yaml.dump(manifest)
+}
+
+export function generateMissionControlIngress(input: { namespace: string; domain: string }): string {
+  const { namespace, domain } = input
+  const manifest = {
+    apiVersion: 'networking.k8s.io/v1',
+    kind: 'Ingress',
+    metadata: {
+      name: 'mission-control',
+      namespace,
+      annotations: {
+        'kubernetes.io/ingress.class': 'gce',
+        'kubernetes.io/ingress.allow-http': 'false',
+      },
+      labels: { 'coordina.component': 'mission-control' },
+    },
+    spec: {
+      rules: [{
+        host: domain,
+        http: {
+          paths: [{
+            path: '/',
+            pathType: 'Prefix',
+            backend: { service: { name: 'mission-control', port: { number: 3000 } } },
+          }],
+        },
+      }],
+    },
+  }
+  return yaml.dump(manifest)
+}
+
+export function generateMissionControlHeartbeatCronJob(input: {
+  namespace: string
+  agentIds: number[]
+  apiKey: string
+}): string {
+  const { namespace, agentIds } = input
+  const heartbeatCmds = agentIds
+    .map(id => `curl -s -X POST "http://mission-control:3000/api/agents/${id}/heartbeat" -H "x-api-key: $API_KEY"`)
+    .join('\n')
+  const manifest = {
+    apiVersion: 'batch/v1',
+    kind: 'CronJob',
+    metadata: { name: 'agent-heartbeat-relay', namespace, labels: { 'coordina.component': 'mission-control' } },
+    spec: {
+      schedule: '*/1 * * * *',
+      jobTemplate: {
+        spec: {
+          template: {
+            spec: {
+              restartPolicy: 'OnFailure',
+              containers: [{
+                name: 'heartbeat',
+                image: 'curlimages/curl:latest',
+                command: ['/bin/sh', '-c', heartbeatCmds],
+                env: [{
+                  name: 'API_KEY',
+                  valueFrom: { secretKeyRef: { name: 'mission-control-env', key: 'API_KEY' } },
+                }],
+              }],
+            },
+          },
+        },
+      },
+    },
+  }
+  return yaml.dump(manifest)
+}
