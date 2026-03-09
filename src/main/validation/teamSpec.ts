@@ -19,8 +19,8 @@ export const validateTeamSpec = (
     if (!agent.role?.trim()) errors.push({ field: `${prefix}.role`, message: 'Agent role is required' })
     if (!agent.persona?.trim()) errors.push({ field: `${prefix}.persona`, message: 'Agent persona is required' })
 
-    if (!agent.model?.trim()) {
-      errors.push({ field: `${prefix}.model`, message: 'Model is required' })
+    if (!agent.models || agent.models.length === 0) {
+      errors.push({ field: `${prefix}.models`, message: 'At least one model is required' })
     }
   }
 

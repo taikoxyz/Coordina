@@ -27,7 +27,9 @@ function normalizeAgent(agent: AgentSpec): AgentSpec {
       ? agent.skills.map(s => s.trim()).filter(Boolean)
       : [],
     persona: agent.persona ?? '',
-    model: normalizeOptional(agent.model) ?? '',
+    models: Array.isArray(agent.models)
+      ? agent.models.map((m: string) => m.trim()).filter(Boolean)
+      : (agent as unknown as { model?: string }).model ? [(agent as unknown as { model?: string }).model!.trim()].filter(Boolean) : [],
     image: normalizeOptional(agent.image),
     cpu: normalizePositiveNumber(agent.cpu),
     diskGi: normalizePositiveInt(agent.diskGi),

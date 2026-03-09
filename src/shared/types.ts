@@ -18,7 +18,7 @@ export interface AgentSpec {
   githubUsername?: string
   skills: string[]
   persona: string
-  model: string
+  models: string[]
   image?: string
   cpu?: number
   diskGi?: number

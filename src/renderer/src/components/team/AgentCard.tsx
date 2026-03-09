@@ -1,24 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Pencil } from 'lucide-react'
 import { deriveAgentEmail } from '../../../../shared/email'
 import { deriveSlug } from '../../../../shared/slug'
 import type { AgentSpec } from '../../../../shared/types'
 import { PERSONA_CATALOG, getPersonasByDivision } from '../../../../shared/personaCatalog'
 import { useModels } from '../../hooks/useModels'
-import { agentTextColor } from '../../lib/agentColors'
 import { Button, Input, Label, ReadField, Select, Textarea } from '../ui'
 
 interface Props {
   teamSlug: string
   agent: AgentSpec
-  index: number
   isEditing: boolean
-  onEdit: () => void
-  onCancel: () => void
-  onSave: () => Promise<void>
-  isSaving: boolean
   onChange: (updated: AgentSpec) => void
-  onDelete: () => void
   teamEmail?: string
   isLead?: boolean
 }
@@ -26,21 +18,14 @@ interface Props {
 export function AgentCard({
   teamSlug,
   agent,
-  index,
   isEditing,
-  onEdit,
-  onCancel,
-  onSave,
-  isSaving,
   onChange,
-  onDelete,
   teamEmail,
   isLead,
 }: Props) {
   const { data: models } = useModels('openrouter')
   const derivedEmail = teamEmail ? deriveAgentEmail(teamEmail, agent.slug, isLead ?? false) : undefined
   const effectiveEmail = agent.email || derivedEmail
-  const [confirmDelete, setConfirmDelete] = useState(false)
   const [telegramToken, setTelegramToken] = useState('')
   const [tokenMasked, setTokenMasked] = useState<string | null>(null)
   const [tokenBusy, setTokenBusy] = useState(false)
@@ -135,86 +120,43 @@ export function AgentCard({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <div className={`text-xs font-semibold uppercase tracking-[0.16em] ${agentTextColor(index)}`}>
-            {agent.name || 'Unnamed agent'}
-          </div>
-          {!isEditing && (
-            <Button variant="ghost" size="icon" onClick={onEdit} title="Edit agent">
-              <Pencil className="w-4 h-4" />
-            </Button>
-          )}
-        </div>
-        {isEditing && (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => void onSave()}
-              disabled={isSaving}
-            >
-              {isSaving ? 'Saving...' : 'Save'}
-            </Button>
-            {confirmDelete ? (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={onDelete}
-              >
-                Confirm delete
-              </Button>
-            ) : (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => setConfirmDelete(true)}
-              >
-                Delete
-              </Button>
-            )}
-            <div className="flex-1" />
-            <Button variant="secondary" size="sm" onClick={() => { setConfirmDelete(false); onCancel() }} disabled={isSaving}>
-              Cancel
-            </Button>
-          </div>
-        )}
-      </div>
-
-      <div className="space-y-3">
+    <div className="space-y-3">
         {isEditing ? (
           <>
             <div>
-              <Label>Persona Template</Label>
-              <Select
-                value={selectedTemplate}
-                onChange={(e) => applyTemplate(e.target.value)}
-              >
-                <option value="">— select persona —</option>
-                <option value="custom">✏️ Custom (manual entry)</option>
-                {Array.from(personasByDivision.entries()).map(([division, templates]) => (
-                  <optgroup key={division} label={division}>
-                    {templates.map((t) => (
-                      <option key={t.id} value={t.id}>{t.emoji} {t.name}</option>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">About</h3>
+              <div className="space-y-3">
+                <div>
+                  <Label>Persona Template</Label>
+                  <Select
+                    value={selectedTemplate}
+                    onChange={(e) => applyTemplate(e.target.value)}
+                  >
+                    <option value="">— select persona —</option>
+                    <option value="custom">✏️ Custom (manual entry)</option>
+                    {Array.from(personasByDivision.entries()).map(([division, templates]) => (
+                      <optgroup key={division} label={division}>
+                        {templates.map((t) => (
+                          <option key={t.id} value={t.id}>{t.emoji} {t.name}</option>
+                        ))}
+                      </optgroup>
                     ))}
-                  </optgroup>
-                ))}
-              </Select>
-            </div>
-
-            <div>
-              <Label>Name</Label>
-              <Input
-                value={agent.name}
-                onChange={(e) => handleNameChange(e.target.value)}
-                placeholder="Alice"
-              />
-              {agent.slug && (
-                <p className="text-xs text-gray-400 font-mono mt-0.5">
-                  {agent.slug}
-                </p>
-              )}
+                  </Select>
+                </div>
+                <div>
+                  <Label>Name</Label>
+                  <Input
+                    value={agent.name}
+                    onChange={(e) => handleNameChange(e.target.value)}
+                    placeholder="Alice"
+                  />
+                  {agent.slug && (
+                    <p className="text-xs text-gray-400 font-mono mt-0.5">
+                      {agent.slug}
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
 
             {selectedTemplate && (
@@ -222,16 +164,15 @@ export function AgentCard({
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Persona</h3>
                 <div className="space-y-3">
                   <div>
-                    <Label>Role</Label>
+                    <Label title="Used as the 'Creature' field in identity.md and to contextualize the agent in agents.md">Role <span className="text-gray-300 cursor-help">ⓘ</span></Label>
                     <Input
                       value={agent.role}
                       onChange={(e) => set('role')(e.target.value)}
                       placeholder="Researcher"
                     />
                   </div>
-
                   <div>
-                    <Label>Persona</Label>
+                    <Label title="Used as 'Vibe' in identity.md and as the core description in soul.md under 'Core Truths'">Persona <span className="text-gray-300 cursor-help">ⓘ</span></Label>
                     <Textarea
                       rows={3}
                       value={agent.persona}
@@ -239,9 +180,8 @@ export function AgentCard({
                       placeholder="Describe this agent's personality..."
                     />
                   </div>
-
                   <div>
-                    <Label>Skills (comma-separated)</Label>
+                    <Label title="Each skill becomes a bullet point in skills.md, telling the agent what it can do">Skills (comma-separated) <span className="text-gray-300 cursor-help">ⓘ</span></Label>
                     <Textarea
                       rows={2}
                       value={agent.skills.join(', ')}
@@ -261,133 +201,165 @@ export function AgentCard({
             )}
 
             <div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">OpenRouter Model</h3>
-              <Select
-                value={agent.model}
-                onChange={(e) => set('model')(e.target.value)}
-              >
-                <option value="">Select model...</option>
-                {(models ?? []).map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name}
-                  </option>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">OpenRouter Models</h3>
+              <div className="space-y-2">
+                {agent.models.map((modelId, mi) => (
+                  <div key={mi} className="flex items-center gap-2">
+                    <Select
+                      value={modelId}
+                      onChange={(e) => {
+                        const updated = [...agent.models]
+                        updated[mi] = e.target.value
+                        onChange({ ...agent, models: updated })
+                      }}
+                    >
+                      <option value="">Select model...</option>
+                      {(models ?? []).map((m) => (
+                        <option key={m.id} value={m.id}>{m.name}</option>
+                      ))}
+                    </Select>
+                    <Button
+                      variant="ghost-destructive"
+                      size="sm"
+                      onClick={() => onChange({ ...agent, models: agent.models.filter((_, j) => j !== mi) })}
+                      title="Remove model"
+                    >
+                      &times;
+                    </Button>
+                    {mi === 0 && <span className="text-xs text-gray-400 shrink-0">primary</span>}
+                    {mi > 0 && <span className="text-xs text-gray-400 shrink-0">fallback</span>}
+                  </div>
                 ))}
-              </Select>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => onChange({ ...agent, models: [...agent.models, ''] })}
+                >
+                  + Add model
+                </Button>
+              </div>
             </div>
 
-            <div className="space-y-3">
-              <div>
-                <Label>Telegram Bot ID</Label>
-                <Input
-                  mono
-                  value={agent.telegramBot ?? ''}
-                  onChange={(e) => set('telegramBot')(e.target.value || undefined)}
-                  placeholder="123456789"
-                />
-              </div>
-              <div>
-                <Label>Telegram Token</Label>
-                <div className="flex items-center gap-1.5">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Telegram</h3>
+              <div className="space-y-3">
+                <div>
+                  <Label>Bot ID</Label>
                   <Input
                     mono
-                    type="password"
-                    value={telegramToken}
-                    onChange={(e) => setTelegramToken(e.target.value)}
-                    placeholder={tokenMasked ? 'Update token' : '123456:ABC...'}
+                    value={agent.telegramBot ?? ''}
+                    onChange={(e) => set('telegramBot')(e.target.value || undefined)}
+                    placeholder="123456789"
                   />
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={saveToken}
-                    disabled={tokenBusy || !teamSlug || !agent.slug}
-                    className="shrink-0"
-                  >
-                    Save
-                  </Button>
-                  {tokenMasked && (
+                </div>
+                <div>
+                  <Label>Token</Label>
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      mono
+                      type="password"
+                      value={telegramToken}
+                      onChange={(e) => setTelegramToken(e.target.value)}
+                      placeholder={tokenMasked ? 'Update token' : '123456:ABC...'}
+                    />
                     <Button
-                      variant="secondary"
+                      variant="primary"
                       size="sm"
-                      onClick={clearToken}
-                      disabled={tokenBusy}
+                      onClick={saveToken}
+                      disabled={tokenBusy || !teamSlug || !agent.slug}
                       className="shrink-0"
                     >
-                      Clear
+                      Save
                     </Button>
+                    {tokenMasked && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={clearToken}
+                        disabled={tokenBusy}
+                        className="shrink-0"
+                      >
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+                  {tokenMasked && (
+                    <p className="text-xs text-gray-400 font-mono mt-0.5">
+                      {tokenMasked}
+                    </p>
+                  )}
+                  {tokenError && (
+                    <p className="text-xs text-red-600 mt-0.5">{tokenError}</p>
                   )}
                 </div>
-                {tokenMasked && (
-                  <p className="text-xs text-gray-400 font-mono mt-0.5">
-                    {tokenMasked}
-                  </p>
-                )}
-                {tokenError && (
-                  <p className="text-xs text-red-600 mt-0.5">{tokenError}</p>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Gmail</h3>
+              <div>
+                <Label>Email override</Label>
+                <Input
+                  mono
+                  value={agent.email ?? ''}
+                  onChange={(e) => set('email')(e.target.value || undefined)}
+                  placeholder={derivedEmail ?? 'No team email configured'}
+                />
+                {!agent.email && derivedEmail && (
+                  <p className="text-xs text-gray-400 font-mono mt-0.5">Auto: {derivedEmail}</p>
                 )}
               </div>
             </div>
 
             <div>
-              <Label>Email override</Label>
-              <Input
-                mono
-                value={agent.email ?? ''}
-                onChange={(e) => set('email')(e.target.value || undefined)}
-                placeholder={derivedEmail ?? 'No team email configured'}
-              />
-              {!agent.email && derivedEmail && (
-                <p className="text-xs text-gray-400 font-mono mt-0.5">Auto: {derivedEmail}</p>
-              )}
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <Label>Container image</Label>
-                <Input
-                  mono
-                  value={agent.image ?? ''}
-                  onChange={(e) => set('image')(e.target.value || undefined)}
-                  placeholder="Default"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Resources</h3>
+              <div className="space-y-3">
                 <div>
-                  <Label>CPU (cores)</Label>
+                  <Label>Container image</Label>
                   <Input
-                    type="number"
-                    min={0.1}
-                    step={0.5}
-                    value={agent.cpu ?? ''}
-                    onChange={(e) =>
-                      set('cpu')(
-                        e.target.value ? parseFloat(e.target.value) : undefined,
-                      )
-                    }
-                    placeholder="1"
+                    mono
+                    value={agent.image ?? ''}
+                    onChange={(e) => set('image')(e.target.value || undefined)}
+                    placeholder="Default"
                   />
                 </div>
-                <div>
-                  <Label>Disk (Gi)</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    step={1}
-                    value={agent.diskGi ?? ''}
-                    onChange={(e) =>
-                      set('diskGi')(
-                        e.target.value ? parseInt(e.target.value) : undefined,
-                      )
-                    }
-                    placeholder="10"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>CPU (cores)</Label>
+                    <Input
+                      type="number"
+                      min={0.1}
+                      step={0.5}
+                      value={agent.cpu ?? ''}
+                      onChange={(e) =>
+                        set('cpu')(
+                          e.target.value ? parseFloat(e.target.value) : undefined,
+                        )
+                      }
+                      placeholder="1"
+                    />
+                  </div>
+                  <div>
+                    <Label>Disk (Gi)</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={agent.diskGi ?? ''}
+                      onChange={(e) =>
+                        set('diskGi')(
+                          e.target.value ? parseInt(e.target.value) : undefined,
+                        )
+                      }
+                      placeholder="10"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </>
         ) : (
           <>
-            <hr className="border-gray-200" />
-
             <div>
               <h4 className="text-sm font-semibold text-gray-900 mb-1">About</h4>
               <ReadField label="Name" value={agent.name} />
@@ -398,20 +370,25 @@ export function AgentCard({
 
             <div>
               <h4 className="text-sm font-semibold text-gray-900 mb-1">Persona</h4>
-              <ReadField label="Role" value={agent.role} full />
-              <ReadField label="Persona" value={agent.persona?.trim() || undefined} full />
+              <ReadField label="Role" value={agent.role} full tooltip="Used as the 'Creature' field in identity.md and to contextualize the agent in agents.md" />
+              <ReadField label="Persona" value={agent.persona?.trim() || undefined} full tooltip="Used as 'Vibe' in identity.md and as the core description in soul.md under 'Core Truths'" />
               <ReadField
                 label="Skills"
                 value={agent.skills.length > 0 ? agent.skills.join(', ') : undefined}
                 full
+                tooltip="Each skill becomes a bullet point in skills.md, telling the agent what it can do"
               />
             </div>
 
             <hr className="border-gray-200" />
 
             <div>
-              <h4 className="text-sm font-semibold text-gray-900 mb-1">OpenRouter Model</h4>
-              <ReadField label="Model" value={agent.model} monospace />
+              <h4 className="text-sm font-semibold text-gray-900 mb-1">OpenRouter Models</h4>
+              {agent.models.length > 0 ? agent.models.map((m, mi) => (
+                <ReadField key={mi} label={mi === 0 ? 'Primary' : `Fallback ${mi}`} value={m} monospace />
+              )) : (
+                <ReadField label="Model" value={undefined} />
+              )}
             </div>
 
             <hr className="border-gray-200" />
@@ -446,6 +423,5 @@ export function AgentCard({
           </>
         )}
       </div>
-    </div>
   )
 }

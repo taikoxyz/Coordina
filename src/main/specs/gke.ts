@@ -125,8 +125,8 @@ const gkeDeriver: DeploymentSpecDeriver = {
       const isLead = agent.slug === spec.leadAgent
       const derivedEmail = hasEmail ? deriveAgentEmail(spec.teamEmail!, agent.slug, isLead) : undefined
       const effectiveEmail = agent.email || derivedEmail
-      const model = agent.model || 'anthropic/claude-sonnet-4-6'
-      const openclawConfig = openrouterToOpenClawJson(model)
+      const models = agent.models.length > 0 ? agent.models : ['anthropic/claude-sonnet-4-6']
+      const openclawConfig = openrouterToOpenClawJson(models)
       const envVars = openrouterToEnvVars(openrouterApiKey ?? '')
 
       const agentToken = teamGatewayToken

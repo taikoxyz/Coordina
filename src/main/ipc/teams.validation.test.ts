@@ -17,7 +17,7 @@ const baseSpec: TeamSpec = {
       role: 'Lead',
       skills: [],
       persona: 'Pragmatic',
-      model: 'anthropic',
+      models: ['anthropic'],
     },
   ],
 }
@@ -69,13 +69,13 @@ describe('normalizeTeamSpec', () => {
         slug: ' alpha ',
         name: ' Alpha ',
         role: ' Lead ',
-        model: ' anthropic ',
+        model: ' anthropic ',  // legacy field, should migrate
         telegramBot: ' 111111111 ',
         skills: [' research ', ' ', 'write'],
         cpu: -1,
         diskGi: 0,
       }],
-    } as TeamSpec & { domain?: string }
+    } as unknown as TeamSpec & { domain?: string }
 
     const normalized = normalizeTeamSpec(legacy)
 
@@ -88,7 +88,7 @@ describe('normalizeTeamSpec', () => {
     expect(normalized.defaultDiskGi).toBeUndefined()
     expect(normalized.leadAgent).toBeUndefined()
     expect(normalized.agents[0].slug).toBe('alpha')
-    expect(normalized.agents[0].model).toBe('anthropic')
+    expect(normalized.agents[0].models).toEqual(['anthropic'])
     expect(normalized.agents[0].telegramBot).toBe('111111111')
     expect(normalized.agents[0].skills).toEqual(['research', 'write'])
     expect(normalized.agents[0].cpu).toBeUndefined()

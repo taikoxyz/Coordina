@@ -70,9 +70,9 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
 
   if (!isEditing) {
     return (
-      <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="max-w-2xl mx-auto space-y-4 py-6 px-6">
-          <div className="flex items-center justify-between">
+      <>
+        <div className="shrink-0 border-b border-gray-200">
+          <div className="max-w-2xl mx-auto px-6 h-11 flex items-center justify-between">
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
               Team overview
             </div>
@@ -80,10 +80,10 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
               <Pencil className="w-4 h-4" />
             </Button>
           </div>
-
-          <hr className="border-gray-200" />
-
-          <div>
+        </div>
+        <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="max-w-2xl mx-auto space-y-4 py-4 px-6">
+            <div>
             <h4 className="text-sm font-semibold text-gray-900 mb-1">About</h4>
             <ReadField label="Name" value={spec.name} />
             <ReadField label="Slug" value={spec.slug} monospace />
@@ -113,8 +113,9 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
 
           <div>
             <h4 className="text-sm font-semibold text-gray-900 mb-1">Resources</h4>
-            <ReadField label="Default container image" value={spec.defaultImage} monospace />
-            <ReadField label="Storage (Gi)" value={spec.defaultDiskGi} />
+            <ReadField label="Container image" value={spec.defaultImage} monospace />
+            <ReadField label="CPU (cores)" value={spec.defaultCpu} />
+            <ReadField label="Disk (Gi)" value={spec.defaultDiskGi} />
           </div>
 
           <hr className="border-gray-200" />
@@ -125,42 +126,43 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
           </div>
         </div>
       </div>
+      </>
     )
   }
 
   return (
-    <div className="flex-1 overflow-y-auto min-h-0">
-      <div className="max-w-2xl mx-auto space-y-5 py-6 px-6">
-        <div className="space-y-2">
+    <>
+      <div className="shrink-0 border-b border-gray-200">
+        <div className="max-w-2xl mx-auto px-6 h-11 flex items-center gap-2">
           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
             Edit team
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => void onSave()}
-              disabled={isSaving}
-            >
-              {isSaving ? 'Saving...' : 'Save'}
+          <div className="flex-1" />
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => void onSave()}
+            disabled={isSaving}
+          >
+            {isSaving ? 'Saving...' : 'Save'}
+          </Button>
+          {confirmDelete ? (
+            <Button variant="destructive" size="sm" onClick={onDelete}>
+              Confirm delete
             </Button>
-            {confirmDelete ? (
-              <Button variant="destructive" size="sm" onClick={onDelete}>
-                Confirm delete
-              </Button>
-            ) : (
-              <Button variant="destructive" size="sm" onClick={() => setConfirmDelete(true)}>
-                Delete
-              </Button>
-            )}
-            <div className="flex-1" />
-            <Button variant="secondary" size="sm" onClick={() => { setConfirmDelete(false); onCancel() }} disabled={isSaving}>
-              Cancel
+          ) : (
+            <Button variant="destructive" size="sm" onClick={() => setConfirmDelete(true)}>
+              Delete
             </Button>
-          </div>
+          )}
+          <Button variant="secondary" size="sm" onClick={() => { setConfirmDelete(false); onCancel() }} disabled={isSaving}>
+            Cancel
+          </Button>
         </div>
-
-        <div>
+      </div>
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="max-w-2xl mx-auto space-y-5 py-4 px-6">
+          <div>
           <h3 className="text-sm font-semibold text-gray-900 mb-3">About</h3>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -303,7 +305,8 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
             />
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

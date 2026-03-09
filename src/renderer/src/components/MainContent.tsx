@@ -13,14 +13,14 @@ import { cn } from '../lib/utils'
 function TabBar({ tabs, active, onSelect }: { tabs: { id: ContentTab; label: string }[]; active: ContentTab; onSelect: (tab: ContentTab) => void }) {
   return (
     <div className="border-b border-gray-200 shrink-0">
-      <div className="flex items-center px-5">
-        <div className="flex gap-6">
+      <div className="flex items-center h-11 px-5">
+        <div className="flex gap-6 h-full">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => onSelect(tab.id)}
               className={cn(
-                'text-sm font-medium py-3 transition-colors relative',
+                'text-sm font-medium transition-colors relative h-full flex items-center',
                 active === tab.id
                   ? 'text-gray-900'
                   : 'text-gray-400 hover:text-gray-600',

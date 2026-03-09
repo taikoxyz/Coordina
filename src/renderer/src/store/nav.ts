@@ -15,6 +15,7 @@ interface NavStore {
   isSettingsOpen: boolean
   isCreateDialogOpen: 'teams' | null
   deployingTeamSlug: string | null
+  deployingAgentSlug: string | null
 
   selectItem: (item: SelectedItem) => void
   setContentTab: (tab: ContentTab) => void
@@ -22,7 +23,7 @@ interface NavStore {
   setSettingsOpen: (open: boolean) => void
   setCreateDialogOpen: (group: 'teams' | null) => void
   selectProject: (slug: string | null) => void
-  setDeployingTeamSlug: (slug: string | null) => void
+  setDeploying: (teamSlug: string | null, agentSlug?: string | null) => void
 }
 
 export const useNav = create<NavStore>()(
@@ -35,6 +36,7 @@ export const useNav = create<NavStore>()(
       isSettingsOpen: false,
       isCreateDialogOpen: null,
       deployingTeamSlug: null,
+      deployingAgentSlug: null,
 
       selectItem: (item) => set({ selectedItem: item, contentTab: 'deploy' }),
       setContentTab: (contentTab) => set({ contentTab }),
@@ -47,7 +49,7 @@ export const useNav = create<NavStore>()(
       setSettingsOpen: (isSettingsOpen) => set({ isSettingsOpen }),
       setCreateDialogOpen: (isCreateDialogOpen) => set({ isCreateDialogOpen }),
       selectProject: (projectSlug) => set({ projectSlug }),
-      setDeployingTeamSlug: (deployingTeamSlug) => set({ deployingTeamSlug }),
+      setDeploying: (teamSlug, agentSlug) => set({ deployingTeamSlug: teamSlug, deployingAgentSlug: agentSlug ?? null }),
     }),
     {
       name: 'coordina-nav',

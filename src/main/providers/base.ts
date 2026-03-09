@@ -10,13 +10,16 @@ export const fetchWithTimeout = async (url: string, options: RequestInit = {}, m
 
 export interface OpenClawModelConfig {
   agents: { defaults: { model: { primary: string; fallbacks?: string[] } } }
-  models: { providers: { [provider: string]: { apiKey?: string; baseUrl?: string; api?: string } } }
+  models: { providers: { [provider: string]: { apiKey?: string; baseUrl?: string; api?: string; models?: { id: string }[] } } }
 }
 
-export function openrouterToOpenClawJson(model: string): OpenClawModelConfig {
+export function openrouterToOpenClawJson(models: string[]): OpenClawModelConfig {
+  const primary = models[0] || 'anthropic/claude-sonnet-4-6'
+  const fallbacks = models.slice(1)
+  const allModels = models.length > 0 ? models : [primary]
   return {
-    agents: { defaults: { model: { primary: `openrouter/${model}` } } },
-    models: { providers: { openrouter: { baseUrl: 'https://openrouter.ai/api/v1', api: 'openai-completions' } } },
+    agents: { defaults: { model: { primary: `openrouter/${primary}`, ...(fallbacks.length > 0 && { fallbacks: fallbacks.map(m => `openrouter/${m}`) }) } } },
+    models: { providers: { openrouter: { baseUrl: 'https://openrouter.ai/api/v1', api: 'openai-completions', models: allModels.map(id => ({ id })) } } },
   }
 }
 

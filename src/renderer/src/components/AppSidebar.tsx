@@ -8,7 +8,7 @@ import type { AgentSpec } from '../../../shared/types'
 import { DEFAULT_AGENT_NAME_THEME, generateAutoAgentIdentities } from '../../../shared/agentNames'
 
 export function AppSidebar() {
-  const { selectedItem, selectItem, expandedTeams, toggleTeam, setSettingsOpen, setCreateDialogOpen, deployingTeamSlug } = useNav()
+  const { selectedItem, selectItem, expandedTeams, toggleTeam, setSettingsOpen, setCreateDialogOpen, deployingTeamSlug, deployingAgentSlug } = useNav()
   const { data: teams } = useTeams()
   const saveTeam = useSaveTeam()
   const { data: settings } = useSettings()
@@ -27,7 +27,7 @@ export function AppSidebar() {
       slug: identity.slug,
       name: identity.name,
       role: '',
-      model: '',
+      models: [],
       skills: [],
       persona: '',
     }
@@ -86,7 +86,7 @@ export function AppSidebar() {
                 >
                   {team.slug}
                 </button>
-                {deployingTeamSlug === team.slug ? (
+                {deployingTeamSlug === team.slug && !deployingAgentSlug ? (
                   <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin shrink-0" />
                 ) : (
                   <span className="text-xs text-gray-400 shrink-0">{team.agents.length}</span>
@@ -121,6 +121,9 @@ export function AppSidebar() {
                       {(agent.name || '?').charAt(0)}
                     </span>
                     <span className="text-xs truncate min-w-0">{agent.name || agent.slug}</span>
+                    {deployingTeamSlug === team.slug && deployingAgentSlug === agent.slug && (
+                      <Loader2 className="w-3 h-3 text-blue-500 animate-spin shrink-0" />
+                    )}
                     {isLead && <Crown className="w-3 h-3 text-amber-500 shrink-0" />}
                     {agent.telegramBot && <Send className="w-3 h-3 text-green-500 shrink-0" />}
                   </button>

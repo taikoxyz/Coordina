@@ -19,6 +19,7 @@ function migrateAgent(a: Record<string, unknown>): Record<string, unknown> {
   if ('githubId' in out && !('githubUsername' in out)) { out.githubUsername = out.githubId; delete out.githubId }
   if ('slackHandle' in out && !('slack' in out)) { out.slack = out.slackHandle; delete out.slackHandle }
   if ('storageGi' in out && !('diskGi' in out)) { out.diskGi = out.storageGi; delete out.storageGi }
+  if ('model' in out && !('models' in out)) { out.models = out.model ? [out.model] : []; delete out.model }
   delete out.emoji
   delete out.isLead
   return out

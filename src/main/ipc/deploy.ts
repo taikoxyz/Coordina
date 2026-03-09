@@ -8,7 +8,7 @@ import { saveTeamDeployment, deleteTeamDeployment } from '../store/deployments'
 import { getDeriver } from '../specs/base'
 import '../specs/gke'
 import { validateDerivedSpecFiles } from '../specs/validate'
-import { deployTeam, undeployTeam, getTeamStatus } from '../environments/gke/deploy'
+import { deployTeam, undeployTeam, undeployAgent, getTeamStatus } from '../environments/gke/deploy'
 import { authenticateGke } from '../environments/gke/auth'
 import { resolveGatewayMode } from '../gateway/mode'
 import type { DeployOptions } from '../../shared/types'
@@ -138,7 +138,7 @@ export function registerDeployHandlers(): void {
     }
   })
 
-  ipcMain.handle('undeploy:team', async (event, { teamSlug, envSlug }: { teamSlug: string; envSlug: string }) => {
+  ipcMain.handle('undeploy:team', async (event, { teamSlug, envSlug, deleteDisks }: { teamSlug: string; envSlug: string; deleteDisks?: boolean }) => {
     const env = await getEnvironment(envSlug)
     if (!env) return { ok: false, reason: 'Environment not found' }
 
@@ -146,12 +146,29 @@ export function registerDeployHandlers(): void {
     const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof undeployTeam>[1]
 
     try {
-      for await (const status of undeployTeam(teamSlug, deployConfig)) {
+      for await (const status of undeployTeam(teamSlug, deployConfig, { deleteDisks })) {
         win?.webContents.send('deploy:status', status)
       }
       await deleteTeamDeployment(teamSlug)
       const currentSpec = await getTeam(teamSlug)
       if (currentSpec) await saveTeam({ ...currentSpec, deployedEnvSlug: undefined, lastDeployedAt: undefined })
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, reason: e instanceof Error ? e.message : String(e) }
+    }
+  })
+
+  ipcMain.handle('undeploy:agent', async (event, { teamSlug, agentSlug, envSlug, deleteDisks }: { teamSlug: string; agentSlug: string; envSlug: string; deleteDisks?: boolean }) => {
+    const env = await getEnvironment(envSlug)
+    if (!env) return { ok: false, reason: 'Environment not found' }
+
+    const win = BrowserWindow.fromWebContents(event.sender)
+    const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof undeployAgent>[2]
+
+    try {
+      for await (const status of undeployAgent(teamSlug, agentSlug, deployConfig, { deleteDisks })) {
+        win?.webContents.send('deploy:status', status)
+      }
       return { ok: true }
     } catch (e) {
       return { ok: false, reason: e instanceof Error ? e.message : String(e) }

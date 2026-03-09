@@ -10,7 +10,7 @@ vi.mock('../store/providers', () => ({ getOpenRouterApiKey: vi.fn().mockResolved
 vi.mock('../providers/base', () => ({
   openrouterToOpenClawJson: vi.fn().mockReturnValue({
     agents: { defaults: { model: { primary: 'openrouter/anthropic/claude-sonnet-4-6' } } },
-    models: { providers: { openrouter: { baseUrl: 'https://openrouter.ai/api/v1', api: 'openai-completions' } } },
+    models: { providers: { openrouter: { baseUrl: 'https://openrouter.ai/api/v1', api: 'openai-completions', models: [{ id: 'anthropic/claude-sonnet-4-6' }] } } },
   }),
   openrouterToEnvVars: vi.fn().mockReturnValue({ OPENROUTER_API_KEY: 'or-test-key' }),
 }))
@@ -20,9 +20,9 @@ const teamSpec: TeamSpec = {
   name: 'My Team',
   signingKey: 'fixed-seed-for-testing-1234567890abcdef',
   agents: [
-    { slug: 'alpha', name: 'Alpha', role: 'Lead', skills: [], persona: 'Alpha persona', model: 'anthropic' },
-    { slug: 'beta', name: 'Beta', role: 'Engineer', skills: [], persona: 'Beta persona', model: 'anthropic' },
-    { slug: 'gamma', name: 'Gamma', role: 'Designer', skills: [], persona: 'Gamma persona', model: 'anthropic' },
+    { slug: 'alpha', name: 'Alpha', role: 'Lead', skills: [], persona: 'Alpha persona', models: ['anthropic'] },
+    { slug: 'beta', name: 'Beta', role: 'Engineer', skills: [], persona: 'Beta persona', models: ['anthropic'] },
+    { slug: 'gamma', name: 'Gamma', role: 'Designer', skills: [], persona: 'Gamma persona', models: ['anthropic'] },
   ],
 }
 

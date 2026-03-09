@@ -218,7 +218,7 @@ export async function* deployTeam(
   }
 }
 
-export async function* undeployTeam(teamSlug: string, config: GkeDeployConfig): AsyncGenerator<DeployStatus> {
+export async function* undeployTeam(teamSlug: string, config: GkeDeployConfig, options: { deleteDisks?: boolean } = {}): AsyncGenerator<DeployStatus> {
   const kc = await buildKubeConfig(config)
   const appsApi = kc.makeApiClient(k8s.AppsV1Api)
   const coreApi = kc.makeApiClient(k8s.CoreV1Api)
@@ -232,6 +232,40 @@ export async function* undeployTeam(teamSlug: string, config: GkeDeployConfig): 
   ] as [string, () => Promise<unknown>][]) {
     try { await fn(); yield { resource: label, status: 'deleted' } }
     catch { yield { resource: label, status: 'error' } }
+  }
+
+  if (options.deleteDisks) {
+    try {
+      const pvcList = await coreApi.listNamespacedPersistentVolumeClaim({ namespace })
+      for (const pvc of pvcList.items ?? []) {
+        const name = pvc.metadata?.name
+        if (!name) continue
+        try { await coreApi.deleteNamespacedPersistentVolumeClaim({ name, namespace }); yield { resource: `PVC/${name}`, status: 'deleted' } }
+        catch { yield { resource: `PVC/${name}`, status: 'error' } }
+      }
+    } catch { yield { resource: 'PVCs', status: 'error' } }
+  }
+}
+
+export async function* undeployAgent(teamSlug: string, agentSlug: string, config: GkeDeployConfig, options: { deleteDisks?: boolean } = {}): AsyncGenerator<DeployStatus> {
+  const kc = await buildKubeConfig(config)
+  const appsApi = kc.makeApiClient(k8s.AppsV1Api)
+  const coreApi = kc.makeApiClient(k8s.CoreV1Api)
+  const namespace = teamSlug
+  const resourceName = `agent-${agentSlug}`
+
+  for (const [label, fn] of [
+    [`StatefulSet/${resourceName}`, () => appsApi.deleteNamespacedStatefulSet({ name: resourceName, namespace })],
+    [`Service/${resourceName}`, () => coreApi.deleteNamespacedService({ name: resourceName, namespace })],
+  ] as [string, () => Promise<unknown>][]) {
+    try { await fn(); yield { resource: label, status: 'deleted' } }
+    catch { yield { resource: label, status: 'error' } }
+  }
+
+  if (options.deleteDisks) {
+    const pvcName = `${teamSlug}-agent-${agentSlug}`
+    try { await coreApi.deleteNamespacedPersistentVolumeClaim({ name: pvcName, namespace }); yield { resource: `PVC/${pvcName}`, status: 'deleted' } }
+    catch { yield { resource: `PVC/${pvcName}`, status: 'error' } }
   }
 }
 
