@@ -164,7 +164,7 @@ export function TeamOverview({
       <div className="max-w-2xl mx-auto space-y-6 py-6 px-6">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-gray-900">Team overview</h3>
+            <h3 className="text-sm font-semibold text-gray-900">{spec.name || 'Team overview'}</h3>
             <p className="text-sm text-gray-500 mt-1">Review the current team configuration before making changes.</p>
           </div>
           <Button variant="ghost" size="icon" onClick={onEdit} title="Edit team">
@@ -174,7 +174,6 @@ export function TeamOverview({
 
         <div>
           <h4 className="text-sm font-semibold text-gray-900 mb-3">About</h4>
-          <ReadField label="Name" value={spec.name} />
           <ReadField label="Slug" value={spec.slug} monospace />
         </div>
 

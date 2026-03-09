@@ -392,7 +392,6 @@ export function AgentCard({
           <>
             <div>
               <h4 className="text-sm font-semibold text-gray-900 mb-1">About</h4>
-              <ReadField label="Name" value={agent.name} />
               <ReadField label="Slug" value={agent.slug} monospace />
             </div>
 
