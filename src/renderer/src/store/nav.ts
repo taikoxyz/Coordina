@@ -8,7 +8,7 @@ export type SelectedItem =
 
 export type ContentTab = 'deploy' | 'spec' | 'files' | 'connect'
 
-export type SettingsSection = 'general' | 'openrouter' | 'google-cloud' | 'patterns-soul' | 'patterns-agents' | 'patterns-lead' | 'patterns-user'
+export type SettingsSection = 'general' | 'openrouter' | 'google-cloud' | 'mission-control' | 'patterns-soul' | 'patterns-agents' | 'patterns-lead' | 'patterns-user'
 
 interface NavStore {
   selectedItem: SelectedItem | null

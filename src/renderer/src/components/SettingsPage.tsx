@@ -5,6 +5,7 @@ import { useTeams } from '../hooks/useTeams'
 import { GeneralSettings } from './settings/GeneralSettings'
 import { OpenRouterSettings } from './settings/OpenRouterSettings'
 import { GkeSettings } from './settings/GkeSettings'
+import { MissionControlSettings } from './settings/MissionControlSettings'
 import { SoulPatternsSettings } from './settings/SoulPatternsSettings'
 import { AgentPatternsSettings } from './settings/AgentPatternsSettings'
 import { LeadPatternsSettings } from './settings/LeadPatternsSettings'
@@ -15,6 +16,7 @@ const sections: Array<{ id: SettingsSection; label: string; group?: string }> = 
   { id: 'general', label: 'General' },
   { id: 'openrouter', label: 'OpenRouter' },
   { id: 'google-cloud', label: 'Google Cloud' },
+  { id: 'mission-control', label: 'Mission Control' },
   { id: 'patterns-soul', label: 'Soul', group: 'Agent Patterns' },
   { id: 'patterns-agents', label: 'Behavior', group: 'Agent Patterns' },
   { id: 'patterns-lead', label: 'Team Lead', group: 'Agent Patterns' },
@@ -25,6 +27,7 @@ const sectionContent: Record<SettingsSection, () => JSX.Element> = {
   'general': GeneralSettings,
   'openrouter': OpenRouterSettings,
   'google-cloud': GkeSettings,
+  'mission-control': MissionControlSettings,
   'patterns-soul': SoulPatternsSettings,
   'patterns-agents': AgentPatternsSettings,
   'patterns-lead': LeadPatternsSettings,
@@ -35,6 +38,7 @@ const sectionTitles: Record<SettingsSection, string> = {
   'general': 'General',
   'openrouter': 'OpenRouter',
   'google-cloud': 'Google Cloud',
+  'mission-control': 'Mission Control',
   'patterns-soul': 'Soul Patterns',
   'patterns-agents': 'Agent Behavior Patterns',
   'patterns-lead': 'Team Lead Patterns',
