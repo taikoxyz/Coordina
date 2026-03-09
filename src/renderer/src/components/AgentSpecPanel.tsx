@@ -67,8 +67,8 @@ export function AgentSpecPanel({ teamSlug, agentSlug }: { teamSlug: string; agen
   return (
     <>
       <div className="shrink-0 border-b border-gray-200">
-        <div className="max-w-2xl mx-auto px-6 h-11 flex items-center gap-2.5">
-          <AgentAvatar slug={agent.slug} colorIndex={agentIndex} size={28} />
+        <div className="max-w-2xl mx-auto px-3 h-11 flex items-center gap-2.5">
+          <AgentAvatar slug={agent.slug} colorIndex={agentIndex} size={36} />
           <div className={`text-xs font-semibold uppercase tracking-[0.16em] ${agentTextColor(agentIndex)}`}>
             {agent.name || 'Unnamed agent'}
           </div>
