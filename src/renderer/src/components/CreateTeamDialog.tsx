@@ -27,7 +27,7 @@ export function CreateTeamDialog() {
 
   const handleCreate = async () => {
     if (!name.trim() || !slug) return
-    const newSpec: TeamSpec = { slug, name: name.trim(), agents: [] }
+    const newSpec: TeamSpec = { slug, name: name.trim(), agents: [], missionControlEnabled: false }
     await saveTeam.mutateAsync(newSpec)
     selectItem({ type: 'team', slug })
     setCreateDialogOpen(null)
