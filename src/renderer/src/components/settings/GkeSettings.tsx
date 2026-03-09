@@ -14,13 +14,12 @@ interface GkeForm {
   domain: string
   mcEnabled: boolean
   mcImage: string
-  mcSessionSecret: string
 }
 
 const emptyGke = (): GkeForm => ({
   projectId: '', clusterName: '', clusterZone: 'us-central1', diskZone: 'us-central1-a',
   clientId: '', clientSecret: '', gatewayMode: 'port-forward', domain: '',
-  mcEnabled: false, mcImage: '', mcSessionSecret: '',
+  mcEnabled: false, mcImage: '',
 })
 
 function validateForm(form: GkeForm): string | null {
@@ -63,10 +62,11 @@ export function GkeSettings() {
         domain: c.domain ?? '',
         mcEnabled: (c.missionControl as Record<string, unknown> | undefined)?.enabled === true,
         mcImage: ((c.missionControl as Record<string, string> | undefined)?.image) ?? '',
-        mcSessionSecret: ((c.missionControl as Record<string, string> | undefined)?.sessionSecret) ?? '',
       })
     }
   }, [gkeConfig])
+
+  const buildMcPayload = () => form.mcEnabled ? { enabled: true, image: form.mcImage } : undefined
 
   const handleSave = async () => {
     const error = validateForm(form)
@@ -81,11 +81,7 @@ export function GkeSettings() {
       clientSecret: form.clientSecret,
       gatewayMode: form.gatewayMode,
       domain: form.gatewayMode === 'ingress' ? (form.domain || undefined) : undefined,
-      missionControl: form.mcEnabled ? {
-        enabled: true,
-        image: form.mcImage,
-        sessionSecret: form.mcSessionSecret,
-      } : undefined,
+      missionControl: buildMcPayload(),
     })
     setSaved(true)
     setTimeout(() => setSaved(false), 1500)
@@ -104,11 +100,7 @@ export function GkeSettings() {
       clientSecret: form.clientSecret,
       gatewayMode: form.gatewayMode,
       domain: form.gatewayMode === 'ingress' ? (form.domain || undefined) : undefined,
-      missionControl: form.mcEnabled ? {
-        enabled: true,
-        image: form.mcImage,
-        sessionSecret: form.mcSessionSecret,
-      } : undefined,
+      missionControl: buildMcPayload(),
     })
     setAuthState('authing')
     const result = await window.api.invoke('gke:auth', 'gke') as { ok: boolean }
@@ -214,15 +206,9 @@ export function GkeSettings() {
               </label>
             </div>
             {form.mcEnabled && (
-              <div className="space-y-3">
-                <div>
-                  <Label>Docker image</Label>
-                  <Input mono value={form.mcImage} onChange={(e) => updateField('mcImage', e.target.value)} placeholder="gcr.io/my-project/mission-control:latest" />
-                </div>
-                <div>
-                  <Label>Session secret (32 chars)</Label>
-                  <Input mono type="password" value={form.mcSessionSecret} onChange={(e) => updateField('mcSessionSecret', e.target.value)} />
-                </div>
+              <div>
+                <Label>Docker image</Label>
+                <Input mono value={form.mcImage} onChange={(e) => updateField('mcImage', e.target.value)} placeholder="gcr.io/my-project/mission-control:latest" />
               </div>
             )}
           </div>

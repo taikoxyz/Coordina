@@ -139,7 +139,6 @@ export interface DeployResult {
 export interface MissionControlConfig {
   enabled: boolean
   image: string
-  sessionSecret: string
 }
 
 export interface Project {
