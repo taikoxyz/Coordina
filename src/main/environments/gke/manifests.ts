@@ -148,7 +148,7 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
     `cp /config/shared/TEAM.md ${workspaceDir}/TEAM.md`,
     `test -f /config/shared/PROJECTS.md && cp /config/shared/PROJECTS.md ${workspaceDir}/PROJECTS.md || true`,
     `cp /config/agent/IDENTITY.md ${workspaceDir}/IDENTITY.md`,
-    `test -f ${workspaceDir}/MEMORY.md || cp /config/agent/MEMORY.md ${workspaceDir}/MEMORY.md`,
+    `test -f ${workspaceDir}/MEMORY.md || touch ${workspaceDir}/MEMORY.md`,
     `test -f ${workspaceDir}/SOUL.md || cp /config/agent/SOUL.md ${workspaceDir}/SOUL.md`,
     `test -f ${workspaceDir}/SKILLS.md || cp /config/agent/SKILLS.md ${workspaceDir}/SKILLS.md`,
     `cp /config/agent/AGENTS.md ${workspaceDir}/AGENTS.md`,
