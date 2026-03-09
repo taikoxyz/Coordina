@@ -11,6 +11,7 @@ import { registerModelsHandlers } from './models'
 import { registerGitHandlers } from './git'
 import { registerChatHandlers } from './chat'
 import { registerProjectHandlers } from './projects'
+import { registerMissionControlHandlers } from './missionControl'
 
 registerProviderHandlers()
 registerSettingsHandlers()
@@ -22,3 +23,4 @@ registerModelsHandlers()
 registerGitHandlers()
 registerChatHandlers()
 registerProjectHandlers()
+registerMissionControlHandlers()
