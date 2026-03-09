@@ -136,6 +136,15 @@ export interface DeployResult {
   reason?: string
 }
 
+export interface MissionControlConfig {
+  enabled: boolean
+  image: string
+  domain: string
+  adminPassword: string
+  sessionSecret: string
+  apiKey: string
+}
+
 export interface Project {
   slug: string
   name: string
