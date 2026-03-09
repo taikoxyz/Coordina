@@ -3,17 +3,16 @@
 import { describe, it, expect, vi } from 'vitest'
 import yaml from 'js-yaml'
 import gkeDeriver from './gke'
-import type { TeamSpec, ProviderRecord } from '../../shared/types'
+import type { TeamSpec } from '../../shared/types'
 
 vi.mock('../store/teams', () => ({ saveTeam: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('../store/providers', () => ({ getOpenRouterApiKey: vi.fn().mockResolvedValue('or-test-key') }))
 vi.mock('../providers/base', () => ({
-  getProvider: vi.fn().mockReturnValue({
-    toOpenClawJson: vi.fn().mockReturnValue({
-      agents: { defaults: { model: { primary: 'anthropic/claude-sonnet-4-6' } } },
-      models: { providers: { anthropic: {} } },
-    }),
-    toEnvVars: vi.fn().mockReturnValue({ ANTHROPIC_API_KEY: 'sk-test' }),
+  openrouterToOpenClawJson: vi.fn().mockReturnValue({
+    agents: { defaults: { model: { primary: 'openrouter/anthropic/claude-sonnet-4-6' } } },
   }),
+  openrouterToEnvVars: vi.fn().mockReturnValue({ OPENROUTER_API_KEY: 'or-test-key' }),
+  testOpenRouterConnection: vi.fn().mockResolvedValue({ valid: true }),
 }))
 
 const teamSpec: TeamSpec = {
@@ -21,15 +20,11 @@ const teamSpec: TeamSpec = {
   name: 'My Team',
   signingKey: 'fixed-seed-for-testing-1234567890abcdef',
   agents: [
-    { slug: 'alpha', name: 'Alpha', role: 'Lead', skills: [], persona: 'Alpha persona', provider: 'anthropic' },
-    { slug: 'beta', name: 'Beta', role: 'Engineer', skills: [], persona: 'Beta persona', provider: 'anthropic' },
-    { slug: 'gamma', name: 'Gamma', role: 'Designer', skills: [], persona: 'Gamma persona', provider: 'anthropic' },
+    { slug: 'alpha', name: 'Alpha', role: 'Lead', skills: [], persona: 'Alpha persona', models: ['anthropic'] },
+    { slug: 'beta', name: 'Beta', role: 'Engineer', skills: [], persona: 'Beta persona', models: ['anthropic'] },
+    { slug: 'gamma', name: 'Gamma', role: 'Designer', skills: [], persona: 'Gamma persona', models: ['anthropic'] },
   ],
 }
-
-const providers = new Map<string, ProviderRecord & { apiKey?: string }>([
-  ['anthropic', { slug: 'anthropic', type: 'anthropic', name: 'Anthropic', model: 'claude-sonnet-4-6', apiKey: 'sk-test' }],
-])
 
 const envConfig = { projectId: 'my-project', clusterZone: 'us-central1-a' }
 
@@ -53,7 +48,7 @@ function getStatefulSetTemplateAnnotations(files: { path: string; content: strin
 
 describe('gkeDeriver gateway injection', () => {
   it('includes per-agent gateway auth token in openclaw.json', async () => {
-    const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
+    const files = await gkeDeriver.derive(teamSpec, envConfig)
     const alphaConfig = getOpenClawConfig(files, 'alpha')
     const betaConfig = getOpenClawConfig(files, 'beta')
 
@@ -65,25 +60,25 @@ describe('gkeDeriver gateway injection', () => {
   })
 
   it('does not include unsupported peers key in openclaw.json', async () => {
-    const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
+    const files = await gkeDeriver.derive(teamSpec, envConfig)
     const alphaConfig = getOpenClawConfig(files, 'alpha')
     expect(alphaConfig.peers).toBeUndefined()
   })
 
   it('enables OpenClaw HTTP responses endpoint for chat UI', async () => {
-    const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
+    const files = await gkeDeriver.derive(teamSpec, envConfig)
     const alphaConfig = getOpenClawConfig(files, 'alpha')
     expect(alphaConfig.gateway?.http?.endpoints?.responses?.enabled).toBe(true)
   })
 
   it('sets agents.defaults.workspace to PVC-backed workspace path', async () => {
-    const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
+    const files = await gkeDeriver.derive(teamSpec, envConfig)
     const alphaConfig = getOpenClawConfig(files, 'alpha')
     expect(alphaConfig.agents?.defaults?.workspace).toBe('/agent-data/openclaw/workspace')
   })
 
   it('includes gateway URLs in each TEAM.md member entry', async () => {
-    const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
+    const files = await gkeDeriver.derive(teamSpec, envConfig)
     const teamMd = getTeamMd(files)
 
     expect(teamMd).toContain('### alpha')
@@ -95,14 +90,14 @@ describe('gkeDeriver gateway injection', () => {
   })
 
   it('sets tools.profile to full for unrestricted agent capabilities', async () => {
-    const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
+    const files = await gkeDeriver.derive(teamSpec, envConfig)
     const alphaConfig = getOpenClawConfig(files, 'alpha')
 
     expect(alphaConfig.tools?.profile).toBe('full')
   })
 
   it('adds config hash annotations to trigger rollout when generated files change', async () => {
-    const files = await gkeDeriver.derive(teamSpec, providers, envConfig)
+    const files = await gkeDeriver.derive(teamSpec, envConfig)
     const annotations = getStatefulSetTemplateAnnotations(files, 'alpha')
     const sharedConfigHash = annotations['coordina/shared-config-hash']
     const agentConfigHash = annotations['coordina/agent-config-hash']
@@ -125,7 +120,7 @@ describe('gkeDeriver telegram config', () => {
       )),
     }
 
-    const files = await gkeDeriver.derive(withTelegram, providers, envConfig)
+    const files = await gkeDeriver.derive(withTelegram, envConfig)
     const alphaConfig = getOpenClawConfig(files, 'alpha')
 
     expect(alphaConfig.peers).toBeUndefined()
@@ -141,7 +136,7 @@ describe('gkeDeriver telegram config', () => {
         agent.slug === 'alpha' ? { ...agent, telegramBot: '111111111' } : agent
       )),
     }
-    const files = await gkeDeriver.derive(withTelegram, providers, envConfig, {
+    const files = await gkeDeriver.derive(withTelegram, envConfig, {
       agentTelegramTokens: { 'alpha': '123:abc-token' },
     })
     const alphaCreds = files.find(f => f.path === 'agents/alpha/credentials.yaml')

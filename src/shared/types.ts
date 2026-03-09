@@ -18,7 +18,7 @@ export interface AgentSpec {
   githubUsername?: string
   skills: string[]
   persona: string
-  provider: string
+  models: string[]
   image?: string
   cpu?: number
   diskGi?: number
@@ -35,6 +35,7 @@ export interface TeamSpec {
   telegramGroupId?: string
   telegramAdminId?: string
   defaultImage?: string
+  defaultCpu?: number
   defaultDiskGi?: number
   leadAgent?: string
   startupInstructions?: string
@@ -56,13 +57,6 @@ export interface PersonaTemplate {
   role: string
   persona: string
   skills: string[]
-}
-
-export interface ProviderRecord {
-  slug: string
-  type: string
-  name: string
-  model: string
 }
 
 export interface EnvironmentRecord {

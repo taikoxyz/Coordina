@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { AlertCircle, Check, ExternalLink, Loader2, Rocket, FileText, X } from 'lucide-react'
-import { useEnvironments } from '../hooks/useEnvironments'
+import { useCallback, useEffect, useState } from 'react'
+import { AlertCircle, Check, ExternalLink, Loader2, Rocket, FileText, Trash2, X } from 'lucide-react'
+import { useGkeConfig } from '../hooks/useEnvironments'
+import { useTeam, useSaveTeam } from '../hooks/useTeams'
+import { useNav } from '../store/nav'
 import { highlightContent } from '../lib/highlight'
-import { Badge, Button, Select } from './ui'
-import type { TeamSpec } from '../../../shared/types'
+import { Badge, Button, DialogShell } from './ui'
 
 type DeployState = 'idle' | 'preparing' | 'deploying' | 'done' | 'error'
 
@@ -17,38 +18,41 @@ type LogEntry =
   | { type: 'status'; line: string; color: string }
 
 export function DeployPanel({
-  spec,
-  onSave,
-  isSaving,
+  teamSlug,
+  agentSlug,
 }: {
-  spec: TeamSpec
-  onSave: () => Promise<void>
-  isSaving: boolean
+  teamSlug: string
+  agentSlug?: string
 }) {
-  const { data: environments } = useEnvironments()
-  const [selectedEnvSlug, setSelectedEnvSlug] = useState('')
+  const { data: spec } = useTeam(teamSlug)
+  const saveTeam = useSaveTeam()
+  const onSave = async () => { if (spec) await saveTeam.mutateAsync(spec) }
 
-  const selectedEnv = (environments ?? []).find((e) => e.slug === selectedEnvSlug)
-  const gkeProjectId = selectedEnv?.type === 'gke'
-    ? (selectedEnv.config as { projectId?: string }).projectId
-    : undefined
-  const gkeConsoleUrl = gkeProjectId
-    ? `https://console.cloud.google.com/kubernetes/workload/overview?project=${gkeProjectId}`
-    : 'https://console.cloud.google.com/kubernetes/workload/overview?project=coordina-489002'
+  const { data: gkeConfig } = useGkeConfig()
+  const { deployingTeamSlug, setDeploying } = useNav()
+  const isAnyDeploying = !!deployingTeamSlug
+  const isThisDeploying = deployingTeamSlug === teamSlug
+
+  const gkeProjectId = gkeConfig?.config.projectId as string | undefined
+  const gkeClusterZone = gkeConfig?.config.clusterZone as string | undefined
+  const gkeClusterName = gkeConfig?.config.clusterName as string | undefined
+  const gkeConsoleUrl = gkeProjectId && gkeClusterZone && gkeClusterName && agentSlug
+    ? `https://console.cloud.google.com/kubernetes/statefulset/${gkeClusterZone}/${gkeClusterName}/${teamSlug}/agent-${agentSlug}/details?project=${gkeProjectId}`
+    : gkeProjectId
+      ? `https://console.cloud.google.com/kubernetes/workload/overview?project=${gkeProjectId}`
+      : 'https://console.cloud.google.com/kubernetes/workload/overview?project=coordina-489002'
   const [logEntries, setLogEntries] = useState<LogEntry[]>([])
   const [deployState, setDeployState] = useState<DeployState>('idle')
   const [viewingFile, setViewingFile] = useState<DeployFile | null>(null)
   const [recreateDisks, setRecreateDisks] = useState(false)
   const [recreatePods, setRecreatePods] = useState(false)
-  const logEndRef = useRef<HTMLDivElement>(null)
-
+  const [showDeployDialog, setShowDeployDialog] = useState(false)
+  const [deployScope, setDeployScope] = useState<'team' | 'agent'>('team')
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleteScope, setDeleteScope] = useState<'team' | 'agent'>('team')
+  const [deleteDisks, setDeleteDisks] = useState(false)
   useEffect(() => {
-    if (environments?.length && !selectedEnvSlug) {
-      setSelectedEnvSlug(environments[0].slug)
-    }
-  }, [environments, selectedEnvSlug])
-
-  useEffect(() => {
+    if (!spec) return
     window.api
       .invoke('deploy:getLogs', { teamSlug: spec.slug })
       .then((entries) => {
@@ -56,7 +60,7 @@ export function DeployPanel({
         if (loaded.length > 0) setLogEntries(loaded)
       })
       .catch(() => {})
-  }, [spec.slug])
+  }, [spec?.slug])
 
   useEffect(() => {
     return window.api.on?.('deploy:status', (data: unknown) => {
@@ -71,19 +75,17 @@ export function DeployPanel({
   }, [])
 
   useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [logEntries])
-
-  useEffect(() => {
+    if (!spec) return
     if (logEntries.length > 0 && deployState !== 'idle') {
       window.api.invoke('deploy:saveLogs', { teamSlug: spec.slug, entries: logEntries }).catch(() => {})
     }
-  }, [deployState, logEntries, spec.slug])
+  }, [deployState, logEntries, spec?.slug])
 
-  const handleDeploy = useCallback(async () => {
-    if (!selectedEnvSlug) return
+  const handleDeploy = useCallback(async (deployAgentSlug?: string) => {
+    if (!gkeConfig || !spec || isAnyDeploying) return
 
     setDeployState('preparing')
+    setDeploying(spec.slug, deployAgentSlug)
     setLogEntries([])
     setViewingFile(null)
     await window.api.invoke('deploy:clearLogs', { teamSlug: spec.slug }).catch(() => {})
@@ -94,7 +96,8 @@ export function DeployPanel({
 
       const preview = (await window.api.invoke('deploy:preview', {
         teamSlug: spec.slug,
-        envSlug: selectedEnvSlug,
+        envSlug: 'gke',
+        ...(deployAgentSlug ? { agentSlug: deployAgentSlug } : {}),
       })) as { ok: boolean; reason?: string; files?: DeployFile[] }
 
       if (!preview.ok) {
@@ -115,8 +118,9 @@ export function DeployPanel({
 
       const result = (await window.api.invoke('deploy:team', {
         teamSlug: spec.slug,
-        envSlug: selectedEnvSlug,
+        envSlug: 'gke',
         options: { keepDisks: !recreateDisks, forceRecreate: recreatePods },
+        ...(deployAgentSlug ? { agentSlug: deployAgentSlug } : {}),
       })) as { ok: boolean; reason?: string }
 
       if (result.ok) {
@@ -129,97 +133,138 @@ export function DeployPanel({
     } catch (error) {
       setDeployState('error')
       setLogEntries((prev) => [...prev, { type: 'status', line: `ERROR: ${error instanceof Error ? error.message : String(error)}`, color: 'text-red-600' }])
+    } finally {
+      setDeploying(null)
     }
-  }, [selectedEnvSlug, spec.slug, onSave, recreateDisks, recreatePods])
+  }, [gkeConfig, spec, recreateDisks, recreatePods, isAnyDeploying])
 
-  const statusBadgeVariant =
-    deployState === 'done'
-      ? 'success' as const
-      : deployState === 'error'
-        ? 'destructive' as const
-        : deployState === 'preparing' || deployState === 'deploying'
-          ? 'warning' as const
-          : 'default' as const
+  const handleUndeploy = useCallback(async (scope: 'team' | 'agent') => {
+    if (!gkeConfig || !spec || isAnyDeploying) return
+    setShowDeleteDialog(false)
+    setDeploying(spec.slug)
+    setLogEntries([{ type: 'status', line: scope === 'agent' ? 'Deleting agent...' : 'Deleting deployment...', color: 'text-red-500' }])
+    setViewingFile(null)
+    await window.api.invoke('deploy:clearLogs', { teamSlug: spec.slug }).catch(() => {})
 
-  const statusLabel =
-    deployState === 'idle' ? 'Idle'
-      : deployState === 'preparing' ? 'Preparing'
-        : deployState === 'deploying' ? 'Deploying'
-          : deployState === 'done' ? 'Deployed'
-            : 'Failed'
+    try {
+      const result = (await window.api.invoke(scope === 'agent' ? 'undeploy:agent' : 'undeploy:team', {
+        teamSlug: spec.slug,
+        ...(scope === 'agent' ? { agentSlug } : {}),
+        envSlug: 'gke',
+        deleteDisks,
+      })) as { ok: boolean; reason?: string }
+
+      setLogEntries((prev) => [...prev, {
+        type: 'status',
+        line: result.ok ? (scope === 'agent' ? 'Agent deleted' : 'Deployment deleted') : `ERROR: ${result.reason}`,
+        color: result.ok ? 'text-green-600' : 'text-red-600',
+      }])
+    } catch (error) {
+      setLogEntries((prev) => [...prev, { type: 'status', line: `ERROR: ${error instanceof Error ? error.message : String(error)}`, color: 'text-red-600' }])
+    } finally {
+      setDeploying(null)
+    }
+  }, [gkeConfig, spec, deleteDisks, isAnyDeploying, agentSlug])
+
+  if (!spec) {
+    return (
+      <div className="flex items-center justify-center h-full text-sm text-gray-400">
+        Loading...
+      </div>
+    )
+  }
+
+  const isDeploying = deployState === 'preparing' || deployState === 'deploying'
+  const buttonDisabled = !gkeConfig || isAnyDeploying
+  const disabledTitle = !gkeConfig
+    ? 'Configure Google Cloud in Settings first'
+    : (isAnyDeploying && !isThisDeploying)
+      ? 'Another deployment is in progress'
+      : undefined
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-center gap-4 px-5 py-3 border-b border-gray-200 shrink-0">
-        {(environments ?? []).length > 0 && (
-          <Select
-            className="w-auto px-2 py-1 text-xs"
-            value={selectedEnvSlug}
-            onChange={(e) => setSelectedEnvSlug(e.target.value)}
-          >
-            {(environments ?? []).map((env) => {
-              const cfg = env.config as { clusterName?: string }
-              const label = cfg.clusterName ? `${env.type}-${cfg.clusterName}` : env.slug
-              return <option key={env.slug} value={env.slug}>{label}</option>
-            })}
-          </Select>
-        )}
-        {(deployState === 'done' || deployState === 'error') && (
-          <Badge variant={statusBadgeVariant} className="uppercase tracking-wider">
-            {deployState === 'done' && <Check className="w-3 h-3" />}
-            {deployState === 'error' && <AlertCircle className="w-3 h-3" />}
-            {statusLabel}
-          </Badge>
-        )}
-        <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={recreateDisks}
-            onChange={(e) => setRecreateDisks(e.target.checked)}
-            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
-          Recreate disks
-        </label>
-        <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={recreatePods}
-            onChange={(e) => setRecreatePods(e.target.checked)}
-            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
-          Recreate pods
-        </label>
-        <a
-          href={gkeConsoleUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 transition-colors"
-        >
-          <ExternalLink className="w-3.5 h-3.5" />
-          GKE Workloads
-        </a>
-        <Button
-          variant="dark"
-          onClick={() => void handleDeploy()}
-          disabled={!selectedEnvSlug || isSaving || deployState === 'preparing' || deployState === 'deploying'}
-        >
-          {deployState === 'preparing' || deployState === 'deploying' ? (
-            <>
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              Deploying...
-            </>
-          ) : (
-            <>
-              <Rocket className="w-3.5 h-3.5" />
-              Deploy
-            </>
+      <div className="border-b border-gray-200 shrink-0 px-5 py-4 space-y-3">
+        {/* Row 1: Deploy buttons + status badge */}
+        <div className="flex items-center gap-2">
+          {agentSlug && (
+            <Button
+              variant="dark"
+              onClick={() => { setDeployScope('agent'); setShowDeployDialog(true) }}
+              disabled={buttonDisabled}
+              title={disabledTitle}
+            >
+              <Loader2 className={`w-3.5 h-3.5 ${isDeploying ? 'animate-spin' : 'hidden'}`} />
+              <Rocket className={`w-3.5 h-3.5 ${isDeploying ? 'hidden' : ''}`} />
+              Deploy Agent{isDeploying ? ' ...' : ''}
+            </Button>
           )}
-        </Button>
+          {!agentSlug && (
+            <Button
+              variant="dark"
+              onClick={() => { setDeployScope('team'); setShowDeployDialog(true) }}
+              disabled={buttonDisabled}
+              title={disabledTitle}
+            >
+              <Loader2 className={`w-3.5 h-3.5 ${isDeploying ? 'animate-spin' : 'hidden'}`} />
+              <Rocket className={`w-3.5 h-3.5 ${isDeploying ? 'hidden' : ''}`} />
+              Deploy Team{isDeploying ? ' ...' : ''}
+            </Button>
+          )}
+          {agentSlug && (
+            <Button
+              variant="ghost-destructive"
+              onClick={() => { setDeleteDisks(false); setDeleteScope('agent'); setShowDeleteDialog(true) }}
+              disabled={buttonDisabled}
+              title={disabledTitle}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete Agent
+            </Button>
+          )}
+          {!agentSlug && (
+            <Button
+              variant="ghost-destructive"
+              onClick={() => { setDeleteDisks(false); setDeleteScope('team'); setShowDeleteDialog(true) }}
+              disabled={buttonDisabled}
+              title={disabledTitle}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete Team
+            </Button>
+          )}
+          {(deployState === 'done' || deployState === 'error') && (
+            <Badge
+              variant={deployState === 'done' ? 'success' : 'destructive'}
+              className="uppercase tracking-wider"
+            >
+              {deployState === 'done' && <Check className="w-3 h-3" />}
+              {deployState === 'error' && <AlertCircle className="w-3 h-3" />}
+              {deployState === 'done' ? 'Deployed' : 'Failed'}
+            </Badge>
+          )}
+          {!gkeConfig && (
+            <span className="text-xs text-amber-600">Configure Google Cloud in Settings</span>
+          )}
+        </div>
+
+        {/* Row 2: GKE link */}
+        <div className="flex items-center gap-4">
+          <a
+            href={gkeConsoleUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 transition-colors"
+          >
+            <ExternalLink className="w-3 h-3" />
+            GKE Workload
+          </a>
+        </div>
       </div>
 
       <div className="flex-1 flex min-h-0">
         <div className={`flex flex-col min-h-0 ${viewingFile ? 'w-1/2 border-r border-gray-200' : 'flex-1'}`}>
-          <div className={`flex flex-col flex-1 min-h-0 py-5 px-6 ${viewingFile ? '' : 'max-w-2xl mx-auto w-full'}`}>
+          <div className="flex flex-col flex-1 min-h-0 py-5 px-6">
             <h5 className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 mb-2 shrink-0">Log</h5>
             <div className="flex-1 overflow-y-auto min-h-0 space-y-0.5">
             {logEntries.length === 0 ? (
@@ -251,7 +296,7 @@ export function DeployPanel({
                 ),
               )
             )}
-            <div ref={logEndRef} />
+
             </div>
           </div>
         </div>
@@ -277,6 +322,83 @@ export function DeployPanel({
           </div>
         )}
       </div>
+
+      <DialogShell
+        open={showDeployDialog}
+        onOpenChange={setShowDeployDialog}
+        title={deployScope === 'agent' ? 'Deploy Agent' : 'Deploy Team'}
+      >
+        <div className="space-y-4">
+          <label className="flex items-start gap-2.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={recreateDisks}
+              onChange={(e) => setRecreateDisks(e.target.checked)}
+              className="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-sm">
+              <span className="font-medium text-foreground">Recreate disks</span>
+              <span className="block text-xs text-muted-foreground mt-0.5">Deletes and recreates PVCs. All agent memory and workspace data will be lost.</span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={recreatePods}
+              onChange={(e) => setRecreatePods(e.target.checked)}
+              className="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-sm">
+              <span className="font-medium text-foreground">Recreate pods</span>
+              <span className="block text-xs text-muted-foreground mt-0.5">Terminates running pods before redeploying. Active sessions will be interrupted.</span>
+            </span>
+          </label>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="outline" onClick={() => setShowDeployDialog(false)}>Cancel</Button>
+            <Button
+              variant="dark"
+              onClick={() => { setShowDeployDialog(false); void handleDeploy(deployScope === 'agent' ? agentSlug : undefined) }}
+            >
+              <Rocket className="w-3.5 h-3.5" />
+              {deployScope === 'agent' ? 'Deploy Agent' : 'Deploy Team'}
+            </Button>
+          </div>
+        </div>
+      </DialogShell>
+
+      <DialogShell
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        title={deleteScope === 'agent' ? 'Delete Agent' : 'Delete Team'}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            {deleteScope === 'agent'
+              ? <>This will delete the Kubernetes resources for agent <span className="font-medium text-foreground">{agentSlug}</span> — StatefulSet and Service. The pod will be terminated immediately.</>
+              : <>This will delete all Kubernetes resources for <span className="font-medium text-foreground">{spec.name}</span> — StatefulSets, Services, and Ingress. Pods will be terminated immediately.</>
+            }
+          </p>
+          <label className="flex items-start gap-2.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={deleteDisks}
+              onChange={(e) => setDeleteDisks(e.target.checked)}
+              className="mt-0.5 rounded border-gray-300 text-destructive focus:ring-destructive"
+            />
+            <span className="text-sm">
+              <span className="font-medium text-foreground">Also delete disks</span>
+              <span className="block text-xs text-muted-foreground mt-0.5">Permanently removes all agent memory, workspace files, and stored data. This cannot be undone.</span>
+            </span>
+          </label>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => void handleUndeploy(deleteScope)}>
+              <Trash2 className="w-3.5 h-3.5" />
+              {deleteScope === 'agent' ? 'Delete Agent' : 'Delete Team'}
+            </Button>
+          </div>
+        </div>
+      </DialogShell>
     </div>
   )
 }

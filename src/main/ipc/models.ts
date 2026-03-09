@@ -2,61 +2,44 @@ import { ipcMain } from 'electron'
 import { join } from 'path'
 import fs from 'fs'
 import { getDataDir } from '../store/dataDir'
+import type { ModelInfo } from '../../shared/types'
 
-const MODELS_URL = 'https://models.dev/api.json'
+const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models'
 const CACHE_TTL_MS = 60 * 60 * 1000
-
-const PROVIDER_PREFIXES: Record<string, string> = {
-  anthropic: 'anthropic/',
-  openai: 'openai/',
-  deepseek: 'deepseek/',
-  openrouter: 'openrouter/',
-  groq: 'groq/',
-  mistral: 'mistral/',
-  xai: 'xai/',
-  google: 'google/',
-  together: 'together/',
-  'openai-compatible': '',
-}
 
 interface CachedModels {
   fetchedAt: number
-  data: Record<string, unknown>
+  data: ModelInfo[]
 }
 
-async function fetchModelsWithCache(): Promise<Record<string, unknown>> {
-  const cachePath = join(getDataDir(), 'models-cache.json')
+async function fetchOpenRouterModels(): Promise<ModelInfo[]> {
+  const cachePath = join(getDataDir(), 'openrouter-models-cache.json')
   try {
     const raw = fs.readFileSync(cachePath, 'utf-8')
     const cached: CachedModels = JSON.parse(raw)
     if (Date.now() - cached.fetchedAt < CACHE_TTL_MS) return cached.data
   } catch { /* no cache or stale */ }
 
-  const res = await fetch(MODELS_URL)
-  const data = await res.json() as Record<string, unknown>
-  fs.writeFileSync(cachePath, JSON.stringify({ fetchedAt: Date.now(), data }))
-  return data
+  const res = await fetch(OPENROUTER_MODELS_URL)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const body = await res.json() as { data?: { id: string; name?: string; context_length?: number }[] }
+  const models: ModelInfo[] = (body.data ?? [])
+    .map((m) => ({
+      id: m.id,
+      name: m.name ?? m.id,
+      contextWindow: m.context_length,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  fs.writeFileSync(cachePath, JSON.stringify({ fetchedAt: Date.now(), data: models }))
+  return models
 }
 
 export function registerModelsHandlers() {
   ipcMain.handle('providers:models', async (_event, providerType: string) => {
-    const prefix = PROVIDER_PREFIXES[providerType]
-    if (prefix === undefined || prefix === '') return []
-
+    if (providerType !== 'openrouter') return []
     try {
-      const all = await fetchModelsWithCache()
-      return Object.entries(all)
-        .filter(([key]) => key.startsWith(prefix))
-        .map(([key, val]) => {
-          const entry = val as Record<string, unknown>
-          const limit = entry.limit as Record<string, number> | undefined
-          return {
-            id: key.slice(prefix.length),
-            name: (entry.name as string) ?? key.slice(prefix.length),
-            contextWindow: limit?.context,
-          }
-        })
-        .sort((a, b) => a.name.localeCompare(b.name))
+      return await fetchOpenRouterModels()
     } catch {
       return []
     }

@@ -173,7 +173,7 @@ export function TeamOverview({
         </div>
 
         <div>
-          <h4 className="text-sm font-semibold text-gray-900 mb-3">Team details</h4>
+          <h4 className="text-sm font-semibold text-gray-900 mb-3">About</h4>
           <ReadField label="Name" value={spec.name} />
           <ReadField label="Slug" value={spec.slug} monospace />
         </div>
@@ -181,7 +181,7 @@ export function TeamOverview({
         <hr className="border-gray-200" />
 
         <div>
-          <h4 className="text-sm font-semibold text-gray-900 mb-3">Telegram integration</h4>
+          <h4 className="text-sm font-semibold text-gray-900 mb-3">Telegram</h4>
           <ReadField label="Group ID" value={spec.telegramGroupId} monospace />
           <ReadField label="Admin ID" value={spec.telegramAdminId} monospace />
         </div>
@@ -200,14 +200,17 @@ export function TeamOverview({
         <hr className="border-gray-200" />
 
         <div>
-          <h4 className="text-sm font-semibold text-gray-900 mb-3">Infrastructure defaults</h4>
-          <ReadField label="Default container image" value={spec.defaultImage} monospace />
-          <ReadField label="Storage (Gi)" value={spec.defaultDiskGi} />
+          <h4 className="text-sm font-semibold text-gray-900 mb-3">Resources</h4>
+          <ReadField label="Default container image" value={spec.defaultImage} />
+          <ReadField label="Storage (Gi)" value={spec.defaultDiskGi} defaultValue={10} />
         </div>
 
         <hr className="border-gray-200" />
 
-        <ReadField label="Startup instructions" value={spec.startupInstructions?.trim() || undefined} monospace />
+        <div>
+          <h4 className="text-sm font-semibold text-gray-900 mb-1">OpenClaw</h4>
+          <ReadField label="Bootstrap" value={spec.startupInstructions?.trim() || undefined} full />
+        </div>
 
         <hr className="border-gray-200" />
 
@@ -368,7 +371,7 @@ export function TeamOverview({
       </div>
 
       <div>
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">Team details</h3>
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">About</h3>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>Name</Label>
@@ -382,7 +385,7 @@ export function TeamOverview({
       </div>
 
       <div>
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">Telegram integration</h3>
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">Telegram</h3>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>Group ID</Label>
@@ -460,7 +463,7 @@ export function TeamOverview({
       </div>
 
       <div>
-        <h3 className="text-sm font-semibold text-gray-900 mb-3">Infrastructure defaults</h3>
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">Resources</h3>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label>Default container image</Label>
@@ -485,14 +488,17 @@ export function TeamOverview({
       </div>
 
       <div>
-        <Label>Startup instructions</Label>
-        <Textarea
-          mono
-          rows={4}
-          value={spec.startupInstructions ?? ''}
-          onChange={e => set('startupInstructions')(e.target.value || undefined)}
-          placeholder="Custom startup instructions..."
-        />
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">OpenClaw</h3>
+        <div>
+          <Label>Bootstrap</Label>
+          <Textarea
+            mono
+            rows={4}
+            value={spec.startupInstructions ?? ''}
+            onChange={e => set('startupInstructions')(e.target.value || undefined)}
+            placeholder="Custom bootstrap instructions..."
+          />
+        </div>
       </div>
     </div>
     </div>

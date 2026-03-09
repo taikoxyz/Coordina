@@ -1,63 +1,62 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
-export type SidebarGroup = 'providers' | 'environments' | 'teams'
-
 export type SelectedItem =
-  | { type: 'provider'; slug: string }
-  | { type: 'environment'; slug: string }
   | { type: 'team'; slug: string }
+  | { type: 'agent'; teamSlug: string; agentSlug: string }
 
-export type TeamTab = 'specs' | 'deployment' | 'chat'
+export type ContentTab = 'deploy' | 'spec' | 'files' | 'connect'
 
 interface NavStore {
-  expandedGroups: SidebarGroup[]
   selectedItem: SelectedItem | null
-  teamTab: TeamTab
-  agentSlug: string | null
+  contentTab: ContentTab
+  expandedTeams: string[]
   projectSlug: string | null
   isSettingsOpen: boolean
-  isCreateDialogOpen: SidebarGroup | null
+  isCreateDialogOpen: 'teams' | null
+  deployingTeamSlug: string | null
+  deployingAgentSlug: string | null
 
-  toggleGroup: (group: SidebarGroup) => void
   selectItem: (item: SelectedItem) => void
-  setTeamTab: (tab: TeamTab) => void
-  selectAgent: (slug: string | null) => void
-  selectProject: (slug: string | null) => void
+  setContentTab: (tab: ContentTab) => void
+  toggleTeam: (slug: string) => void
   setSettingsOpen: (open: boolean) => void
-  setCreateDialogOpen: (group: SidebarGroup | null) => void
+  setCreateDialogOpen: (group: 'teams' | null) => void
+  selectProject: (slug: string | null) => void
+  setDeploying: (teamSlug: string | null, agentSlug?: string | null) => void
 }
 
 export const useNav = create<NavStore>()(
   persist(
     (set) => ({
-      expandedGroups: ['providers', 'environments', 'teams'],
       selectedItem: null,
-      teamTab: 'specs',
-      agentSlug: null,
+      contentTab: 'deploy',
+      expandedTeams: [],
       projectSlug: null,
       isSettingsOpen: false,
       isCreateDialogOpen: null,
+      deployingTeamSlug: null,
+      deployingAgentSlug: null,
 
-      toggleGroup: (group) =>
+      selectItem: (item) => set({ selectedItem: item, contentTab: 'deploy' }),
+      setContentTab: (contentTab) => set({ contentTab }),
+      toggleTeam: (slug) =>
         set((s) => ({
-          expandedGroups: s.expandedGroups.includes(group)
-            ? s.expandedGroups.filter((g) => g !== group)
-            : [...s.expandedGroups, group],
+          expandedTeams: s.expandedTeams.includes(slug)
+            ? s.expandedTeams.filter((t) => t !== slug)
+            : [...s.expandedTeams, slug],
         })),
-      selectItem: (item) => set({ selectedItem: item, teamTab: 'specs', agentSlug: null }),
-      setTeamTab: (teamTab) => set({ teamTab }),
-      selectAgent: (slug) => set({ agentSlug: slug }),
-      selectProject: (projectSlug) => set({ projectSlug }),
       setSettingsOpen: (isSettingsOpen) => set({ isSettingsOpen }),
       setCreateDialogOpen: (isCreateDialogOpen) => set({ isCreateDialogOpen }),
+      selectProject: (projectSlug) => set({ projectSlug }),
+      setDeploying: (teamSlug, agentSlug) => set({ deployingTeamSlug: teamSlug, deployingAgentSlug: agentSlug ?? null }),
     }),
     {
       name: 'coordina-nav',
       partialize: (state) => ({
         selectedItem: state.selectedItem,
-        teamTab: state.teamTab,
-        agentSlug: state.agentSlug,
+        contentTab: state.contentTab,
+        expandedTeams: state.expandedTeams,
         projectSlug: state.projectSlug,
       }),
     },
