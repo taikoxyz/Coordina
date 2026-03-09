@@ -8,7 +8,7 @@ import type { TeamSpec } from '../../shared/types'
 import { getSecret, setSecret, deleteSecret } from '../keychain'
 import { normalizeTeamSpec, validateTelegramPair } from '../validation/teamSpecNormalize'
 import { syncBotProfilePhoto } from '../telegram'
-import { deriveMcAdminPassword } from '../specs/gke'
+import { deriveMcAdminPassword, deriveMcApiKey } from '../specs/gke'
 
 export function registerTeamHandlers(): void {
   const telegramAccount = (teamSlug: string, agentSlug: string) => `team:${teamSlug}:agent:${agentSlug}`
@@ -114,5 +114,11 @@ export function registerTeamHandlers(): void {
     const team = await getTeam(teamSlug)
     if (!team?.signingKey) return null
     return deriveMcAdminPassword(team.signingKey)
+  })
+
+  ipcMain.handle('teams:getMcApiKey', async (_e, { teamSlug }: { teamSlug: string }) => {
+    const team = await getTeam(teamSlug)
+    if (!team?.signingKey) return null
+    return deriveMcApiKey(team.signingKey)
   })
 }

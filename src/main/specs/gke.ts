@@ -55,6 +55,9 @@ function deriveMcSessionSecret(signingKey: string): string {
   return createHmac('sha256', signingKey).update('mc-session').digest('hex').slice(0, 32)
 }
 
+export function deriveMcApiKey(signingKey: string): string {
+  return createHmac('sha256', signingKey).update('mc-api-key').digest('hex').slice(0, 32)
+}
 
 function generateProviderSecret(input: {
   teamSlug: string
@@ -344,7 +347,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
     const mc = (envConfig as { missionControl?: MissionControlConfig }).missionControl
     if (mc?.enabled && spec.missionControlEnabled !== false) {
       const leadSlug = spec.leadAgent ?? spec.agents[0]?.slug ?? ''
-      files.push({ path: 'mission-control/secret.yaml', content: generateMissionControlSecret({ namespace, adminPassword: deriveMcAdminPassword(seed), sessionSecret: deriveMcSessionSecret(seed), apiKey: spec.mcApiKey ?? '', leadAgentSlug: leadSlug }) })
+      files.push({ path: 'mission-control/secret.yaml', content: generateMissionControlSecret({ namespace, adminPassword: deriveMcAdminPassword(seed), sessionSecret: deriveMcSessionSecret(seed), apiKey: deriveMcApiKey(seed), leadAgentSlug: leadSlug }) })
       files.push({ path: 'mission-control/pvc.yaml', content: generateMissionControlPvc({ namespace }) })
       files.push({ path: 'mission-control/deployment.yaml', content: generateMissionControlDeployment({ namespace, image: mc.image }) })
       files.push({ path: 'mission-control/service.yaml', content: generateMissionControlService({ namespace }) })

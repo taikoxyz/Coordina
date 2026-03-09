@@ -48,7 +48,6 @@ export interface TeamSpec {
   teamEmail?: string
   teamDescription?: string
   missionControlEnabled?: boolean
-  mcApiKey?: string
 }
 
 export interface PersonaTemplate {
