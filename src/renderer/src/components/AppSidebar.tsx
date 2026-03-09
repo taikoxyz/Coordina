@@ -1,4 +1,4 @@
-import { ChevronRight, ChevronDown, Crown, FolderPlus, Loader2, Plus, Send, Settings } from 'lucide-react'
+import { ChevronRight, ChevronDown, Crown, Loader2, Plus, Send, Settings } from 'lucide-react'
 import { useNav } from '../store/nav'
 import { useTeams, useSaveTeam } from '../hooks/useTeams'
 import { useSettings } from '../hooks/useSettings'
@@ -134,7 +134,6 @@ export function AppSidebar() {
           onClick={() => setCreateDialogOpen('teams')}
           className="flex items-center gap-2 text-sm text-gray-500 transition-colors hover:text-gray-700"
         >
-          <FolderPlus className="w-4 h-4" />
           Add team
         </button>
         <button
