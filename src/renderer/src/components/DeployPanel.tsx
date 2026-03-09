@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { AlertCircle, Check, ExternalLink, Loader2, Rocket, FileText, Trash2, X } from 'lucide-react'
+import { AlertCircle, ExternalLink, Loader2, Rocket, FileText, Trash2, X } from 'lucide-react'
 import { useGkeConfig } from '../hooks/useEnvironments'
 import { useTeam, useSaveTeam } from '../hooks/useTeams'
 import { useNav } from '../store/nav'
@@ -119,7 +119,7 @@ export function DeployPanel({
       const result = (await window.api.invoke('deploy:team', {
         teamSlug: spec.slug,
         envSlug: 'gke',
-        options: { keepDisks: !recreateDisks, forceRecreate: recreatePods },
+        options: { recreateDisks, forceRecreatePods: recreatePods },
         ...(deployAgentSlug ? { agentSlug: deployAgentSlug } : {}),
       })) as { ok: boolean; reason?: string }
 
@@ -234,14 +234,13 @@ export function DeployPanel({
               Delete Team Deployment
             </Button>
           )}
-          {(deployState === 'done' || deployState === 'error') && (
+          {deployState === 'error' && (
             <Badge
-              variant={deployState === 'done' ? 'success' : 'destructive'}
+              variant="destructive"
               className="uppercase tracking-wider"
             >
-              {deployState === 'done' && <Check className="w-3 h-3" />}
-              {deployState === 'error' && <AlertCircle className="w-3 h-3" />}
-              {deployState === 'done' ? 'Deployed' : 'Failed'}
+              <AlertCircle className="w-3 h-3" />
+              Failed
             </Badge>
           )}
           {!gkeConfig && (
@@ -339,7 +338,7 @@ export function DeployPanel({
             />
             <span className="text-sm">
               <span className="font-medium text-foreground">Recreate disks</span>
-              <span className="block text-xs text-muted-foreground mt-0.5">Deletes and recreates PVCs. All agent memory and workspace data will be lost.</span>
+              <span className="block text-xs text-muted-foreground mt-0.5">Delete existing disks and create fresh ones. All agent memory and workspace data will be lost.</span>
             </span>
           </label>
           <label className="flex items-start gap-2.5 cursor-pointer select-none">
@@ -350,8 +349,8 @@ export function DeployPanel({
               className="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <span className="text-sm">
-              <span className="font-medium text-foreground">Recreate pods</span>
-              <span className="block text-xs text-muted-foreground mt-0.5">Terminates running pods before redeploying. Active sessions will be interrupted.</span>
+              <span className="font-medium text-foreground">Force recreate pods</span>
+              <span className="block text-xs text-muted-foreground mt-0.5">Delete and recreate pods even if config hasn't changed. Active sessions will be interrupted.</span>
             </span>
           </label>
           <div className="flex justify-end gap-2 pt-1">

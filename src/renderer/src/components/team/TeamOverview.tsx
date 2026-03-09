@@ -144,7 +144,7 @@ export function TeamOverview({
       const result = await window.api.invoke('deploy:team', {
         teamSlug: spec.slug,
         envSlug: deployEnvSlug,
-        options: { keepDisks: true, forceRecreate: false },
+        options: { recreateDisks: false, forceRecreatePods: false },
       }) as { ok: boolean; reason?: string }
 
       setDeployState(result.ok ? 'done' : 'error')

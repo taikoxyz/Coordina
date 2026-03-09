@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { deriveAgentEmail } from '../../../../shared/email'
-import { deriveSlug } from '../../../../shared/slug'
 import type { AgentSpec } from '../../../../shared/types'
 import { PERSONA_CATALOG, getPersonasByDivision } from '../../../../shared/personaCatalog'
 import { useModels } from '../../hooks/useModels'
@@ -57,10 +56,6 @@ export function AgentCard({
     const tmpl = PERSONA_CATALOG.find(p => p.id === templateId)
     if (!tmpl) return
     onChange({ ...agent, role: tmpl.role, persona: tmpl.persona, skills: tmpl.skills })
-  }
-
-  const handleNameChange = (name: string) => {
-    onChange({ ...agent, name, slug: name ? deriveSlug(name) : '' })
   }
 
   useEffect(() => {
@@ -160,19 +155,6 @@ export function AgentCard({
                       </optgroup>
                     ))}
                   </Select>
-                </div>
-                <div>
-                  <Label>Name</Label>
-                  <Input
-                    value={agent.name}
-                    onChange={(e) => handleNameChange(e.target.value)}
-                    placeholder="Alice"
-                  />
-                  {agent.slug && (
-                    <p className="text-xs text-gray-400 font-mono mt-0.5">
-                      {agent.slug}
-                    </p>
-                  )}
                 </div>
               </div>
             </div>

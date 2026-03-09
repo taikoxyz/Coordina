@@ -1,17 +1,28 @@
 import { useState } from 'react'
 import { useNav } from '../store/nav'
-import { useSaveTeam } from '../hooks/useTeams'
+import { useSaveTeam, useTeams } from '../hooks/useTeams'
 import type { TeamSpec } from '../../../shared/types'
 import { Button, Input, Label, DialogShell } from './ui'
 
 const toSlug = (name: string) =>
   'team-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
+function uniqueSlug(base: string, existingSlugs: Set<string>): string {
+  if (!existingSlugs.has(base)) return base
+  for (let i = 2; ; i++) {
+    const candidate = `${base}-${i}`
+    if (!existingSlugs.has(candidate)) return candidate
+  }
+}
+
 export function CreateTeamDialog() {
   const { isCreateDialogOpen, setCreateDialogOpen, selectItem } = useNav()
   const saveTeam = useSaveTeam()
+  const { data: teams } = useTeams()
   const [name, setName] = useState('')
-  const slug = name.trim() ? toSlug(name) : ''
+  const existingSlugs = new Set(teams?.map(t => t.slug) ?? [])
+  const baseSlug = name.trim() ? toSlug(name) : ''
+  const slug = baseSlug ? uniqueSlug(baseSlug, existingSlugs) : ''
   const isOpen = isCreateDialogOpen === 'teams'
 
   const handleCreate = async () => {

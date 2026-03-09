@@ -78,6 +78,53 @@ export function ensureDisk(projectId: string, zone: string, name: string, sizeGb
   }
 }
 
+export function deleteDisk(projectId: string, zone: string, name: string): void {
+  try {
+    execFileSync('gcloud', [
+      'compute', 'disks', 'delete', name,
+      `--zone=${zone}`, `--project=${projectId}`, '--quiet',
+    ], { encoding: 'utf-8', stdio: 'pipe' })
+  } catch (e: unknown) {
+    if (String(e).includes('was not found')) return
+    throw e
+  }
+}
+
+export function labelDisk(projectId: string, zone: string, name: string, labels: Record<string, string>): void {
+  const labelStr = Object.entries(labels).map(([k, v]) => `${k}=${v}`).join(',')
+  try {
+    execFileSync('gcloud', [
+      'compute', 'disks', 'add-labels', name,
+      `--zone=${zone}`, `--project=${projectId}`,
+      `--labels=${labelStr}`,
+    ], { encoding: 'utf-8', stdio: 'pipe' })
+  } catch (e: unknown) {
+    if (String(e).includes('was not found')) return
+    throw e
+  }
+}
+
+export interface GcpDisk {
+  name: string
+  zone: string
+}
+
+export function listDisksByLabels(projectId: string, labels: Record<string, string>): GcpDisk[] {
+  const filter = Object.entries(labels).map(([k, v]) => `labels.${k}=${v}`).join(' AND ')
+  try {
+    const stdout = execFileSync('gcloud', [
+      'compute', 'disks', 'list',
+      `--project=${projectId}`,
+      `--filter=${filter}`,
+      '--format=json(name,zone)',
+    ], { encoding: 'utf-8', stdio: 'pipe' })
+    const raw = JSON.parse(stdout) as Array<{ name: string; zone: string }>
+    return raw.map(d => ({ name: d.name, zone: d.zone.split('/').pop()! }))
+  } catch {
+    return []
+  }
+}
+
 export function listGkeClusters(projectId: string): Promise<GkeCluster[]> {
   return new Promise((resolve, reject) => {
     let stdout = ''
