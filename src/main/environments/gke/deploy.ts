@@ -125,6 +125,7 @@ export async function* deployTeam(
       ['Service/mission-control', () => coreApi.deleteNamespacedService({ name: 'mission-control', namespace })],
       ['CronJob/agent-heartbeat-relay', () => batchApi.deleteNamespacedCronJob({ name: 'agent-heartbeat-relay', namespace })],
       ['Secret/mission-control-env', () => coreApi.deleteNamespacedSecret({ name: 'mission-control-env', namespace })],
+      ['Secret/mission-control-pull-secret', () => coreApi.deleteNamespacedSecret({ name: 'mission-control-pull-secret', namespace })],
     ] as [string, () => Promise<unknown>][]) {
       try {
         await fn()
@@ -230,6 +231,7 @@ export async function* deployTeam(
     ...specFiles.filter(f => f.path.includes('/statefulset.yaml')).map(f => f.path),
     ...specFiles.filter(f => f.path.includes('/service.yaml')).map(f => f.path),
     'ingress.yaml',
+    'mission-control/pull-secret.yaml',
     'mission-control/secret.yaml',
     'mission-control/pvc.yaml',
     'mission-control/deployment.yaml',

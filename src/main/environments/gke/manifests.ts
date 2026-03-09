@@ -350,8 +350,22 @@ export function generateMissionControlPvc(input: { namespace: string }): string 
   return yaml.dump(manifest)
 }
 
-export function generateMissionControlDeployment(input: { namespace: string; image: string }): string {
-  const { namespace, image } = input
+export function generateMcImagePullSecret(input: { namespace: string; githubToken: string }): string {
+  const { namespace, githubToken } = input
+  const auth = Buffer.from(`token:${githubToken}`).toString('base64')
+  const dockerconfig = JSON.stringify({ auths: { 'ghcr.io': { username: 'token', password: githubToken, auth } } })
+  const manifest = {
+    apiVersion: 'v1',
+    kind: 'Secret',
+    type: 'kubernetes.io/dockerconfigjson',
+    metadata: { name: 'mission-control-pull-secret', namespace, labels: { 'coordina.component': 'mission-control' } },
+    stringData: { '.dockerconfigjson': dockerconfig },
+  }
+  return yaml.dump(manifest)
+}
+
+export function generateMissionControlDeployment(input: { namespace: string; image: string; imagePullSecret?: string }): string {
+  const { namespace, image, imagePullSecret } = input
   const manifest = {
     apiVersion: 'apps/v1',
     kind: 'Deployment',
@@ -362,6 +376,7 @@ export function generateMissionControlDeployment(input: { namespace: string; ima
       template: {
         metadata: { labels: { app: 'mission-control' } },
         spec: {
+          ...(imagePullSecret ? { imagePullSecrets: [{ name: imagePullSecret }] } : {}),
           containers: [{
             name: 'mission-control',
             image,

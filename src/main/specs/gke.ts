@@ -15,6 +15,7 @@ import {
   generateMissionControlPvc,
   generateMissionControlDeployment,
   generateMissionControlService,
+  generateMcImagePullSecret,
 } from '../environments/gke/manifests'
 import type { MissionControlConfig } from '../../shared/types'
 import {
@@ -349,9 +350,13 @@ const gkeDeriver: DeploymentSpecDeriver = {
     if (spec.missionControlEnabled !== false) {
       const mcImage = mc?.image || DEFAULT_MC_IMAGE
       const leadSlug = spec.leadAgent ?? spec.agents[0]?.slug ?? ''
+      const mcPullSecretName = githubToken ? 'mission-control-pull-secret' : undefined
+      if (githubToken) {
+        files.push({ path: 'mission-control/pull-secret.yaml', content: generateMcImagePullSecret({ namespace, githubToken }) })
+      }
       files.push({ path: 'mission-control/secret.yaml', content: generateMissionControlSecret({ namespace, adminPassword: deriveMcAdminPassword(seed), sessionSecret: deriveMcSessionSecret(seed), apiKey: deriveMcApiKey(seed), leadAgentSlug: leadSlug }) })
       files.push({ path: 'mission-control/pvc.yaml', content: generateMissionControlPvc({ namespace }) })
-      files.push({ path: 'mission-control/deployment.yaml', content: generateMissionControlDeployment({ namespace, image: mcImage }) })
+      files.push({ path: 'mission-control/deployment.yaml', content: generateMissionControlDeployment({ namespace, image: mcImage, imagePullSecret: mcPullSecretName }) })
       files.push({ path: 'mission-control/service.yaml', content: generateMissionControlService({ namespace }) })
     }
 
