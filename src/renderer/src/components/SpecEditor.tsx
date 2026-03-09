@@ -209,22 +209,28 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
             <ReadField label="Bootstrap" value={spec.startupInstructions?.trim() || undefined} monospace full />
           </div>
 
-          {spec.missionControlEnabled !== false && spec.deployedEnvSlug && (
+          {spec.deployedEnvSlug && (
             <>
               <hr className="border-gray-200" />
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold text-gray-900">Mission Control</h4>
                   <div className="flex items-center gap-2">
-                    {mcUrl && (
-                      <a href={mcUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700">
-                        Open dashboard <ExternalLink className="w-3 h-3" />
-                      </a>
+                    {spec.missionControlEnabled !== false ? (
+                      <>
+                        {mcUrl && (
+                          <a href={mcUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700">
+                            Open dashboard <ExternalLink className="w-3 h-3" />
+                          </a>
+                        )}
+                        <Button variant="secondary" size="sm" onClick={() => void handleRegisterMC()} disabled={mcRegState === 'registering'}>
+                          {mcRegState === 'registering' ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Registering…</> :
+                           mcRegState === 'done' ? <><Check className="w-3 h-3 mr-1" />Registered</> : 'Register agents'}
+                        </Button>
+                      </>
+                    ) : (
+                      <span className="text-xs text-gray-400">Disabled</span>
                     )}
-                    <Button variant="secondary" size="sm" onClick={() => void handleRegisterMC()} disabled={mcRegState === 'registering'}>
-                      {mcRegState === 'registering' ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Registering…</> :
-                       mcRegState === 'done' ? <><Check className="w-3 h-3 mr-1" />Registered</> : 'Register agents'}
-                    </Button>
                   </div>
                 </div>
                 {mcRegState === 'error' && (
@@ -449,10 +455,7 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
           <h3 className="text-sm font-semibold text-gray-900 mb-3">Mission Control</h3>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-600">Deploy Mission Control alongside this team's agents.</p>
-                <p className="text-xs text-gray-400 mt-0.5">Requires Mission Control to be configured in GKE settings.</p>
-              </div>
+              <p className="text-xs text-gray-600">Deploy Mission Control alongside this team's agents (requires GKE settings).</p>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
