@@ -104,6 +104,7 @@ export function registerDeployHandlers(): void {
     const filesToDeploy = agentSlug
       ? specFiles.filter(f => !f.path.includes('/') || f.path.startsWith(`agents/${agentSlug}/`))
       : specFiles
+    if (agentSlug) options = { ...options, partialDeploy: true }
 
     const win = BrowserWindow.fromWebContents(event.sender)
     const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof deployTeam>[2]

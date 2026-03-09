@@ -112,6 +112,7 @@ export function AgentSpecPanel({ teamSlug, agentSlug }: { teamSlug: string; agen
             onChange={updateAgent}
             teamEmail={localSpec.teamEmail}
             isLead={agent.slug === localSpec.leadAgent}
+            defaultImage={localSpec.defaultImage}
           />
         </div>
       </div>

@@ -5,6 +5,7 @@ import type { AgentSpec } from '../../../../shared/types'
 import { PERSONA_CATALOG, getPersonasByDivision } from '../../../../shared/personaCatalog'
 import { useModels } from '../../hooks/useModels'
 import { Button, Input, Label, ReadField, Select, Textarea } from '../ui'
+import { Tooltip } from '../ui/tooltip'
 
 interface Props {
   teamSlug: string
@@ -13,6 +14,7 @@ interface Props {
   onChange: (updated: AgentSpec) => void
   teamEmail?: string
   isLead?: boolean
+  defaultImage?: string
 }
 
 export function AgentCard({
@@ -22,6 +24,7 @@ export function AgentCard({
   onChange,
   teamEmail,
   isLead,
+  defaultImage,
 }: Props) {
   const { data: models } = useModels('openrouter')
   const derivedEmail = teamEmail ? deriveAgentEmail(teamEmail, agent.slug, isLead ?? false) : undefined
@@ -179,7 +182,7 @@ export function AgentCard({
                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Persona</h3>
                 <div className="space-y-3">
                   <div>
-                    <Label title="Used as the 'Creature' field in identity.md and to contextualize the agent in agents.md">Role <span className="text-gray-300 cursor-help">ⓘ</span></Label>
+                    <Label>Role <Tooltip content="Used as the 'Creature' field in identity.md and to contextualize the agent in agents.md"><span className="text-gray-300 cursor-help">ⓘ</span></Tooltip></Label>
                     <Input
                       value={agent.role}
                       onChange={(e) => set('role')(e.target.value)}
@@ -187,7 +190,7 @@ export function AgentCard({
                     />
                   </div>
                   <div>
-                    <Label title="Used as 'Vibe' in identity.md and as the core description in soul.md under 'Core Truths'">Persona <span className="text-gray-300 cursor-help">ⓘ</span></Label>
+                    <Label>Persona <Tooltip content="Used as 'Vibe' in identity.md and as the core description in soul.md under 'Core Truths'"><span className="text-gray-300 cursor-help">ⓘ</span></Tooltip></Label>
                     <Textarea
                       rows={3}
                       value={agent.persona}
@@ -196,7 +199,7 @@ export function AgentCard({
                     />
                   </div>
                   <div>
-                    <Label title="Each skill becomes a bullet point in skills.md, telling the agent what it can do">Skills (comma-separated) <span className="text-gray-300 cursor-help">ⓘ</span></Label>
+                    <Label>Skills (comma-separated) <Tooltip content="Each skill becomes a bullet point in skills.md, telling the agent what it can do"><span className="text-gray-300 cursor-help">ⓘ</span></Tooltip></Label>
                     <Textarea
                       rows={2}
                       value={agent.skills.join(', ')}
@@ -443,7 +446,7 @@ export function AgentCard({
 
             <div>
               <h4 className="text-sm font-semibold text-gray-900 mb-1">Resources</h4>
-              <ReadField label="Container image" value={agent.image} />
+              <ReadField label="Container image" value={agent.image} defaultValue={defaultImage} />
               <ReadField label="CPU (cores)" value={agent.cpu} defaultValue={1} />
               <ReadField label="Disk (Gi)" value={agent.diskGi} defaultValue={10} />
             </div>
