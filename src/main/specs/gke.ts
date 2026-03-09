@@ -150,7 +150,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
               groupPolicy: 'allowlist',
               groupAllowFrom: [telegramAdminId!],
               groups: {
-                [telegramGroupId!]: { requireMention: agent.slug !== spec.leadAgent },
+                [telegramGroupId!]: { requireMention: true },
               },
               streaming: 'partial',
             },
