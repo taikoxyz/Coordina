@@ -29,6 +29,7 @@ function ReadField({ label, value, monospace = false, defaultValue, full = false
           className={cn(
             'text-sm text-left whitespace-pre-wrap break-words px-2 py-1.5 rounded-sm bg-gray-50 min-h-[60px]',
             hasValue ? 'text-foreground' : 'text-muted-foreground/60',
+            monospace && 'font-mono text-xs',
           )}
         >
           {displayText ?? <span className="italic">—</span>}
