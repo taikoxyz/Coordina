@@ -79,7 +79,7 @@ export function AgentSpecPanel({ teamSlug, agentSlug }: { teamSlug: string; agen
                 variant="primary"
                 size="sm"
                 onClick={() => void handleSave()}
-                disabled={saveTeam.isPending}
+                disabled={saveTeam.isPending || !agent.name.trim() || !agent.role.trim() || !agent.persona.trim() || agent.models.length === 0}
               >
                 {saveTeam.isPending ? 'Saving...' : 'Save'}
               </Button>

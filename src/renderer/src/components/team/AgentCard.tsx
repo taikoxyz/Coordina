@@ -269,45 +269,47 @@ export function AgentCard({
                 </div>
                 <div>
                   <Label>Token</Label>
-                  <div className="flex items-center gap-1.5">
-                    <Input
-                      mono
-                      type="password"
-                      value={telegramToken}
-                      onChange={(e) => setTelegramToken(e.target.value)}
-                      placeholder={tokenMasked ? 'Update token' : '123456:ABC...'}
-                    />
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={saveToken}
-                      disabled={tokenBusy || !teamSlug || !agent.slug}
-                      className="shrink-0"
-                    >
-                      Save
-                    </Button>
-                    {tokenMasked && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        mono
+                        type="password"
+                        value={telegramToken}
+                        onChange={(e) => setTelegramToken(e.target.value)}
+                        placeholder={tokenMasked ? 'Update token' : '123456:ABC...'}
+                      />
                       <Button
-                        variant="secondary"
+                        variant="primary"
                         size="sm"
-                        onClick={clearToken}
-                        disabled={tokenBusy}
+                        onClick={saveToken}
+                        disabled={tokenBusy || !teamSlug || !agent.slug}
                         className="shrink-0"
                       >
-                        Clear
+                        Save
                       </Button>
-                    )}
+                    </div>
                     {tokenMasked && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={syncAvatar}
-                        disabled={tokenBusy}
-                        className="shrink-0"
-                        title="Push agent avatar to Telegram bot profile photo"
-                      >
-                        Sync Avatar
-                      </Button>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={clearToken}
+                          disabled={tokenBusy}
+                          className="shrink-0"
+                        >
+                          Clear
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={syncAvatar}
+                          disabled={tokenBusy}
+                          className="shrink-0"
+                          title="Push agent avatar to Telegram bot profile photo"
+                        >
+                          Sync Avatar
+                        </Button>
+                      </div>
                     )}
                   </div>
                   {tokenMasked && (
