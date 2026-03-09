@@ -233,7 +233,11 @@ export async function* deployTeam(
     const parts = volumeHandle.split('/')
     const diskName = parts[parts.length - 1]
     const zone = parts[3] ?? fallbackZone
-    labelDisk(config.projectId, zone, diskName, { 'coordina-team': teamSlug, 'coordina-agent': agentSlug })
+    try {
+      labelDisk(config.projectId, zone, diskName, { 'coordina-team': teamSlug, 'coordina-agent': agentSlug })
+    } catch {
+      yield { resource: `DiskLabel/${diskName}`, status: 'error', message: 'Failed to label GCP disk — tag-based deletion may miss this disk' }
+    }
   }
 }
 
@@ -254,10 +258,31 @@ export async function* undeployTeam(teamSlug: string, config: GkeDeployConfig, o
   }
 
   if (options.deleteDisks) {
+    const pvcList = await coreApi.listNamespacedPersistentVolumeClaim({ namespace, labelSelector: `coordina.team=${teamSlug}` })
+      .catch(() => ({ items: [] } as { items: k8s.V1PersistentVolumeClaim[] }))
+    for (const pvc of pvcList.items ?? []) {
+      const pvcName = pvc.metadata?.name
+      const pvName = pvc.spec?.volumeName
+      if (pvcName) {
+        try {
+          await coreApi.deleteNamespacedPersistentVolumeClaim({ name: pvcName, namespace })
+          yield { resource: `PVC/${pvcName}`, status: 'deleted' }
+        } catch { yield { resource: `PVC/${pvcName}`, status: 'error' } }
+      }
+      if (pvName) {
+        try {
+          await coreApi.deletePersistentVolume({ name: pvName })
+          yield { resource: `PV/${pvName}`, status: 'deleted' }
+        } catch { yield { resource: `PV/${pvName}`, status: 'error' } }
+      }
+    }
+
     const disks = listDisksByLabels(config.projectId, { 'coordina-team': teamSlug })
     for (const disk of disks) {
-      deleteDisk(config.projectId, disk.zone, disk.name)
-      yield { resource: `Disk/${disk.name}`, status: 'deleted' }
+      try {
+        deleteDisk(config.projectId, disk.zone, disk.name)
+        yield { resource: `Disk/${disk.name}`, status: 'deleted' }
+      } catch { yield { resource: `Disk/${disk.name}`, status: 'error' } }
     }
   }
 }
@@ -292,8 +317,10 @@ export async function* undeployAgent(teamSlug: string, agentSlug: string, config
 
     const disks = listDisksByLabels(config.projectId, { 'coordina-team': teamSlug, 'coordina-agent': agentSlug })
     for (const disk of disks) {
-      deleteDisk(config.projectId, disk.zone, disk.name)
-      yield { resource: `Disk/${disk.name}`, status: 'deleted' }
+      try {
+        deleteDisk(config.projectId, disk.zone, disk.name)
+        yield { resource: `Disk/${disk.name}`, status: 'deleted' }
+      } catch { yield { resource: `Disk/${disk.name}`, status: 'error' } }
     }
   }
 }

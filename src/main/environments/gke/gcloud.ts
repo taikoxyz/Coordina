@@ -84,7 +84,10 @@ export function deleteDisk(projectId: string, zone: string, name: string): void 
       'compute', 'disks', 'delete', name,
       `--zone=${zone}`, `--project=${projectId}`, '--quiet',
     ], { encoding: 'utf-8', stdio: 'pipe' })
-  } catch { /* disk may not exist */ }
+  } catch (e: unknown) {
+    if (String(e).includes('was not found')) return
+    throw e
+  }
 }
 
 export function labelDisk(projectId: string, zone: string, name: string, labels: Record<string, string>): void {
@@ -95,7 +98,10 @@ export function labelDisk(projectId: string, zone: string, name: string, labels:
       `--zone=${zone}`, `--project=${projectId}`,
       `--labels=${labelStr}`,
     ], { encoding: 'utf-8', stdio: 'pipe' })
-  } catch { /* disk may not exist yet */ }
+  } catch (e: unknown) {
+    if (String(e).includes('was not found')) return
+    throw e
+  }
 }
 
 export interface GcpDisk {

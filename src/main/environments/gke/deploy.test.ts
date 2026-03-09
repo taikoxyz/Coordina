@@ -200,7 +200,13 @@ describe('deployTeam', () => {
 })
 
 describe('undeployTeam', () => {
-  it('deletes all GCP disks by team tag when deleteDisks=true', async () => {
+  it('deletes PVCs, PVs, and GCP disks by team tag when deleteDisks=true', async () => {
+    mockCoreApi.listNamespacedPersistentVolumeClaim.mockResolvedValue({
+      items: [
+        { metadata: { name: 'team-agent-alice' }, spec: { volumeName: 'pv-alice' } },
+        { metadata: { name: 'team-agent-bob' }, spec: { volumeName: 'pv-bob' } },
+      ],
+    })
     mockListDisksByLabels.mockReturnValue([
       { name: 'gke-disk-abc123', zone: 'us-central1-a' },
       { name: 'gke-disk-orphan', zone: 'us-central1-a' },
@@ -209,10 +215,27 @@ describe('undeployTeam', () => {
     const statuses: DeployStatus[] = []
     for await (const s of undeployTeam('team', config, { deleteDisks: true })) statuses.push(s)
 
+    expect(mockCoreApi.deleteNamespacedPersistentVolumeClaim).toHaveBeenCalledWith({ name: 'team-agent-alice', namespace: 'team' })
+    expect(mockCoreApi.deleteNamespacedPersistentVolumeClaim).toHaveBeenCalledWith({ name: 'team-agent-bob', namespace: 'team' })
+    expect(mockCoreApi.deletePersistentVolume).toHaveBeenCalledWith({ name: 'pv-alice' })
+    expect(mockCoreApi.deletePersistentVolume).toHaveBeenCalledWith({ name: 'pv-bob' })
     expect(mockListDisksByLabels).toHaveBeenCalledWith('my-proj', { 'coordina-team': 'team' })
     expect(mockDeleteDisk).toHaveBeenCalledWith('my-proj', 'us-central1-a', 'gke-disk-abc123')
     expect(mockDeleteDisk).toHaveBeenCalledWith('my-proj', 'us-central1-a', 'gke-disk-orphan')
+    expect(statuses.some(s => s.resource === 'PVC/team-agent-alice' && s.status === 'deleted')).toBe(true)
     expect(statuses.some(s => s.resource === 'Disk/gke-disk-orphan' && s.status === 'deleted')).toBe(true)
+  })
+
+  it('yields error status when disk deletion fails', async () => {
+    mockListDisksByLabels.mockReturnValue([
+      { name: 'gke-disk-fail', zone: 'us-central1-a' },
+    ])
+    mockDeleteDisk.mockImplementation(() => { throw new Error('permission denied') })
+
+    const statuses: DeployStatus[] = []
+    for await (const s of undeployTeam('team', config, { deleteDisks: true })) statuses.push(s)
+
+    expect(statuses.some(s => s.resource === 'Disk/gke-disk-fail' && s.status === 'error')).toBe(true)
   })
 
   it('does not delete GCP disks when deleteDisks=false', async () => {
