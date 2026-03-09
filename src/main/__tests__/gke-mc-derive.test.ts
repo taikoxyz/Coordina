@@ -31,10 +31,7 @@ const TEAM: TeamSpec = {
 const MC_CONFIG = {
   enabled: true,
   image: 'gcr.io/proj/mc:latest',
-  domain: 'mc.example.com',
-  adminPassword: 'pass',
   sessionSecret: '12345678901234567890123456789012',
-  apiKey: 'key123',
 }
 
 describe('GKE deriver with Mission Control', () => {
@@ -46,7 +43,6 @@ describe('GKE deriver with Mission Control', () => {
     expect(paths).toContain('mission-control/pvc.yaml')
     expect(paths).toContain('mission-control/deployment.yaml')
     expect(paths).toContain('mission-control/service.yaml')
-    expect(paths).toContain('mission-control/ingress.yaml')
   })
 
   it('omits MC manifest files when missionControl is not configured', async () => {

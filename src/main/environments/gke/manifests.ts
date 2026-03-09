@@ -313,11 +313,10 @@ export interface MissionControlSecretInput {
   sessionSecret: string
   apiKey: string
   leadAgentSlug: string
-  domain: string
 }
 
 export function generateMissionControlSecret(input: MissionControlSecretInput): string {
-  const { namespace, adminPassword, sessionSecret, apiKey, leadAgentSlug, domain } = input
+  const { namespace, adminPassword, sessionSecret, apiKey, leadAgentSlug } = input
   const manifest = {
     apiVersion: 'v1',
     kind: 'Secret',
@@ -330,9 +329,6 @@ export function generateMissionControlSecret(input: MissionControlSecretInput): 
       OPENCLAW_GATEWAY_HOST: `agent-${leadAgentSlug}.${namespace}.svc.cluster.local`,
       OPENCLAW_GATEWAY_PORT: '18789',
       OPENCLAW_GATEWAY_TOKEN: '',
-      NEXT_PUBLIC_GATEWAY_HOST: domain,
-      NEXT_PUBLIC_GATEWAY_PORT: '443',
-      NEXT_PUBLIC_GATEWAY_PROTOCOL: 'wss',
       MC_CLAUDE_HOME: '',
     },
   }
@@ -401,35 +397,6 @@ export function generateMissionControlService(input: { namespace: string }): str
   return yaml.dump(manifest)
 }
 
-export function generateMissionControlIngress(input: { namespace: string; domain: string }): string {
-  const { namespace, domain } = input
-  const manifest = {
-    apiVersion: 'networking.k8s.io/v1',
-    kind: 'Ingress',
-    metadata: {
-      name: 'mission-control',
-      namespace,
-      annotations: {
-        'kubernetes.io/ingress.class': 'gce',
-        'kubernetes.io/ingress.allow-http': 'false',
-      },
-      labels: { 'coordina.component': 'mission-control' },
-    },
-    spec: {
-      rules: [{
-        host: domain,
-        http: {
-          paths: [{
-            path: '/',
-            pathType: 'Prefix',
-            backend: { service: { name: 'mission-control', port: { number: 3000 } } },
-          }],
-        },
-      }],
-    },
-  }
-  return yaml.dump(manifest)
-}
 
 export function generateMissionControlHeartbeatCronJob(input: {
   namespace: string

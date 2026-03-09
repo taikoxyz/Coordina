@@ -123,7 +123,6 @@ export async function* deployTeam(
     for (const [resource, fn] of [
       ['Deployment/mission-control', () => appsApi.deleteNamespacedDeployment({ name: 'mission-control', namespace })],
       ['Service/mission-control', () => coreApi.deleteNamespacedService({ name: 'mission-control', namespace })],
-      ['Ingress/mission-control', () => networkingApi.deleteNamespacedIngress({ name: 'mission-control', namespace })],
       ['CronJob/agent-heartbeat-relay', () => batchApi.deleteNamespacedCronJob({ name: 'agent-heartbeat-relay', namespace })],
       ['Secret/mission-control-env', () => coreApi.deleteNamespacedSecret({ name: 'mission-control-env', namespace })],
     ] as [string, () => Promise<unknown>][]) {
@@ -235,7 +234,6 @@ export async function* deployTeam(
     'mission-control/pvc.yaml',
     'mission-control/deployment.yaml',
     'mission-control/service.yaml',
-    'mission-control/ingress.yaml',
   ]
 
   for (const path of orderedPaths) {

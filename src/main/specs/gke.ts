@@ -15,7 +15,6 @@ import {
   generateMissionControlPvc,
   generateMissionControlDeployment,
   generateMissionControlService,
-  generateMissionControlIngress,
 } from '../environments/gke/manifests'
 import type { MissionControlConfig } from '../../shared/types'
 import {
@@ -337,11 +336,10 @@ const gkeDeriver: DeploymentSpecDeriver = {
     const mc = (envConfig as { missionControl?: MissionControlConfig }).missionControl
     if (mc?.enabled && spec.missionControlEnabled !== false) {
       const leadSlug = spec.leadAgent ?? spec.agents[0]?.slug ?? ''
-      files.push({ path: 'mission-control/secret.yaml', content: generateMissionControlSecret({ namespace, adminPassword: mc.adminPassword, sessionSecret: mc.sessionSecret, apiKey: mc.apiKey, leadAgentSlug: leadSlug, domain: mc.domain }) })
+      files.push({ path: 'mission-control/secret.yaml', content: generateMissionControlSecret({ namespace, adminPassword: spec.mcAdminPassword ?? '', sessionSecret: mc.sessionSecret, apiKey: spec.mcApiKey ?? '', leadAgentSlug: leadSlug }) })
       files.push({ path: 'mission-control/pvc.yaml', content: generateMissionControlPvc({ namespace }) })
       files.push({ path: 'mission-control/deployment.yaml', content: generateMissionControlDeployment({ namespace, image: mc.image }) })
       files.push({ path: 'mission-control/service.yaml', content: generateMissionControlService({ namespace }) })
-      files.push({ path: 'mission-control/ingress.yaml', content: generateMissionControlIngress({ namespace, domain: mc.domain }) })
     }
 
     return files

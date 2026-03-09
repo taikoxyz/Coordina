@@ -5,7 +5,6 @@ import {
   generateMissionControlPvc,
   generateMissionControlDeployment,
   generateMissionControlService,
-  generateMissionControlIngress,
   generateMissionControlHeartbeatCronJob,
 } from '../environments/gke/manifests'
 
@@ -15,7 +14,6 @@ const BASE = {
   sessionSecret: '12345678901234567890123456789012',
   apiKey: 'key123',
   leadAgentSlug: 'alice',
-  domain: 'mc.example.com',
   image: 'gcr.io/proj/mission-control:latest',
 }
 
@@ -27,7 +25,7 @@ describe('generateMissionControlSecret', () => {
     expect((out.stringData as Record<string, string>).OPENCLAW_GATEWAY_HOST).toBe(
       'agent-alice.my-team.svc.cluster.local'
     )
-    expect((out.stringData as Record<string, string>).NEXT_PUBLIC_GATEWAY_HOST).toBe('mc.example.com')
+    expect((out.stringData as Record<string, string>).OPENCLAW_GATEWAY_PORT).toBe('18789')
   })
 })
 
@@ -61,16 +59,6 @@ describe('generateMissionControlService', () => {
   })
 })
 
-describe('generateMissionControlIngress', () => {
-  it('generates an Ingress for the MC domain', () => {
-    const out = yaml.load(
-      generateMissionControlIngress({ namespace: 'my-team', domain: 'mc.example.com' })
-    ) as Record<string, unknown>
-    expect(out.kind).toBe('Ingress')
-    const rules = ((out.spec as Record<string, unknown>).rules as Array<Record<string, unknown>>)
-    expect(rules[0].host).toBe('mc.example.com')
-  })
-})
 
 describe('generateMissionControlHeartbeatCronJob', () => {
   it('generates a CronJob', () => {

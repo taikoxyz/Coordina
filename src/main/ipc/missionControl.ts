@@ -2,8 +2,11 @@
 // FEATURE: Mission Control integration layer for post-deploy agent registration
 
 import { ipcMain } from 'electron'
+import * as net from 'net'
+import * as k8s from '@kubernetes/client-node'
 import { getEnvironment } from '../store/environments'
 import { getTeam } from '../store/teams'
+import { buildKubeConfig } from '../environments/gke/deploy'
 import type { MissionControlConfig } from '../../shared/types'
 
 export interface AgentRegistrationEntry {
@@ -45,6 +48,27 @@ export async function registerAgentsWithMissionControl(opts: RegisterOptions): P
   }
 }
 
+async function withMcPortForward(kc: k8s.KubeConfig, namespace: string, fn: (url: string) => Promise<void>): Promise<void> {
+  const coreApi = kc.makeApiClient(k8s.CoreV1Api)
+  const pods = await coreApi.listNamespacedPod({ namespace, labelSelector: 'app=mission-control' })
+  const pod = pods.items.find(p => p.status?.phase === 'Running')
+  if (!pod?.metadata?.name) throw new Error('Mission Control pod is not running')
+
+  const portForward = new k8s.PortForward(kc)
+  const server = net.createServer((socket) => {
+    portForward.portForward(namespace, pod.metadata!.name!, [3000], socket, null, socket)
+  })
+
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const localPort = (server.address() as net.AddressInfo).port
+
+  try {
+    await fn(`http://127.0.0.1:${localPort}`)
+  } finally {
+    server.close()
+  }
+}
+
 export function registerMissionControlHandlers(): void {
   ipcMain.handle('mc:registerAgents', async (_e, { teamSlug, envSlug }: { teamSlug: string; envSlug: string }) => {
     const [team, env] = await Promise.all([getTeam(teamSlug), getEnvironment(envSlug)])
@@ -52,14 +76,18 @@ export function registerMissionControlHandlers(): void {
     if (!env) return { ok: false, reason: 'Environment not found' }
 
     const mc = (env.config as { missionControl?: MissionControlConfig }).missionControl
-    if (!mc?.enabled) return { ok: false, reason: 'Mission Control not configured' }
+    if (!mc?.enabled) return { ok: false, reason: 'Mission Control not configured in GKE settings' }
+    if (!team.mcApiKey) return { ok: false, reason: 'API key not set on team' }
 
-    const mcUrl = `https://${mc.domain}`
+    const gkeConfig = env.config as { projectId: string; clusterName: string; clusterZone: string; clientId: string; clientSecret: string }
+    const kc = await buildKubeConfig({ slug: envSlug, projectId: gkeConfig.projectId, clusterName: gkeConfig.clusterName, clusterZone: gkeConfig.clusterZone, clientId: gkeConfig.clientId, clientSecret: gkeConfig.clientSecret })
     const agents = team.agents.map(a => ({ slug: a.slug, isLead: a.slug === team.leadAgent }))
 
     try {
-      await registerAgentsWithMissionControl({ mcUrl, apiKey: mc.apiKey, namespace: teamSlug, agents })
-      return { ok: true, mcUrl }
+      await withMcPortForward(kc, teamSlug, (mcUrl) =>
+        registerAgentsWithMissionControl({ mcUrl, apiKey: team.mcApiKey!, namespace: teamSlug, agents })
+      )
+      return { ok: true }
     } catch (e) {
       return { ok: false, reason: e instanceof Error ? e.message : String(e) }
     }

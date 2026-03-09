@@ -14,16 +14,13 @@ interface GkeForm {
   domain: string
   mcEnabled: boolean
   mcImage: string
-  mcDomain: string
-  mcAdminPassword: string
   mcSessionSecret: string
-  mcApiKey: string
 }
 
 const emptyGke = (): GkeForm => ({
   projectId: '', clusterName: '', clusterZone: 'us-central1', diskZone: 'us-central1-a',
   clientId: '', clientSecret: '', gatewayMode: 'port-forward', domain: '',
-  mcEnabled: false, mcImage: '', mcDomain: '', mcAdminPassword: '', mcSessionSecret: '', mcApiKey: '',
+  mcEnabled: false, mcImage: '', mcSessionSecret: '',
 })
 
 function validateForm(form: GkeForm): string | null {
@@ -66,10 +63,7 @@ export function GkeSettings() {
         domain: c.domain ?? '',
         mcEnabled: (c.missionControl as Record<string, unknown> | undefined)?.enabled === true,
         mcImage: ((c.missionControl as Record<string, string> | undefined)?.image) ?? '',
-        mcDomain: ((c.missionControl as Record<string, string> | undefined)?.domain) ?? '',
-        mcAdminPassword: ((c.missionControl as Record<string, string> | undefined)?.adminPassword) ?? '',
         mcSessionSecret: ((c.missionControl as Record<string, string> | undefined)?.sessionSecret) ?? '',
-        mcApiKey: ((c.missionControl as Record<string, string> | undefined)?.apiKey) ?? '',
       })
     }
   }, [gkeConfig])
@@ -90,10 +84,7 @@ export function GkeSettings() {
       missionControl: form.mcEnabled ? {
         enabled: true,
         image: form.mcImage,
-        domain: form.mcDomain,
-        adminPassword: form.mcAdminPassword,
         sessionSecret: form.mcSessionSecret,
-        apiKey: form.mcApiKey,
       } : undefined,
     })
     setSaved(true)
@@ -116,10 +107,7 @@ export function GkeSettings() {
       missionControl: form.mcEnabled ? {
         enabled: true,
         image: form.mcImage,
-        domain: form.mcDomain,
-        adminPassword: form.mcAdminPassword,
         sessionSecret: form.mcSessionSecret,
-        apiKey: form.mcApiKey,
       } : undefined,
     })
     setAuthState('authing')
@@ -232,22 +220,8 @@ export function GkeSettings() {
                   <Input mono value={form.mcImage} onChange={(e) => updateField('mcImage', e.target.value)} placeholder="gcr.io/my-project/mission-control:latest" />
                 </div>
                 <div>
-                  <Label>Public domain</Label>
-                  <Input mono value={form.mcDomain} onChange={(e) => updateField('mcDomain', e.target.value)} placeholder="mc.example.com" />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label>Admin password</Label>
-                    <Input mono type="password" value={form.mcAdminPassword} onChange={(e) => updateField('mcAdminPassword', e.target.value)} />
-                  </div>
-                  <div>
-                    <Label>Session secret (32 chars)</Label>
-                    <Input mono type="password" value={form.mcSessionSecret} onChange={(e) => updateField('mcSessionSecret', e.target.value)} />
-                  </div>
-                </div>
-                <div>
-                  <Label>API key</Label>
-                  <Input mono type="password" value={form.mcApiKey} onChange={(e) => updateField('mcApiKey', e.target.value)} />
+                  <Label>Session secret (32 chars)</Label>
+                  <Input mono type="password" value={form.mcSessionSecret} onChange={(e) => updateField('mcSessionSecret', e.target.value)} />
                 </div>
               </div>
             )}

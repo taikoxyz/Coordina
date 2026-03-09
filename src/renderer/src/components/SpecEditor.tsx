@@ -429,20 +429,34 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
 
         <div>
           <h3 className="text-sm font-semibold text-gray-900 mb-3">Mission Control</h3>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gray-600">Deploy Mission Control alongside this team's agents.</p>
-              <p className="text-xs text-gray-400 mt-0.5">Requires Mission Control to be configured in GKE settings.</p>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-600">Deploy Mission Control alongside this team's agents.</p>
+                <p className="text-xs text-gray-400 mt-0.5">Requires Mission Control to be configured in GKE settings.</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={spec.missionControlEnabled !== false}
+                  onChange={(e) => set('missionControlEnabled')(e.target.checked)}
+                />
+                <div className="w-8 h-4 bg-gray-200 peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-4 peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all" />
+              </label>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                className="sr-only peer"
-                checked={spec.missionControlEnabled !== false}
-                onChange={(e) => set('missionControlEnabled')(e.target.checked)}
-              />
-              <div className="w-8 h-4 bg-gray-200 peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-4 peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all" />
-            </label>
+            {spec.missionControlEnabled !== false && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Admin password</Label>
+                  <Input mono type="password" value={spec.mcAdminPassword ?? ''} onChange={(e) => set('mcAdminPassword')(e.target.value || undefined)} />
+                </div>
+                <div>
+                  <Label>API key</Label>
+                  <Input mono type="password" value={spec.mcApiKey ?? ''} onChange={(e) => set('mcApiKey')(e.target.value || undefined)} />
+                </div>
+              </div>
+            )}
           </div>
         </div>
         </div>

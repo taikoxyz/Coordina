@@ -48,6 +48,8 @@ export interface TeamSpec {
   teamEmail?: string
   teamDescription?: string
   missionControlEnabled?: boolean
+  mcAdminPassword?: string
+  mcApiKey?: string
 }
 
 export interface PersonaTemplate {
@@ -138,10 +140,7 @@ export interface DeployResult {
 export interface MissionControlConfig {
   enabled: boolean
   image: string
-  domain: string
-  adminPassword: string
   sessionSecret: string
-  apiKey: string
 }
 
 export interface Project {
