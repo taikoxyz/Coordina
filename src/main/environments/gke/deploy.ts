@@ -3,16 +3,9 @@
 import * as k8s from '@kubernetes/client-node'
 import { ClusterManagerClient } from '@google-cloud/container'
 import yaml from 'js-yaml'
-import os from 'os'
-import fs from 'fs/promises'
-import path from 'path'
-import crypto from 'crypto'
-import { execFile } from 'child_process'
-import { promisify } from 'util'
+import { PassThrough } from 'node:stream'
 import { getOAuth2Client } from './auth'
 import type { DeployOptions, DeployStatus, AgentStatus, SpecFile } from '../../../shared/types'
-
-const execFileAsync = promisify(execFile)
 
 export interface GkeDeployConfig {
   slug: string
@@ -293,16 +286,36 @@ export async function execInPod(
   config: GkeDeployConfig,
 ): Promise<string> {
   const kc = await buildKubeConfig(config)
-  const tmpFile = path.join(os.tmpdir(), `coordina-kc-${crypto.randomBytes(8).toString('hex')}.json`)
-  await fs.writeFile(tmpFile, kc.exportConfig(), 'utf-8')
-  try {
-    const { stdout } = await execFileAsync(
-      'kubectl',
-      ['--kubeconfig', tmpFile, '-n', namespace, 'exec', `statefulset/agent-${agentSlug}`, '--', ...command],
-      { timeout: 15000, maxBuffer: 4 * 1024 * 1024 },
-    )
-    return stdout
-  } finally {
-    await fs.unlink(tmpFile).catch(() => undefined)
-  }
+  const exec = new k8s.Exec(kc)
+  const podName = `agent-${agentSlug}-0`
+  return new Promise((resolve, reject) => {
+    const stdout = new PassThrough()
+    const stderr = new PassThrough()
+    const chunks: Buffer[] = []
+    const errChunks: Buffer[] = []
+    let settled = false
+    const timer = setTimeout(() => {
+      if (settled) return
+      settled = true
+      stdout.destroy()
+      stderr.destroy()
+      reject(new Error('exec timed out after 15s'))
+    }, 15_000)
+    const settle = (fn: (v: unknown) => void, v: unknown): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      fn(v)
+    }
+    stdout.on('data', (chunk: Buffer) => chunks.push(chunk))
+    stderr.on('data', (chunk: Buffer) => errChunks.push(chunk))
+    exec.exec(namespace, podName, 'openclaw', command, stdout, stderr, null, false, (status) => {
+      if (status.status === 'Success') {
+        settle(resolve, Buffer.concat(chunks).toString('utf-8'))
+      } else {
+        const errMsg = Buffer.concat(errChunks).toString('utf-8').trim() || status.message || 'exec failed'
+        settle(reject, new Error(errMsg))
+      }
+    }).catch((err) => settle(reject, err))
+  })
 }
