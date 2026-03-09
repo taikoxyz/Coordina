@@ -334,7 +334,7 @@ export function AgentCard({
                     mono
                     value={agent.image ?? ''}
                     onChange={(e) => set('image')(e.target.value || undefined)}
-                    placeholder="Default"
+                    placeholder="—"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -429,7 +429,7 @@ export function AgentCard({
 
             <div>
               <h4 className="text-sm font-semibold text-gray-900 mb-1">Resources</h4>
-              <ReadField label="Container image" value={agent.image} defaultValue={defaultImage} />
+              <ReadField label="Container image" value={agent.image} defaultValue={defaultImage ?? 'alpine/openclaw:latest'} />
               <ReadField label="CPU (cores)" value={agent.cpu} defaultValue={1} />
               <ReadField label="Disk (Gi)" value={agent.diskGi} defaultValue={10} />
             </div>
