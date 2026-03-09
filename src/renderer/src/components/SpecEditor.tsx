@@ -209,38 +209,38 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
             <ReadField label="Bootstrap" value={spec.startupInstructions?.trim() || undefined} monospace full />
           </div>
 
-          {spec.deployedEnvSlug && (
-            <>
-              <hr className="border-gray-200" />
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-gray-900">Mission Control</h4>
-                  <div className="flex items-center gap-2">
-                    {spec.missionControlEnabled !== false ? (
-                      <>
-                        {mcUrl && (
-                          <a href={mcUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700">
-                            Open dashboard <ExternalLink className="w-3 h-3" />
-                          </a>
-                        )}
-                        <Button variant="secondary" size="sm" onClick={() => void handleRegisterMC()} disabled={mcRegState === 'registering'}>
-                          {mcRegState === 'registering' ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Registering…</> :
-                           mcRegState === 'done' ? <><Check className="w-3 h-3 mr-1" />Registered</> : 'Register agents'}
-                        </Button>
-                      </>
-                    ) : (
-                      <span className="text-xs text-gray-400">Disabled</span>
-                    )}
-                  </div>
-                </div>
-                {mcRegState === 'error' && (
-                  <p className="text-xs text-red-600 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />Registration failed — is Mission Control already deployed?
-                  </p>
+          <hr className="border-gray-200" />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-gray-900">Mission Control</h4>
+              <div className="flex items-center gap-2">
+                {spec.missionControlEnabled !== false ? (
+                  spec.deployedEnvSlug ? (
+                    <>
+                      {mcUrl && (
+                        <a href={mcUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700">
+                          Open dashboard <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                      <Button variant="secondary" size="sm" onClick={() => void handleRegisterMC()} disabled={mcRegState === 'registering'}>
+                        {mcRegState === 'registering' ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Registering…</> :
+                         mcRegState === 'done' ? <><Check className="w-3 h-3 mr-1" />Registered</> : 'Register agents'}
+                      </Button>
+                    </>
+                  ) : (
+                    <span className="text-xs text-gray-400">Enabled — not yet deployed</span>
+                  )
+                ) : (
+                  <span className="text-xs text-gray-400">Disabled</span>
                 )}
               </div>
-            </>
-          )}
+            </div>
+            {mcRegState === 'error' && (
+              <p className="text-xs text-red-600 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />Registration failed — is Mission Control already deployed?
+              </p>
+            )}
+          </div>
         </div>
       </div>
       </>
