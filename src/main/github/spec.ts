@@ -87,6 +87,8 @@ export interface ToolsInput {
   agentEmail?: string
   teamEmail?: string
   hasEmail?: boolean
+  hasGitHub?: boolean
+  githubUsername?: string
 }
 
 export function generateIdentityMd(agent: AgentIdentity): string {
@@ -416,6 +418,40 @@ export function generateToolsMd(input: ToolsInput): string {
       '  -H "Content-Type: application/json" \\',
       '  -d \'{"status": "completed"}\'',
       '```',
+    )
+  }
+
+  if (input.hasGitHub) {
+    lines.push(
+      '',
+      '## GitHub Access',
+      'A GitHub Personal Access Token is pre-configured via the `GITHUB_TOKEN` environment variable.',
+      'Use `gh` CLI or the GitHub API for repository operations.',
+    )
+    if (input.githubUsername) {
+      lines.push(`Authenticated as: \`${input.githubUsername}\``)
+    }
+    lines.push(
+      '',
+      '### Usage',
+      '```bash',
+      '# Clone a repo',
+      'gh repo clone <owner>/<repo>',
+      '',
+      '# Create a repo',
+      'gh repo create <name> --private',
+      '',
+      '# Create an issue',
+      'gh issue create --repo <owner>/<repo> --title "<title>" --body "<body>"',
+      '',
+      '# Create a pull request',
+      'gh pr create --title "<title>" --body "<body>"',
+      '```',
+      '',
+      '### Rules',
+      '- Use `gh` CLI (pre-authenticated) — do not pass tokens directly in commands',
+      '- All team members share this GitHub account — coordinate with teammates before force-pushing or deleting branches',
+      '- Do NOT expose the token in logs, messages, or committed files',
     )
   }
 

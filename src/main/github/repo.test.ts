@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('./auth', () => ({
-  getStoredGitHubToken: vi.fn().mockResolvedValue('ghp_test123'),
+vi.mock('../keychain', () => ({
+  getSecret: vi.fn().mockResolvedValue('ghp_test123'),
 }))
 
 const mocks = vi.hoisted(() => ({
@@ -37,7 +37,7 @@ describe('createRepo', () => {
     mocks.repos.createForAuthenticatedUser.mockResolvedValue({
       data: { full_name: 'testuser/my-team' },
     })
-    const name = await createRepo('testuser', 'my-team')
+    const name = await createRepo('test-team', 'testuser', 'my-team')
     expect(name).toBe('testuser/my-team')
     expect(mocks.repos.createForAuthenticatedUser).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'my-team', private: true, auto_init: true })
@@ -56,7 +56,7 @@ describe('commitSpecFiles', () => {
     mocks.git.createCommit.mockResolvedValue({ data: { sha: 'newcommit-sha' } })
     mocks.git.updateRef.mockResolvedValue({})
 
-    await commitSpecFiles('owner/repo', [
+    await commitSpecFiles('test-team', 'owner/repo', [
       { path: 'agents/alice/IDENTITY.md', content: '# Alice' },
       { path: 'agents/alice/SOUL.md', content: '# Soul' },
     ], 'chore: update agent spec')
@@ -77,7 +77,7 @@ describe('isSpecDirty', () => {
     mocks.repos.getContent.mockResolvedValue({
       data: { type: 'file', content: Buffer.from(content).toString('base64') },
     })
-    const dirty = await isSpecDirty('owner/repo', [{ path: 'IDENTITY.md', content }])
+    const dirty = await isSpecDirty('test-team', 'owner/repo', [{ path: 'IDENTITY.md', content }])
     expect(dirty).toBe(false)
   })
 
@@ -85,13 +85,13 @@ describe('isSpecDirty', () => {
     mocks.repos.getContent.mockResolvedValue({
       data: { type: 'file', content: Buffer.from('# Different').toString('base64') },
     })
-    const dirty = await isSpecDirty('owner/repo', [{ path: 'IDENTITY.md', content: '# Alice\n' }])
+    const dirty = await isSpecDirty('test-team', 'owner/repo', [{ path: 'IDENTITY.md', content: '# Alice\n' }])
     expect(dirty).toBe(true)
   })
 
   it('returns true when file does not exist remotely', async () => {
     mocks.repos.getContent.mockRejectedValue(new Error('Not Found'))
-    const dirty = await isSpecDirty('owner/repo', [{ path: 'NEW.md', content: '# New' }])
+    const dirty = await isSpecDirty('test-team', 'owner/repo', [{ path: 'NEW.md', content: '# New' }])
     expect(dirty).toBe(true)
   })
 })

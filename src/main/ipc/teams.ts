@@ -28,6 +28,7 @@ export function registerTeamHandlers(): void {
     for (const agent of spec?.agents ?? []) {
       await deleteSecret(telegramAccount(slug, agent.slug), 'agent-telegram-token')
     }
+    await deleteSecret(`team:${slug}`, 'team-github-token')
     await Promise.all([
       deleteTeam(slug),
       deleteTeamDeployment(slug),
@@ -73,6 +74,22 @@ export function registerTeamHandlers(): void {
       return { ok: true, cleared: true }
     }
     await setSecret(`team:${data.teamSlug}`, 'team-email-password', password)
+    return { ok: true, cleared: false }
+  })
+
+  ipcMain.handle('teams:getGitHubTokenMasked', async (_e, data: { teamSlug: string }) => {
+    const token = await getSecret(`team:${data.teamSlug}`, 'team-github-token')
+    if (!token) return null
+    return token.length > 10 ? `${token.slice(0, 4)}••••${token.slice(-4)}` : '••••••••'
+  })
+
+  ipcMain.handle('teams:setGitHubToken', async (_e, data: { teamSlug: string; token?: string }) => {
+    const token = data.token?.trim()
+    if (!token) {
+      await deleteSecret(`team:${data.teamSlug}`, 'team-github-token')
+      return { ok: true, cleared: true }
+    }
+    await setSecret(`team:${data.teamSlug}`, 'team-github-token', token)
     return { ok: true, cleared: false }
   })
 
