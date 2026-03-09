@@ -3,6 +3,7 @@ import { Pencil } from 'lucide-react'
 import { useTeam, useSaveTeam } from '../hooks/useTeams'
 import { agentTextColor } from '../lib/agentColors'
 import { AgentCard } from './team/AgentCard'
+import { AgentAvatar } from './AgentAvatar'
 import { Button } from './ui'
 import type { TeamSpec } from '../../../shared/types'
 
@@ -66,7 +67,8 @@ export function AgentSpecPanel({ teamSlug, agentSlug }: { teamSlug: string; agen
   return (
     <>
       <div className="shrink-0 border-b border-gray-200">
-        <div className="max-w-2xl mx-auto px-6 h-11 flex items-center gap-2">
+        <div className="max-w-2xl mx-auto px-6 h-11 flex items-center gap-2.5">
+          <AgentAvatar slug={agent.slug} colorIndex={agentIndex} size={28} />
           <div className={`text-xs font-semibold uppercase tracking-[0.16em] ${agentTextColor(agentIndex)}`}>
             {agent.name || 'Unnamed agent'}
           </div>

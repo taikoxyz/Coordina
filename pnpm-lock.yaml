@@ -23,6 +23,12 @@ importers:
       '@assistant-ui/react':
         specifier: ^0.12.15
         version: 0.12.15(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(use-sync-external-store@1.6.0(react@19.2.4))
+      '@dicebear/bottts':
+        specifier: ^9.4.0
+        version: 9.4.0(@dicebear/core@9.4.0)
+      '@dicebear/core':
+        specifier: ^9.4.0
+        version: 9.4.0
       '@electron-toolkit/preload':
         specifier: ^3.0.2
         version: 3.0.2(electron@39.7.0)
@@ -458,6 +464,16 @@ packages:
   '@develar/schema-utils@2.6.5':
     resolution: {integrity: sha512-0cp4PsWQ/9avqTVMCtZ+GirikIA36ikvjtHweU4/j8yLtgObI0+JUPhYFScgwlteveGB1rt3Cm8UhN04XayDig==}
     engines: {node: '>= 8.9.0'}
+
+  '@dicebear/bottts@9.4.0':
+    resolution: {integrity: sha512-vuFC5HRfzla7YH2s02CBrxBr+ninbZu9PtO3a72JoO8Da02/POI7RF3WjjlzfRG4+i5NHyn77gKsl2cy8rTTXA==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      '@dicebear/core': ^9.0.0
+
+  '@dicebear/core@9.4.0':
+    resolution: {integrity: sha512-uoAG5mPBX+kQTtVerWUoH5e7rezG+DV/vJ5icd/kGooGyylH0nuJIlA6todkKGQv+/b0QNo+EzNF6Nc4UTE3wQ==}
+    engines: {node: '>=18.0.0'}
 
   '@dotenvx/dotenvx@1.54.1':
     resolution: {integrity: sha512-41gU3q7v05GM92QPuPUf4CmUw+mmF8p4wLUh6MCRlxpCkJ9ByLcY9jUf6MwrMNmiKyG/rIckNxj9SCfmNCmCqw==}
@@ -6137,6 +6153,14 @@ snapshots:
     dependencies:
       ajv: 6.14.0
       ajv-keywords: 3.5.2(ajv@6.14.0)
+
+  '@dicebear/bottts@9.4.0(@dicebear/core@9.4.0)':
+    dependencies:
+      '@dicebear/core': 9.4.0
+
+  '@dicebear/core@9.4.0':
+    dependencies:
+      '@types/json-schema': 7.0.15
 
   '@dotenvx/dotenvx@1.54.1':
     dependencies:

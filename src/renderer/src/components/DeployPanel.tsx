@@ -211,6 +211,7 @@ export function DeployPanel({
               Deploy Team{isDeploying ? ' ...' : ''}
             </Button>
           )}
+          <div className="flex-1" />
           {agentSlug && (
             <Button
               variant="ghost-destructive"
@@ -219,7 +220,7 @@ export function DeployPanel({
               title={disabledTitle}
             >
               <Trash2 className="w-3.5 h-3.5" />
-              Delete Agent
+              Delete Agent Deployment
             </Button>
           )}
           {!agentSlug && (
@@ -230,7 +231,7 @@ export function DeployPanel({
               title={disabledTitle}
             >
               <Trash2 className="w-3.5 h-3.5" />
-              Delete Team
+              Delete Team Deployment
             </Button>
           )}
           {(deployState === 'done' || deployState === 'error') && (
@@ -369,7 +370,7 @@ export function DeployPanel({
       <DialogShell
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
-        title={deleteScope === 'agent' ? 'Delete Agent' : 'Delete Team'}
+        title={deleteScope === 'agent' ? 'Delete Agent Deployment' : 'Delete Team Deployment'}
       >
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
@@ -394,7 +395,7 @@ export function DeployPanel({
             <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
             <Button variant="destructive" onClick={() => void handleUndeploy(deleteScope)}>
               <Trash2 className="w-3.5 h-3.5" />
-              {deleteScope === 'agent' ? 'Delete Agent' : 'Delete Team'}
+              {deleteScope === 'agent' ? 'Delete Agent Deployment' : 'Delete Team Deployment'}
             </Button>
           </div>
         </div>
