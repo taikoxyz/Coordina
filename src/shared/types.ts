@@ -47,6 +47,7 @@ export interface TeamSpec {
   adminEmail?: string
   teamEmail?: string
   teamDescription?: string
+  missionControlEnabled?: boolean
 }
 
 export interface PersonaTemplate {
@@ -132,6 +133,11 @@ export interface DeployResult {
   ok: boolean
   gatewayUrl?: string
   reason?: string
+}
+
+export interface MissionControlConfig {
+  enabled: boolean
+  image: string
 }
 
 export interface Project {

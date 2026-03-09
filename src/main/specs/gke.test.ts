@@ -19,6 +19,7 @@ const teamSpec: TeamSpec = {
   slug: 'my-team',
   name: 'My Team',
   signingKey: 'fixed-seed-for-testing-1234567890abcdef',
+  missionControlEnabled: false,
   agents: [
     { slug: 'alpha', name: 'Alpha', role: 'Lead', skills: [], persona: 'Alpha persona', models: ['anthropic'] },
     { slug: 'beta', name: 'Beta', role: 'Engineer', skills: [], persona: 'Beta persona', models: ['anthropic'] },

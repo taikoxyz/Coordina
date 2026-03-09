@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Pencil } from 'lucide-react'
+import { AlertCircle, Check, ExternalLink, Loader2, Pencil } from 'lucide-react'
 import type { TeamSpec } from '../../../shared/types'
 import { Button, Input, Label, ReadField, Textarea } from './ui'
 
@@ -32,6 +32,26 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
   const [ghTokenMasked, setGhTokenMasked] = useState<string | null>(null)
   const [ghTokenBusy, setGhTokenBusy] = useState(false)
   const [ghTokenError, setGhTokenError] = useState<string | null>(null)
+  const [mcRegState, setMcRegState] = useState<'idle' | 'registering' | 'done' | 'error'>('idle')
+  const [mcUrl, setMcUrl] = useState<string | null>(null)
+  const [mcAdminPassword, setMcAdminPassword] = useState<string | null>(null)
+  const [mcPasswordCopied, setMcPasswordCopied] = useState(false)
+  const [mcApiKey, setMcApiKey] = useState<string | null>(null)
+  const [mcApiKeyCopied, setMcApiKeyCopied] = useState(false)
+
+  useEffect(() => {
+    if (!spec.slug || spec.missionControlEnabled === false) return
+    let active = true
+    void window.api
+      .invoke('teams:getMcAdminPassword', { teamSlug: spec.slug })
+      .then((value) => { if (active) setMcAdminPassword((value as string | null) ?? null) })
+      .catch(() => { /* ignore */ })
+    void window.api
+      .invoke('teams:getMcApiKey', { teamSlug: spec.slug })
+      .then((value) => { if (active) setMcApiKey((value as string | null) ?? null) })
+      .catch(() => { /* ignore */ })
+    return () => { active = false }
+  }, [spec.slug, spec.missionControlEnabled])
 
   useEffect(() => {
     if (!spec.slug) return
@@ -111,6 +131,18 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
     }
   }
 
+  const handleRegisterMC = useCallback(async () => {
+    if (!spec.deployedEnvSlug) return
+    setMcRegState('registering')
+    const result = await window.api.invoke('mc:registerAgents', { teamSlug: spec.slug, envSlug: spec.deployedEnvSlug }) as { ok: boolean; reason?: string; mcUrl?: string }
+    if (result.ok) {
+      setMcRegState('done')
+      if (result.mcUrl) setMcUrl(result.mcUrl)
+    } else {
+      setMcRegState('error')
+    }
+  }, [spec.deployedEnvSlug, spec.slug])
+
   if (!isEditing) {
     return (
       <>
@@ -175,6 +207,39 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
           <div>
             <h4 className="text-sm font-semibold text-gray-900 mb-1">OpenClaw</h4>
             <ReadField label="Bootstrap" value={spec.startupInstructions?.trim() || undefined} monospace full />
+          </div>
+
+          <hr className="border-gray-200" />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-gray-900">Mission Control</h4>
+              <div className="flex items-center gap-2">
+                {spec.missionControlEnabled !== false ? (
+                  spec.deployedEnvSlug ? (
+                    <>
+                      {mcUrl && (
+                        <a href={mcUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700">
+                          Open dashboard <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                      <Button variant="secondary" size="sm" onClick={() => void handleRegisterMC()} disabled={mcRegState === 'registering'}>
+                        {mcRegState === 'registering' ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Registering…</> :
+                         mcRegState === 'done' ? <><Check className="w-3 h-3 mr-1" />Registered</> : 'Register agents'}
+                      </Button>
+                    </>
+                  ) : (
+                    <span className="text-xs text-gray-400">Enabled — not yet deployed</span>
+                  )
+                ) : (
+                  <span className="text-xs text-gray-400">Disabled</span>
+                )}
+              </div>
+            </div>
+            {mcRegState === 'error' && (
+              <p className="text-xs text-red-600 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />Registration failed — is Mission Control already deployed?
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -383,6 +448,70 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
               onChange={(e) => set('startupInstructions')(e.target.value || undefined)}
               placeholder="Custom bootstrap instructions..."
             />
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Mission Control</h3>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-gray-600">Deploy Mission Control alongside this team's agents (requires GKE settings).</p>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={spec.missionControlEnabled !== false}
+                  onChange={(e) => set('missionControlEnabled')(e.target.checked)}
+                />
+                <div className="w-8 h-4 bg-gray-200 peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-4 peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all" />
+              </label>
+            </div>
+            {spec.missionControlEnabled !== false && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Admin password</Label>
+                  <div className="flex items-center gap-1.5">
+                    <Input mono value={mcAdminPassword ? '•'.repeat(mcAdminPassword.length) : '—'} readOnly className="flex-1" />
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="shrink-0"
+                      disabled={!mcAdminPassword}
+                      onClick={() => {
+                        if (!mcAdminPassword) return
+                        void navigator.clipboard.writeText(mcAdminPassword)
+                        setMcPasswordCopied(true)
+                        setTimeout(() => setMcPasswordCopied(false), 1500)
+                      }}
+                    >
+                      {mcPasswordCopied ? <Check className="w-3 h-3" /> : 'Copy'}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5">Derived from team signing key</p>
+                </div>
+                <div>
+                  <Label>API key</Label>
+                  <div className="flex items-center gap-1.5">
+                    <Input mono value={mcApiKey ? '•'.repeat(mcApiKey.length) : '—'} readOnly className="flex-1" />
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="shrink-0"
+                      disabled={!mcApiKey}
+                      onClick={() => {
+                        if (!mcApiKey) return
+                        void navigator.clipboard.writeText(mcApiKey)
+                        setMcApiKeyCopied(true)
+                        setTimeout(() => setMcApiKeyCopied(false), 1500)
+                      }}
+                    >
+                      {mcApiKeyCopied ? <Check className="w-3 h-3" /> : 'Copy'}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5">Derived from team signing key</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         </div>

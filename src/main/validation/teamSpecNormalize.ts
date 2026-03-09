@@ -55,6 +55,7 @@ export function normalizeTeamSpec(spec: TeamSpec): TeamSpec {
     agents: normalizedAgents,
     deployedEnvSlug: normalizeOptional(spec.deployedEnvSlug),
     lastDeployedAt: typeof spec.lastDeployedAt === 'number' && spec.lastDeployedAt > 0 ? spec.lastDeployedAt : undefined,
+    missionControlEnabled: typeof spec.missionControlEnabled === 'boolean' ? spec.missionControlEnabled : undefined,
   }
 }
 

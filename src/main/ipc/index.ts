@@ -10,6 +10,7 @@ import { registerFileHandlers } from './files'
 import { registerModelsHandlers } from './models'
 import { registerChatHandlers } from './chat'
 import { registerProjectHandlers } from './projects'
+import { registerMissionControlHandlers } from './missionControl'
 
 registerProviderHandlers()
 registerSettingsHandlers()
@@ -20,3 +21,4 @@ registerFileHandlers()
 registerModelsHandlers()
 registerChatHandlers()
 registerProjectHandlers()
+registerMissionControlHandlers()

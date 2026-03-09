@@ -10,16 +10,19 @@ const {
   mockCoreApi,
   mockAppsApi,
   mockNetworkingApi,
+  mockBatchApi,
   mockGetCluster,
   MockCoreV1Api,
   MockAppsV1Api,
   MockNetworkingV1Api,
+  MockBatchV1Api,
 } = vi.hoisted(() => {
   const mockDeleteDisk = vi.fn()
   const mockListDisksByLabels = vi.fn()
   class MockCoreV1Api {}
   class MockAppsV1Api {}
   class MockNetworkingV1Api {}
+  class MockBatchV1Api {}
   return {
     mockObjectApi: {
       read: vi.fn(),
@@ -47,6 +50,10 @@ const {
     },
     mockNetworkingApi: {
       deleteCollectionNamespacedIngress: vi.fn(),
+      deleteNamespacedIngress: vi.fn(),
+    },
+    mockBatchApi: {
+      deleteNamespacedCronJob: vi.fn(),
     },
     mockGetCluster: vi.fn(),
     mockDeleteDisk,
@@ -54,6 +61,7 @@ const {
     MockCoreV1Api,
     MockAppsV1Api,
     MockNetworkingV1Api,
+    MockBatchV1Api,
   }
 })
 
@@ -85,6 +93,7 @@ vi.mock('@kubernetes/client-node', () => {
       if (ApiClass === MockCoreV1Api) return mockCoreApi
       if (ApiClass === MockAppsV1Api) return mockAppsApi
       if (ApiClass === MockNetworkingV1Api) return mockNetworkingApi
+      if (ApiClass === MockBatchV1Api) return mockBatchApi
       return {}
     })
   }
@@ -94,6 +103,8 @@ vi.mock('@kubernetes/client-node', () => {
     CoreV1Api: MockCoreV1Api,
     AppsV1Api: MockAppsV1Api,
     NetworkingV1Api: MockNetworkingV1Api,
+    BatchV1Api: MockBatchV1Api,
+    PortForward: vi.fn(),
   }
 })
 
@@ -136,6 +147,8 @@ beforeEach(() => {
   mockAppsApi.deleteCollectionNamespacedStatefulSet.mockResolvedValue({})
 
   mockNetworkingApi.deleteCollectionNamespacedIngress.mockResolvedValue({})
+  mockNetworkingApi.deleteNamespacedIngress.mockResolvedValue({})
+  mockBatchApi.deleteNamespacedCronJob.mockResolvedValue({})
   mockGetCluster.mockResolvedValue([{
     endpoint: '10.0.0.1',
     masterAuth: { clusterCaCertificate: 'base64-ca' },
