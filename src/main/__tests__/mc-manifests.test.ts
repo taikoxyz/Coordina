@@ -75,7 +75,7 @@ describe('generateMissionControlIngress', () => {
 describe('generateMissionControlHeartbeatCronJob', () => {
   it('generates a CronJob', () => {
     const out = yaml.load(
-      generateMissionControlHeartbeatCronJob({ namespace: 'my-team', agentIds: [1, 2], apiKey: 'key' })
+      generateMissionControlHeartbeatCronJob({ namespace: 'my-team', agentIds: [1, 2] })
     ) as Record<string, unknown>
     expect(out.kind).toBe('CronJob')
     expect(out.metadata).toBeTruthy()

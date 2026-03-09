@@ -434,7 +434,6 @@ export function generateMissionControlIngress(input: { namespace: string; domain
 export function generateMissionControlHeartbeatCronJob(input: {
   namespace: string
   agentIds: number[]
-  apiKey: string
 }): string {
   const { namespace, agentIds } = input
   const heartbeatCmds = agentIds
