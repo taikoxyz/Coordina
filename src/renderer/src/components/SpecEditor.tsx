@@ -142,7 +142,7 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
             variant="primary"
             size="sm"
             onClick={() => void onSave()}
-            disabled={isSaving}
+            disabled={isSaving || !spec.name.trim() || !spec.slug.trim()}
           >
             {isSaving ? 'Saving...' : 'Save'}
           </Button>
