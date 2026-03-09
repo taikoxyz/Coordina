@@ -28,21 +28,17 @@ export function OpenRouterSettings() {
   }
 
   return (
-    <div className="space-y-6 max-w-lg">
-      <div>
-        <h3 className="text-sm font-semibold text-gray-900">OpenRouter</h3>
-        <p className="text-xs text-gray-500 mt-0.5">
+    <div className="space-y-5 max-w-lg">
+      <div className="flex items-start justify-between gap-4">
+        <p className="text-xs text-gray-500">
           Connect your OpenRouter account to use AI models for your agents.
         </p>
-      </div>
-
-      <div className="flex items-center gap-2">
         {status?.connected ? (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 px-2.5 py-1 rounded-full">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 px-2.5 py-1 rounded-full shrink-0">
             <Check className="w-3 h-3" /> Connected
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full shrink-0">
             <X className="w-3 h-3" /> Not configured
           </span>
         )}
