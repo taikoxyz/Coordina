@@ -12,11 +12,18 @@ interface GkeForm {
   clientSecret: string
   gatewayMode: 'port-forward' | 'ingress'
   domain: string
+  mcEnabled: boolean
+  mcImage: string
+  mcDomain: string
+  mcAdminPassword: string
+  mcSessionSecret: string
+  mcApiKey: string
 }
 
 const emptyGke = (): GkeForm => ({
   projectId: '', clusterName: '', clusterZone: 'us-central1', diskZone: 'us-central1-a',
   clientId: '', clientSecret: '', gatewayMode: 'port-forward', domain: '',
+  mcEnabled: false, mcImage: '', mcDomain: '', mcAdminPassword: '', mcSessionSecret: '', mcApiKey: '',
 })
 
 function validateForm(form: GkeForm): string | null {
@@ -57,6 +64,12 @@ export function GkeSettings() {
         clientSecret: c.clientSecret ?? '',
         gatewayMode: (c.gatewayMode as 'port-forward' | 'ingress') ?? 'port-forward',
         domain: c.domain ?? '',
+        mcEnabled: (c.missionControl as Record<string, unknown> | undefined)?.enabled === true,
+        mcImage: ((c.missionControl as Record<string, string> | undefined)?.image) ?? '',
+        mcDomain: ((c.missionControl as Record<string, string> | undefined)?.domain) ?? '',
+        mcAdminPassword: ((c.missionControl as Record<string, string> | undefined)?.adminPassword) ?? '',
+        mcSessionSecret: ((c.missionControl as Record<string, string> | undefined)?.sessionSecret) ?? '',
+        mcApiKey: ((c.missionControl as Record<string, string> | undefined)?.apiKey) ?? '',
       })
     }
   }, [gkeConfig])
@@ -74,6 +87,14 @@ export function GkeSettings() {
       clientSecret: form.clientSecret,
       gatewayMode: form.gatewayMode,
       domain: form.gatewayMode === 'ingress' ? (form.domain || undefined) : undefined,
+      missionControl: form.mcEnabled ? {
+        enabled: true,
+        image: form.mcImage,
+        domain: form.mcDomain,
+        adminPassword: form.mcAdminPassword,
+        sessionSecret: form.mcSessionSecret,
+        apiKey: form.mcApiKey,
+      } : undefined,
     })
     setSaved(true)
     setTimeout(() => setSaved(false), 1500)
@@ -92,13 +113,21 @@ export function GkeSettings() {
       clientSecret: form.clientSecret,
       gatewayMode: form.gatewayMode,
       domain: form.gatewayMode === 'ingress' ? (form.domain || undefined) : undefined,
+      missionControl: form.mcEnabled ? {
+        enabled: true,
+        image: form.mcImage,
+        domain: form.mcDomain,
+        adminPassword: form.mcAdminPassword,
+        sessionSecret: form.mcSessionSecret,
+        apiKey: form.mcApiKey,
+      } : undefined,
     })
     setAuthState('authing')
     const result = await window.api.invoke('gke:auth', 'gke') as { ok: boolean }
     setAuthState(result.ok ? 'done' : 'error')
   }
 
-  const updateField = (key: keyof GkeForm, value: string) => {
+  const updateField = (key: keyof GkeForm, value: string | boolean) => {
     setForm({ ...form, [key]: value })
     setFormError(null)
     setSaved(false)
@@ -179,6 +208,50 @@ export function GkeSettings() {
               {formError}
             </div>
           )}
+
+          <div className="pt-3 border-t border-gray-200">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-xs font-semibold text-gray-700">Mission Control</p>
+                <p className="text-xs text-gray-500 mt-0.5">Optional monitoring dashboard deployed alongside your agents.</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={form.mcEnabled}
+                  onChange={(e) => updateField('mcEnabled', e.target.checked)}
+                />
+                <div className="w-8 h-4 bg-gray-200 peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-4 peer-checked:bg-blue-600 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all" />
+              </label>
+            </div>
+            {form.mcEnabled && (
+              <div className="space-y-3">
+                <div>
+                  <Label>Docker image</Label>
+                  <Input mono value={form.mcImage} onChange={(e) => updateField('mcImage', e.target.value)} placeholder="gcr.io/my-project/mission-control:latest" />
+                </div>
+                <div>
+                  <Label>Public domain</Label>
+                  <Input mono value={form.mcDomain} onChange={(e) => updateField('mcDomain', e.target.value)} placeholder="mc.example.com" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Admin password</Label>
+                    <Input mono type="password" value={form.mcAdminPassword} onChange={(e) => updateField('mcAdminPassword', e.target.value)} />
+                  </div>
+                  <div>
+                    <Label>Session secret (32 chars)</Label>
+                    <Input mono type="password" value={form.mcSessionSecret} onChange={(e) => updateField('mcSessionSecret', e.target.value)} />
+                  </div>
+                </div>
+                <div>
+                  <Label>API key</Label>
+                  <Input mono type="password" value={form.mcApiKey} onChange={(e) => updateField('mcApiKey', e.target.value)} />
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="flex items-center gap-3">
             <Button variant="primary" size="sm" onClick={() => void handleSave()} disabled={saveConfig.isPending}>
