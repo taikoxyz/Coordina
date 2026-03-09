@@ -119,8 +119,8 @@ export interface ValidationResult {
 }
 
 export interface DeployOptions {
-  keepDisks: boolean
-  forceRecreate: boolean
+  recreateDisks: boolean
+  forceRecreatePods: boolean
   partialDeploy?: boolean
 }
 

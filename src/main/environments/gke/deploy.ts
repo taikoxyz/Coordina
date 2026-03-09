@@ -159,7 +159,7 @@ export async function* deployTeam(
   }
 
   const existingPvcNames = new Set<string>()
-  if (options.keepDisks) {
+  if (!options.recreateDisks) {
     const pvcList = await coreApi.listNamespacedPersistentVolumeClaim({ namespace })
       .catch(() => ({ items: [] } as { items: k8s.V1PersistentVolumeClaim[] }))
     for (const pvc of pvcList.items ?? []) {
@@ -175,8 +175,8 @@ export async function* deployTeam(
     }
   }
 
-  // keepDisks=false is a destructive reset path; terminate desired StatefulSets first so PVC operations can proceed safely.
-  if (!options.keepDisks) {
+  // recreateDisks deletes existing PVCs so fresh disks are provisioned.
+  if (options.recreateDisks) {
     for (const name of desiredStatefulSetNames) {
       await tryDelete(() => appsApi.deleteNamespacedStatefulSet({ name, namespace }))
     }
@@ -186,7 +186,7 @@ export async function* deployTeam(
     }
   }
 
-  if (options.forceRecreate && options.keepDisks) {
+  if (options.forceRecreatePods && !options.recreateDisks) {
     for (const name of desiredStatefulSetNames) {
       await tryDelete(() => appsApi.deleteNamespacedStatefulSet({ name, namespace }))
       yield { resource: `StatefulSet/${name}`, status: 'deleted', message: 'Force recreate' }
@@ -199,7 +199,7 @@ export async function* deployTeam(
     if (doc?.metadata?.name) await tryDelete(() => coreApi.deleteNamespacedSecret({ name: doc.metadata.name!, namespace }))
   }
 
-  const skipPvcPaths = new Set(options.keepDisks
+  const skipPvcPaths = new Set(!options.recreateDisks
     ? specFiles.filter(f => f.path.endsWith('/pvc.yaml') && !newAgentPvcPaths.has(f.path)).map(f => f.path)
     : [])
 
@@ -258,11 +258,22 @@ export async function* undeployTeam(teamSlug: string, config: GkeDeployConfig, o
   }
 
   if (options.deleteDisks) {
+    const fallbackZone = config.diskZone ?? toZone(config.clusterZone)
+    const disksFromPvs: { name: string; zone: string }[] = []
+
     const pvcList = await coreApi.listNamespacedPersistentVolumeClaim({ namespace, labelSelector: `coordina.team=${teamSlug}` })
       .catch(() => ({ items: [] } as { items: k8s.V1PersistentVolumeClaim[] }))
     for (const pvc of pvcList.items ?? []) {
       const pvcName = pvc.metadata?.name
       const pvName = pvc.spec?.volumeName
+      if (pvName) {
+        const pv = await coreApi.readPersistentVolume({ name: pvName }).catch(() => null)
+        const volumeHandle = pv?.spec?.csi?.volumeHandle
+        if (volumeHandle) {
+          const parts = volumeHandle.split('/')
+          disksFromPvs.push({ name: parts[parts.length - 1], zone: parts[3] ?? fallbackZone })
+        }
+      }
       if (pvcName) {
         try {
           await coreApi.deleteNamespacedPersistentVolumeClaim({ name: pvcName, namespace })
@@ -278,6 +289,10 @@ export async function* undeployTeam(teamSlug: string, config: GkeDeployConfig, o
     }
 
     const disks = listDisksByLabels(config.projectId, { 'coordina-team': teamSlug })
+    const diskNames = new Set(disks.map(d => d.name))
+    for (const d of disksFromPvs) {
+      if (!diskNames.has(d.name)) disks.push(d)
+    }
     for (const disk of disks) {
       try {
         deleteDisk(config.projectId, disk.zone, disk.name)
@@ -304,9 +319,19 @@ export async function* undeployAgent(teamSlug: string, agentSlug: string, config
 
   if (options.deleteDisks) {
     const pvcName = `${teamSlug}-agent-${agentSlug}`
+    const fallbackZone = config.diskZone ?? toZone(config.clusterZone)
+    let diskFromPv: { name: string; zone: string } | null = null
     try {
       const pvc = await coreApi.readNamespacedPersistentVolumeClaim({ name: pvcName, namespace }).catch(() => null)
       const pvName = pvc?.spec?.volumeName
+      if (pvName) {
+        const pv = await coreApi.readPersistentVolume({ name: pvName }).catch(() => null)
+        const volumeHandle = pv?.spec?.csi?.volumeHandle
+        if (volumeHandle) {
+          const parts = volumeHandle.split('/')
+          diskFromPv = { name: parts[parts.length - 1], zone: parts[3] ?? fallbackZone }
+        }
+      }
       await tryDelete(() => coreApi.deleteNamespacedPersistentVolumeClaim({ name: pvcName, namespace }))
       yield { resource: `PVC/${pvcName}`, status: 'deleted' }
       if (pvName) {
@@ -316,6 +341,10 @@ export async function* undeployAgent(teamSlug: string, agentSlug: string, config
     } catch { yield { resource: `PVC/${pvcName}`, status: 'error' } }
 
     const disks = listDisksByLabels(config.projectId, { 'coordina-team': teamSlug, 'coordina-agent': agentSlug })
+    const diskNames = new Set(disks.map(d => d.name))
+    if (diskFromPv && !diskNames.has(diskFromPv.name)) {
+      disks.push(diskFromPv)
+    }
     for (const disk of disks) {
       try {
         deleteDisk(config.projectId, disk.zone, disk.name)

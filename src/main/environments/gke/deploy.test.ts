@@ -110,7 +110,7 @@ const config: GkeDeployConfig = {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks()
+  vi.resetAllMocks()
 
   mockObjectApi.read.mockRejectedValue({ statusCode: 404 })
   mockObjectApi.replace.mockResolvedValue({})
@@ -119,7 +119,7 @@ beforeEach(() => {
   mockCoreApi.deleteNamespacedPersistentVolumeClaim.mockResolvedValue({})
   mockCoreApi.deletePersistentVolume.mockResolvedValue({})
   mockCoreApi.readNamespacedPersistentVolumeClaim.mockResolvedValue({ spec: {} })
-  mockCoreApi.readPersistentVolume.mockResolvedValue({ spec: {} })
+  mockCoreApi.readPersistentVolume.mockResolvedValue({ spec: { csi: { volumeHandle: 'projects/my-proj/zones/us-central1-a/disks/gke-default-disk' } } })
   mockCoreApi.listNamespacedPersistentVolumeClaim.mockResolvedValue({ items: [] })
   mockCoreApi.deleteNamespacedSecret.mockResolvedValue({})
   mockCoreApi.deleteNamespacedService.mockResolvedValue({})
@@ -148,14 +148,14 @@ describe('deployTeam', () => {
       { path: 'namespace.yaml', content: 'apiVersion: v1\nkind: Namespace\nmetadata:\n  name: team-alpha\n' },
     ]
     const statuses: DeployStatus[] = []
-    for await (const s of deployTeam(files, 'alpha', config, { keepDisks: true, forceRecreate: false })) {
+    for await (const s of deployTeam(files, 'alpha', config, { recreateDisks: false, forceRecreatePods: false })) {
       statuses.push(s)
     }
     expect(statuses.length).toBeGreaterThanOrEqual(1)
     expect(['created', 'updated', 'deleted', 'exists', 'error']).toContain(statuses[0].status)
   })
 
-  it('deletes removed agent resources without restarting unchanged agents when keepDisks=true', async () => {
+  it('deletes removed agent resources without restarting unchanged agents', async () => {
     mockCoreApi.listNamespacedPod.mockResolvedValue({
       items: [
         { metadata: { name: 'agent-alice-0' } },
@@ -175,7 +175,7 @@ describe('deployTeam', () => {
     ]
 
     const statuses: DeployStatus[] = []
-    for await (const s of deployTeam(files, 'alpha', config, { keepDisks: true, forceRecreate: false })) {
+    for await (const s of deployTeam(files, 'alpha', config, { recreateDisks: false, forceRecreatePods: false })) {
       statuses.push(s)
     }
 
@@ -185,13 +185,13 @@ describe('deployTeam', () => {
     expect(statuses.some(s => s.resource === 'StatefulSet/agent-bob' && s.status === 'deleted')).toBe(true)
   })
 
-  it('terminates desired StatefulSets first when keepDisks=false', async () => {
+  it('terminates desired StatefulSets first when recreateDisks=true', async () => {
     const files = [
       { path: 'namespace.yaml', content: 'apiVersion: v1\nkind: Namespace\nmetadata:\n  name: alpha\n' },
       { path: 'agents/alice/statefulset.yaml', content: 'apiVersion: apps/v1\nkind: StatefulSet\nmetadata:\n  name: agent-alice\n  namespace: alpha\n' },
     ]
 
-    for await (const status of deployTeam(files, 'alpha', config, { keepDisks: false, forceRecreate: false })) {
+    for await (const status of deployTeam(files, 'alpha', config, { recreateDisks: true, forceRecreatePods: false })) {
       void status
     }
 
@@ -262,6 +262,22 @@ describe('undeployAgent', () => {
     expect(mockCoreApi.deletePersistentVolume).toHaveBeenCalledWith({ name: 'pvc-def456' })
     expect(mockListDisksByLabels).toHaveBeenCalledWith('my-proj', { 'coordina-team': 'team', 'coordina-agent': 'alice' })
     expect(mockDeleteDisk).toHaveBeenCalledWith('my-proj', 'us-central1-a', 'gke-disk-def456')
+  })
+
+  it('deletes GCP disk via PV volume handle when labels return nothing', async () => {
+    mockCoreApi.readNamespacedPersistentVolumeClaim.mockResolvedValue({
+      spec: { volumeName: 'pv-ripley' },
+    })
+    mockCoreApi.readPersistentVolume.mockResolvedValue({
+      spec: { csi: { volumeHandle: 'projects/my-proj/zones/us-central1-a/disks/gke-disk-ripley' } },
+    })
+    mockListDisksByLabels.mockReturnValue([])
+
+    const statuses: DeployStatus[] = []
+    for await (const s of undeployAgent('team', 'ripley', config, { deleteDisks: true })) statuses.push(s)
+
+    expect(mockDeleteDisk).toHaveBeenCalledWith('my-proj', 'us-central1-a', 'gke-disk-ripley')
+    expect(statuses.some(s => s.resource === 'Disk/gke-disk-ripley' && s.status === 'deleted')).toBe(true)
   })
 
   it('does not delete GCP disk when deleteDisks=false', async () => {
