@@ -3,7 +3,7 @@ import { useNav } from '../store/nav'
 import { useTeams, useSaveTeam } from '../hooks/useTeams'
 import { useSettings } from '../hooks/useSettings'
 import { cn } from '../lib/utils'
-import { agentColor } from '../lib/agentColors'
+import { AgentAvatar } from './AgentAvatar'
 import type { AgentSpec } from '../../../shared/types'
 import { DEFAULT_AGENT_NAME_THEME, generateAutoAgentIdentities } from '../../../shared/agentNames'
 
@@ -114,13 +114,8 @@ export function AppSidebar() {
                         : 'text-gray-500 hover:bg-white/50 hover:text-gray-900',
                     )}
                   >
-                    <span className={cn(
-                      'flex items-center justify-center w-5 h-5 rounded-full text-[9px] font-semibold uppercase shrink-0',
-                      agentColor(i),
-                    )}>
-                      {(agent.name || '?').charAt(0)}
-                    </span>
-                    <span className="text-xs truncate min-w-0">{agent.name || agent.slug}</span>
+                    <AgentAvatar slug={agent.slug} colorIndex={i} size={20} />
+                    <span className="text-xs truncate min-w-0 flex-1">{agent.name || agent.slug}</span>
                     {deployingTeamSlug === team.slug && deployingAgentSlug === agent.slug && (
                       <Loader2 className="w-3 h-3 text-blue-500 animate-spin shrink-0" />
                     )}

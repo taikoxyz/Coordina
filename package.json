@@ -28,6 +28,8 @@
     "@ai-sdk/mistral": "^3.0.22",
     "@ai-sdk/openai": "^3.0.39",
     "@assistant-ui/react": "^0.12.15",
+    "@dicebear/bottts-neutral": "^9.4.0",
+    "@dicebear/core": "^9.4.0",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "@google-cloud/container": "^6.7.0",
