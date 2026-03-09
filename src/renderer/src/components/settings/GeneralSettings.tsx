@@ -5,7 +5,7 @@ import {
   type AgentNameTheme,
 } from '../../../../shared/agentNames'
 import { useSaveSettings, useSettings } from '../../hooks/useSettings'
-import { Button, Input, Label } from '../ui'
+import { Button } from '../ui'
 
 const agentNameThemeOptions: Array<{ value: AgentNameTheme; label: string }> = [
   { value: 'sci-fi', label: 'Sci-Fi' },
@@ -33,36 +33,6 @@ export function GeneralSettings() {
 
   return (
     <div className="space-y-6 max-w-lg">
-      {/* Git versioning */}
-      <div className="border-b border-border pb-5">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900">Git versioning</h3>
-            <p className="text-xs text-gray-500 mt-0.5">Track team spec changes in git. API keys and derived files are never committed.</p>
-          </div>
-          <button
-            role="switch"
-            aria-checked={settings.gitEnabled ?? false}
-            onClick={() => setSettings({ ...settings, gitEnabled: !(settings.gitEnabled ?? false) })}
-            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors ${settings.gitEnabled ? 'bg-blue-600' : 'bg-gray-200'}`}
-          >
-            <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition-transform mt-0.5 ${settings.gitEnabled ? 'translate-x-4 ml-0.5' : 'translate-x-0.5'}`} />
-          </button>
-        </div>
-
-        {settings.gitEnabled && (
-          <div className="mt-3 pt-3 border-t border-gray-100">
-            <Label>Repository path</Label>
-            <Input
-              mono
-              value={settings.gitRepoPath ?? ''}
-              onChange={e => setSettings({ ...settings, gitRepoPath: e.target.value || undefined })}
-              placeholder="~/.coordina"
-            />
-          </div>
-        )}
-      </div>
-
       <div className="border-b border-border pb-5">
         <div className="space-y-3">
           <div>

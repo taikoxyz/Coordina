@@ -86,8 +86,6 @@ export interface DerivationPatterns {
 
 export interface AppSettings {
   derivationPatterns?: DerivationPatterns
-  gitEnabled?: boolean
-  gitRepoPath?: string
   agentNameTheme?: AgentNameTheme
 }
 

@@ -32,6 +32,7 @@ import type { DeriveSecrets } from './base'
 import type { TeamSpec, SpecFile } from '../../shared/types'
 import { openrouterToOpenClawJson, openrouterToEnvVars, testOpenRouterConnection } from '../providers/base'
 import { getOpenRouterApiKey } from '../store/providers'
+import { getSecret } from '../keychain'
 import { saveTeam } from '../store/teams'
 import { resolveGatewayMode } from '../gateway/mode'
 import { listProjects } from '../store/projects'
@@ -130,6 +131,21 @@ const gkeDeriver: DeploymentSpecDeriver = {
       throw new Error(`OpenRouter API key is invalid or expired: ${keyCheck.error ?? 'unknown error'}. Go to Settings → OpenRouter to reconnect.`)
     }
 
+    const githubToken = await getSecret(`team:${spec.slug}`, 'team-github-token')
+    const hasGitHub = Boolean(githubToken)
+    let githubUsername: string | undefined
+    if (githubToken) {
+      try {
+        const res = await fetch('https://api.github.com/user', {
+          headers: { Authorization: `Bearer ${githubToken}`, Accept: 'application/vnd.github+json' },
+        })
+        if (res.ok) {
+          const user = await res.json() as { login: string }
+          githubUsername = user.login
+        }
+      } catch { /* GitHub username is optional — continue without it */ }
+    }
+
     for (const agent of spec.agents) {
       const isLead = agent.slug === spec.leadAgent
       const derivedEmail = hasEmail ? deriveAgentEmail(spec.teamEmail!, agent.slug, isLead) : undefined
@@ -220,6 +236,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
           EMAIL_ADDRESS: effectiveEmail,
           EMAIL_PASSWORD: secrets.teamEmailPassword,
         } : {}),
+        ...(githubToken ? { GITHUB_TOKEN: githubToken } : {}),
       }
       const credentialSecretName = `${spec.slug}-${agent.slug}-credentials`
       const credentialsHash = createHash('sha256').update(JSON.stringify(envVarsWithTelegram)).digest('hex')
@@ -265,6 +282,8 @@ const gkeDeriver: DeploymentSpecDeriver = {
         agentEmail: hasEmail ? effectiveEmail : undefined,
         teamEmail: hasEmail ? spec.teamEmail : undefined,
         hasEmail,
+        hasGitHub,
+        githubUsername,
       })
       const openclawJson = generateOpenClawJson(openclawConfigWithGateway)
       const agentConfigMap = generateAgentConfigMap({

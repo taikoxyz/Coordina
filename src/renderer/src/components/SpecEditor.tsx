@@ -28,6 +28,20 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
   const [emailPasswordMasked, setEmailPasswordMasked] = useState<string | null>(null)
   const [emailPasswordBusy, setEmailPasswordBusy] = useState(false)
   const [emailPasswordError, setEmailPasswordError] = useState<string | null>(null)
+  const [ghToken, setGhToken] = useState('')
+  const [ghTokenMasked, setGhTokenMasked] = useState<string | null>(null)
+  const [ghTokenBusy, setGhTokenBusy] = useState(false)
+  const [ghTokenError, setGhTokenError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!spec.slug) return
+    let active = true
+    window.api
+      .invoke('teams:getGitHubTokenMasked', { teamSlug: spec.slug })
+      .then((value) => { if (active) setGhTokenMasked((value as string | null) ?? null) })
+      .catch((e) => { if (active) setGhTokenError((e as Error).message) })
+    return () => { active = false }
+  }, [spec.slug])
 
   useEffect(() => {
     if (!spec.slug || !spec.teamEmail) { setEmailPasswordMasked(null); return }
@@ -68,6 +82,35 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
     }
   }
 
+  const saveGhToken = async () => {
+    setGhTokenBusy(true)
+    setGhTokenError(null)
+    try {
+      await window.api.invoke('teams:setGitHubToken', { teamSlug: spec.slug, token: ghToken })
+      const masked = (await window.api.invoke('teams:getGitHubTokenMasked', { teamSlug: spec.slug })) as string | null
+      setGhTokenMasked(masked)
+      setGhToken('')
+    } catch (e) {
+      setGhTokenError((e as Error).message)
+    } finally {
+      setGhTokenBusy(false)
+    }
+  }
+
+  const clearGhToken = async () => {
+    setGhTokenBusy(true)
+    setGhTokenError(null)
+    try {
+      await window.api.invoke('teams:setGitHubToken', { teamSlug: spec.slug, token: '' })
+      setGhTokenMasked(null)
+      setGhToken('')
+    } catch (e) {
+      setGhTokenError((e as Error).message)
+    } finally {
+      setGhTokenBusy(false)
+    }
+  }
+
   if (!isEditing) {
     return (
       <>
@@ -105,6 +148,16 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
             <ReadField label="App password" value={emailPasswordMasked ?? undefined} monospace />
             {emailPasswordError && (
               <p className="text-xs text-red-600 mt-0.5">{emailPasswordError}</p>
+            )}
+          </div>
+
+          <hr className="border-gray-200" />
+
+          <div>
+            <h4 className="text-sm font-semibold text-gray-900 mb-1">GitHub</h4>
+            <ReadField label="Token" value={ghTokenMasked ?? undefined} monospace />
+            {ghTokenError && (
+              <p className="text-xs text-red-600 mt-0.5">{ghTokenError}</p>
             )}
           </div>
 
@@ -236,6 +289,48 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
                 <p className="text-xs text-red-600 mt-0.5">{emailPasswordError}</p>
               )}
             </div>
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">GitHub</h3>
+          <div>
+            <Label>Personal Access Token</Label>
+            <div className="flex items-center gap-1.5">
+              <Input
+                mono
+                type="password"
+                value={ghToken}
+                onChange={(e) => setGhToken(e.target.value)}
+                placeholder={ghTokenMasked ? 'Update token' : 'ghp_...'}
+              />
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => void saveGhToken()}
+                disabled={ghTokenBusy || !spec.slug || !ghToken.trim()}
+                className="shrink-0"
+              >
+                Save
+              </Button>
+              {ghTokenMasked && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void clearGhToken()}
+                  disabled={ghTokenBusy}
+                  className="shrink-0"
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+            {ghTokenMasked && (
+              <p className="text-xs text-gray-400 font-mono mt-0.5">{ghTokenMasked}</p>
+            )}
+            {ghTokenError && (
+              <p className="text-xs text-red-600 mt-0.5">{ghTokenError}</p>
+            )}
           </div>
         </div>
 

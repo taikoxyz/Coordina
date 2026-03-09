@@ -1,15 +1,15 @@
 import { Octokit } from '@octokit/rest'
-import { getStoredGitHubToken } from './auth'
+import { getSecret } from '../keychain'
 import type { SpecFile } from '../../shared/types'
 
-async function getOctokit(): Promise<Octokit> {
-  const token = await getStoredGitHubToken()
-  if (!token) throw new Error('GitHub not authenticated. Please connect your GitHub account in Settings.')
+async function getOctokit(teamSlug: string): Promise<Octokit> {
+  const token = await getSecret(`team:${teamSlug}`, 'team-github-token')
+  if (!token) throw new Error('GitHub not authenticated. Please connect your GitHub account in the team settings.')
   return new Octokit({ auth: token })
 }
 
-export async function createRepo(_owner: string, name: string): Promise<string> {
-  const octokit = await getOctokit()
+export async function createRepo(teamSlug: string, _owner: string, name: string): Promise<string> {
+  const octokit = await getOctokit(teamSlug)
   const { data } = await octokit.repos.createForAuthenticatedUser({
     name,
     private: true,
@@ -19,8 +19,8 @@ export async function createRepo(_owner: string, name: string): Promise<string> 
   return data.full_name
 }
 
-export async function commitSpecFiles(fullRepoName: string, files: SpecFile[], message: string): Promise<void> {
-  const octokit = await getOctokit()
+export async function commitSpecFiles(teamSlug: string, fullRepoName: string, files: SpecFile[], message: string): Promise<void> {
+  const octokit = await getOctokit(teamSlug)
   const [owner, repo] = fullRepoName.split('/')
 
   // Get current HEAD SHA
@@ -55,8 +55,8 @@ export async function commitSpecFiles(fullRepoName: string, files: SpecFile[], m
   await octokit.git.updateRef({ owner, repo, ref: 'heads/main', sha: newCommit.sha })
 }
 
-export async function getFileShas(fullRepoName: string, paths: string[]): Promise<Record<string, string>> {
-  const octokit = await getOctokit()
+export async function getFileShas(teamSlug: string, fullRepoName: string, paths: string[]): Promise<Record<string, string>> {
+  const octokit = await getOctokit(teamSlug)
   const [owner, repo] = fullRepoName.split('/')
   const shas: Record<string, string> = {}
 
@@ -74,8 +74,8 @@ export async function getFileShas(fullRepoName: string, paths: string[]): Promis
   return shas
 }
 
-export async function isSpecDirty(fullRepoName: string, localFiles: SpecFile[]): Promise<boolean> {
-  const octokit = await getOctokit()
+export async function isSpecDirty(teamSlug: string, fullRepoName: string, localFiles: SpecFile[]): Promise<boolean> {
+  const octokit = await getOctokit(teamSlug)
   const [owner, repo] = fullRepoName.split('/')
 
   for (const file of localFiles) {
@@ -94,8 +94,8 @@ export async function isSpecDirty(fullRepoName: string, localFiles: SpecFile[]):
   return false
 }
 
-export async function getAuthenticatedUser(): Promise<string> {
-  const octokit = await getOctokit()
+export async function getAuthenticatedUser(teamSlug: string): Promise<string> {
+  const octokit = await getOctokit(teamSlug)
   const { data } = await octokit.users.getAuthenticated()
   return data.login
 }

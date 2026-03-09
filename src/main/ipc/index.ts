@@ -8,7 +8,6 @@ import { registerTeamHandlers } from './teams'
 import { registerDeployHandlers } from './deploy'
 import { registerFileHandlers } from './files'
 import { registerModelsHandlers } from './models'
-import { registerGitHandlers } from './git'
 import { registerChatHandlers } from './chat'
 import { registerProjectHandlers } from './projects'
 
@@ -19,6 +18,5 @@ registerTeamHandlers()
 registerDeployHandlers()
 registerFileHandlers()
 registerModelsHandlers()
-registerGitHandlers()
 registerChatHandlers()
 registerProjectHandlers()
