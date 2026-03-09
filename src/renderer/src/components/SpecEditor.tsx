@@ -211,7 +211,7 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
                 </div>
                 {mcRegState === 'error' && (
                   <p className="text-xs text-red-600 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />Registration failed — is Mission Control configured in GKE settings?
+                    <AlertCircle className="w-3 h-3" />Registration failed — is Mission Control already deployed?
                   </p>
                 )}
               </div>
