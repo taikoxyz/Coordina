@@ -61,7 +61,7 @@ export function MissionControlSettings() {
             onChange={(e) => setImage(e.target.value)}
             placeholder="alpine/mission-control:latest"
           />
-          <p className="text-xs text-gray-400 mt-0.5">Leave blank to use the default: alpine/mission-control:latest</p>
+          <p className="text-xs text-gray-400 mt-0.5">Required — your private registry image for the Mission Control dashboard.</p>
         </div>
       )}
 

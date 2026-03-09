@@ -51,10 +51,8 @@ describe('GKE deriver with Mission Control', () => {
     expect(paths).not.toContain('mission-control/secret.yaml')
   })
 
-  it('uses default image when MC is enabled per-team but no image configured globally', async () => {
+  it('throws when MC is enabled per-team but no image configured globally', async () => {
     const deriver = getDeriver('gke')
-    const files = await deriver.derive(TEAM, {})
-    const deployment = files.find(f => f.path === 'mission-control/deployment.yaml')
-    expect(deployment?.content).toContain('alpine/mission-control:latest')
+    await expect(deriver.derive(TEAM, {})).rejects.toThrow('no Docker image is configured')
   })
 })
