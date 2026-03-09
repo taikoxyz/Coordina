@@ -91,7 +91,7 @@ export function generateStorageClass(input: { teamSlug: string }): string {
       labels: { 'coordina.team': teamSlug },
     },
     provisioner: 'pd.csi.storage.gke.io',
-    parameters: { type: 'pd-balanced', labels: `coordina-team=${teamSlug}` },
+    parameters: { type: 'pd-balanced' },
     reclaimPolicy: 'Retain',
     volumeBindingMode: 'WaitForFirstConsumer',
     allowVolumeExpansion: true,

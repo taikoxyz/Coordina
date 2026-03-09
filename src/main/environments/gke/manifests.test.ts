@@ -178,7 +178,7 @@ describe('generateStorageClass', () => {
     expect(manifest).toContain('allowVolumeExpansion: true')
     expect(manifest).toContain('type: pd-balanced')
     expect(manifest).toContain('coordina.team: eng-alpha')
-    expect(manifest).toContain('labels: coordina-team=eng-alpha')
+
   })
 })
 
