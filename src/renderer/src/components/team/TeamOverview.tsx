@@ -201,15 +201,15 @@ export function TeamOverview({
 
         <div>
           <h4 className="text-sm font-semibold text-gray-900 mb-3">Resources</h4>
-          <ReadField label="Default container image" value={spec.defaultImage} monospace />
-          <ReadField label="Storage (Gi)" value={spec.defaultDiskGi} />
+          <ReadField label="Default container image" value={spec.defaultImage} />
+          <ReadField label="Storage (Gi)" value={spec.defaultDiskGi} defaultValue={10} />
         </div>
 
         <hr className="border-gray-200" />
 
         <div>
           <h4 className="text-sm font-semibold text-gray-900 mb-1">OpenClaw</h4>
-          <ReadField label="Bootstrap" value={spec.startupInstructions?.trim() || undefined} monospace />
+          <ReadField label="Bootstrap" value={spec.startupInstructions?.trim() || undefined} full />
         </div>
 
         <hr className="border-gray-200" />

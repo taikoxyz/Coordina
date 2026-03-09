@@ -416,9 +416,9 @@ export function AgentCard({
 
             <div>
               <h4 className="text-sm font-semibold text-gray-900 mb-1">Resources</h4>
-              <ReadField label="Container image" value={agent.image} monospace />
-              <ReadField label="CPU (cores)" value={agent.cpu} />
-              <ReadField label="Disk (Gi)" value={agent.diskGi} />
+              <ReadField label="Container image" value={agent.image} />
+              <ReadField label="CPU (cores)" value={agent.cpu} defaultValue={1} />
+              <ReadField label="Disk (Gi)" value={agent.diskGi} defaultValue={10} />
             </div>
           </>
         )}
