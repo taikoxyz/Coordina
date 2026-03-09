@@ -64,7 +64,7 @@ export function SettingsPage() {
       <nav className="w-56 shrink-0 border-r border-gray-100 bg-sidebar overflow-y-auto py-3">
         <button
           onClick={goBack}
-          className="flex items-center gap-2 px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors w-full"
+          className="flex items-center gap-2 px-4 py-2 text-xs text-gray-500 hover:text-gray-700 transition-colors w-full"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
           Back to app
@@ -82,7 +82,7 @@ export function SettingsPage() {
               <button
                 onClick={() => setSettingsSection(s.id)}
                 className={cn(
-                  'w-full text-left px-4 py-1.5 text-sm transition-colors',
+                  'w-full text-left px-4 py-1 text-xs transition-colors',
                   settingsSection === s.id
                     ? 'bg-white/80 text-gray-900 font-medium'
                     : 'text-gray-500 hover:bg-white/50 hover:text-gray-700',
