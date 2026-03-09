@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Check, Copy } from 'lucide-react'
-import { useEnvironment } from '../../hooks/useEnvironments'
+import { useGkeConfig } from '../../hooks/useEnvironments'
 
 interface GkeConfig {
   projectId?: string
@@ -42,15 +42,14 @@ function kubectlExec(teamSlug: string, agentSlug: string, cmd: string): string {
   return `${KUBECTL_PREFIX} ${teamSlug} agent-${agentSlug}-0 -c openclaw -- ${cmd}`
 }
 
-export function ConnectPane({ teamSlug, agentSlug, envSlug }: {
+export function ConnectPane({ teamSlug, agentSlug }: {
   teamSlug: string
   agentSlug: string
-  envSlug?: string
 }) {
-  const env = useEnvironment(envSlug)
-  const config = (env?.config ?? {}) as GkeConfig
+  const { data: gkeConfig } = useGkeConfig()
+  const config = (gkeConfig?.config ?? {}) as GkeConfig
 
-  if (!env || env.type !== 'gke') {
+  if (!gkeConfig) {
     return (
       <div className="flex items-center justify-center h-full text-sm text-gray-400">
         Deploy to a GKE environment to see connect instructions.

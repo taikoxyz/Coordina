@@ -1,9 +1,8 @@
 // IPC handlers for environments and deployment using K8s API and file store
 // FEATURE: Deployment IPC layer replacing SQLite and kubectl with async APIs
 import { ipcMain, BrowserWindow } from 'electron'
-import { listEnvironments, getEnvironment, saveEnvironment, deleteEnvironment } from '../store/environments'
+import { getEnvironment, saveEnvironment, getEnvToken } from '../store/environments'
 import { getTeam, saveTeam } from '../store/teams'
-import { listProviders, getProviderApiKey } from '../store/providers'
 import { getSecret } from '../keychain'
 import { saveTeamDeployment, deleteTeamDeployment } from '../store/deployments'
 import { getDeriver } from '../specs/base'
@@ -12,7 +11,7 @@ import { validateDerivedSpecFiles } from '../specs/validate'
 import { deployTeam, undeployTeam, getTeamStatus } from '../environments/gke/deploy'
 import { authenticateGke } from '../environments/gke/auth'
 import { resolveGatewayMode } from '../gateway/mode'
-import type { EnvironmentRecord, DeployOptions } from '../../shared/types'
+import type { DeployOptions } from '../../shared/types'
 import { validateTeamSpec } from '../validation/teamSpec'
 import { getDeployLogs, saveDeployLogs, clearDeployLogs } from '../store/deployLogs'
 
@@ -27,18 +26,10 @@ export function registerDeployHandlers(): void {
     if (!spec) throw new Error('Team not found')
     if (!env) throw new Error('Environment not found')
 
-    const providerRecords = await listProviders()
-    const specValidation = validateTeamSpec(spec, providerRecords)
+    const specValidation = validateTeamSpec(spec)
     if (!specValidation.valid) {
       throw new Error(formatValidationFailure('Team spec validation failed', specValidation.errors))
     }
-
-    const providersMap = new Map(
-      await Promise.all(providerRecords.map(async (p) => {
-        const apiKey = await getProviderApiKey(p.slug)
-        return [p.slug, { ...p, apiKey: apiKey ?? undefined }] as const
-      }))
-    )
 
     const telegramTokens = Object.fromEntries(await Promise.all(
       spec.agents.map(async (agent) => {
@@ -52,7 +43,7 @@ export function registerDeployHandlers(): void {
       : undefined
 
     const deriver = getDeriver(env.type)
-    const specFiles = await deriver.derive(spec, providersMap, env.config, { agentTelegramTokens: telegramTokens, teamEmailPassword: emailPassword })
+    const specFiles = await deriver.derive(spec, env.config, { agentTelegramTokens: telegramTokens, teamEmailPassword: emailPassword })
     const deployValidation = validateDerivedSpecFiles(specFiles)
     if (!deployValidation.valid) {
       throw new Error(formatValidationFailure('Deployment file validation failed', deployValidation.errors))
@@ -61,18 +52,16 @@ export function registerDeployHandlers(): void {
     return { spec, env, specFiles }
   }
 
-  ipcMain.handle('environments:list', () => listEnvironments())
+  ipcMain.handle('gke:getConfig', () => getEnvironment('gke'))
 
-  ipcMain.handle('environments:get', (_e, slug: string) => getEnvironment(slug))
-
-  ipcMain.handle('environments:save', async (_e, record: EnvironmentRecord) => {
-    await saveEnvironment(record)
+  ipcMain.handle('gke:save', async (_e, config: Record<string, unknown>) => {
+    await saveEnvironment({ slug: 'gke', type: 'gke', name: 'GKE', config })
     return { ok: true }
   })
 
-  ipcMain.handle('environments:delete', async (_e, slug: string) => {
-    await deleteEnvironment(slug)
-    return { ok: true }
+  ipcMain.handle('gke:authStatus', async () => {
+    const token = await getEnvToken('gke')
+    return { authenticated: !!token }
   })
 
   ipcMain.handle('gke:auth', async (_e, envSlug: string) => {
@@ -87,16 +76,19 @@ export function registerDeployHandlers(): void {
     }
   })
 
-  ipcMain.handle('deploy:preview', async (_event, { teamSlug, envSlug }: { teamSlug: string; envSlug: string }) => {
+  ipcMain.handle('deploy:preview', async (_event, { teamSlug, envSlug, agentSlug }: { teamSlug: string; envSlug: string; agentSlug?: string }) => {
     try {
       const { specFiles } = await deriveValidatedDeployFiles(teamSlug, envSlug)
-      return { ok: true, files: specFiles.map(file => ({ path: file.path, content: file.content })) }
+      const filteredFiles = agentSlug
+        ? specFiles.filter(f => !f.path.includes('/') || f.path.startsWith(`agents/${agentSlug}/`))
+        : specFiles
+      return { ok: true, files: filteredFiles.map(file => ({ path: file.path, content: file.content })) }
     } catch (error) {
       return { ok: false, reason: error instanceof Error ? error.message : String(error) }
     }
   })
 
-  ipcMain.handle('deploy:team', async (event, { teamSlug, envSlug, options }: { teamSlug: string; envSlug: string; options: DeployOptions }) => {
+  ipcMain.handle('deploy:team', async (event, { teamSlug, envSlug, options, agentSlug }: { teamSlug: string; envSlug: string; options: DeployOptions; agentSlug?: string }) => {
     let spec
     let env
     let specFiles
@@ -109,11 +101,15 @@ export function registerDeployHandlers(): void {
       return { ok: false, reason: error instanceof Error ? error.message : String(error) }
     }
 
+    const filesToDeploy = agentSlug
+      ? specFiles.filter(f => !f.path.includes('/') || f.path.startsWith(`agents/${agentSlug}/`))
+      : specFiles
+
     const win = BrowserWindow.fromWebContents(event.sender)
     const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof deployTeam>[2]
 
     try {
-      for await (const status of deployTeam(specFiles, teamSlug, deployConfig, options)) {
+      for await (const status of deployTeam(filesToDeploy, teamSlug, deployConfig, options)) {
         win?.webContents.send('deploy:status', status)
       }
       const leadAgent = spec.agents[0]?.slug

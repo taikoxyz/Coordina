@@ -1,33 +1,25 @@
-// React Query hooks for environment CRUD using the file-based IPC layer
-// FEATURE: Environment management hooks consuming environments:list/save/delete IPC channels
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import type { EnvironmentRecord, AgentStatus } from '../../../shared/types'
+import type { EnvironmentRecord } from '../../../shared/types'
 
-export type { EnvironmentRecord, AgentStatus }
+export type { EnvironmentRecord }
 
-export const useEnvironments = () =>
-  useQuery<EnvironmentRecord[]>({
-    queryKey: ['environments'],
-    queryFn: () => window.api.invoke('environments:list') as Promise<EnvironmentRecord[]>,
+export const useGkeConfig = () =>
+  useQuery<EnvironmentRecord | null>({
+    queryKey: ['gke', 'config'],
+    queryFn: () => window.api.invoke('gke:getConfig') as Promise<EnvironmentRecord | null>,
   })
 
-export const useEnvironment = (slug: string | undefined) => {
-  const { data: envs } = useEnvironments()
-  return slug ? (envs?.find(e => e.slug === slug) ?? null) : null
-}
-
-export const useSaveEnvironment = () => {
+export const useSaveGkeConfig = () => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (record: EnvironmentRecord) => window.api.invoke('environments:save', record),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['environments'] }),
+    mutationFn: (config: Record<string, unknown>) =>
+      window.api.invoke('gke:save', config) as Promise<{ ok: boolean }>,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['gke'] }),
   })
 }
 
-export const useDeleteEnvironment = () => {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (slug: string) => window.api.invoke('environments:delete', slug),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['environments'] }),
+export const useGkeAuthStatus = () =>
+  useQuery<{ authenticated: boolean }>({
+    queryKey: ['gke', 'authStatus'],
+    queryFn: () => window.api.invoke('gke:authStatus') as Promise<{ authenticated: boolean }>,
   })
-}

@@ -4,7 +4,6 @@ import path from 'path'
 import os from 'os'
 import { BrowserWindow } from 'electron'
 import { getTeam } from './store/teams'
-import { listProviders } from './store/providers'
 import { validateTeamSpec } from './validation/teamSpec'
 import fs from 'fs/promises'
 
@@ -20,8 +19,7 @@ export const runPipeline = async (slug: string): Promise<void> => {
   const teamDeployDir = path.join(teamsDir, slug, '.deploy')
   await fs.rm(teamDeployDir, { recursive: true, force: true })
 
-  const providerRecords = await listProviders()
-  const validationResult = validateTeamSpec(spec, providerRecords)
+  const validationResult = validateTeamSpec(spec)
   sendToAllWindows('spec:validation', { teamSlug: slug, ...validationResult })
 }
 

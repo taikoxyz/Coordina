@@ -1,14 +1,11 @@
-// Pure validation of team spec structure against loaded provider records
+// Pure validation of team spec structure with model-level checks
 // FEATURE: Team spec validation module with zero side effects on output
-import { TeamSpec, ProviderRecord, ValidationResult, ValidationError } from '../../shared/types'
-import { getProvider } from '../providers/base'
+import { TeamSpec, ValidationResult, ValidationError } from '../../shared/types'
 
 export const validateTeamSpec = (
-  spec: TeamSpec,
-  providers: ProviderRecord[]
+  spec: TeamSpec
 ): ValidationResult => {
   const errors: ValidationError[] = []
-  const providersBySlug = new Map(providers.map((p) => [p.slug, p]))
 
   if (!spec.name?.trim()) errors.push({ field: 'name', message: 'Team name is required' })
   if (!spec.slug?.trim()) errors.push({ field: 'slug', message: 'Team slug is required' })
@@ -22,21 +19,8 @@ export const validateTeamSpec = (
     if (!agent.role?.trim()) errors.push({ field: `${prefix}.role`, message: 'Agent role is required' })
     if (!agent.persona?.trim()) errors.push({ field: `${prefix}.persona`, message: 'Agent persona is required' })
 
-    if (!agent.provider?.trim()) {
-      errors.push({ field: `${prefix}.provider`, message: 'Provider is required' })
-      continue
-    }
-
-    const record = providersBySlug.get(agent.provider)
-    if (!record) {
-      errors.push({ field: `${prefix}.provider`, message: `Provider "${agent.provider}" not found` })
-      continue
-    }
-
-    try {
-      getProvider(record.type)
-    } catch {
-      errors.push({ field: `${prefix}.provider`, message: `Unknown provider type "${record.type}"` })
+    if (!agent.model?.trim()) {
+      errors.push({ field: `${prefix}.model`, message: 'Model is required' })
     }
   }
 

@@ -174,8 +174,8 @@ describe('generateAgentsMd', () => {
 
   it('includes gateway communication note when hasGateways', () => {
     const md = generateAgentsMd({ ...base, hasGateways: true })
-    expect(md).toContain('Team Directory')
     expect(md).toContain('TOOLS.md')
+    expect(md).toContain('Inter-Agent Communication')
   })
 
   it('inlines teamMd as Team Directory when provided', () => {

@@ -4,8 +4,6 @@ import { AppSidebar } from './components/AppSidebar'
 import { MainContent } from './components/MainContent'
 import { SettingsDialog } from './components/SettingsDialog'
 import { CreateTeamDialog } from './components/CreateTeamDialog'
-import { CreateProviderDialog } from './components/CreateProviderDialog'
-import { CreateEnvironmentDialog } from './components/CreateEnvironmentDialog'
 import { useTeams } from './hooks/useTeams'
 import { useNav } from './store/nav'
 import './assets/main.css'
@@ -35,8 +33,6 @@ function AppContent() {
       </main>
       <SettingsDialog />
       <CreateTeamDialog />
-      <CreateProviderDialog />
-      <CreateEnvironmentDialog />
     </div>
   )
 }

@@ -17,7 +17,7 @@ const baseSpec: TeamSpec = {
       role: 'Lead',
       skills: [],
       persona: 'Pragmatic',
-      provider: 'anthropic',
+      model: 'anthropic',
     },
   ],
 }
@@ -69,7 +69,7 @@ describe('normalizeTeamSpec', () => {
         slug: ' alpha ',
         name: ' Alpha ',
         role: ' Lead ',
-        provider: ' anthropic ',
+        model: ' anthropic ',
         telegramBot: ' 111111111 ',
         skills: [' research ', ' ', 'write'],
         cpu: -1,
@@ -88,7 +88,7 @@ describe('normalizeTeamSpec', () => {
     expect(normalized.defaultDiskGi).toBeUndefined()
     expect(normalized.leadAgent).toBeUndefined()
     expect(normalized.agents[0].slug).toBe('alpha')
-    expect(normalized.agents[0].provider).toBe('anthropic')
+    expect(normalized.agents[0].model).toBe('anthropic')
     expect(normalized.agents[0].telegramBot).toBe('111111111')
     expect(normalized.agents[0].skills).toEqual(['research', 'write'])
     expect(normalized.agents[0].cpu).toBeUndefined()

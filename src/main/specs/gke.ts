@@ -29,8 +29,9 @@ import { DEFAULT_BOOTSTRAP_INSTRUCTIONS } from './bootstrap'
 import { registerDeriver } from './base'
 import type { DeploymentSpecDeriver } from './base'
 import type { DeriveSecrets } from './base'
-import type { TeamSpec, ProviderRecord, SpecFile } from '../../shared/types'
-import { getProvider } from '../providers/base'
+import type { TeamSpec, SpecFile } from '../../shared/types'
+import { openrouterToOpenClawJson, openrouterToEnvVars } from '../providers/base'
+import { getOpenRouterApiKey } from '../store/providers'
 import { saveTeam } from '../store/teams'
 import { resolveGatewayMode } from '../gateway/mode'
 import { listProjects } from '../store/projects'
@@ -67,7 +68,6 @@ const gkeDeriver: DeploymentSpecDeriver = {
 
   async derive(
     spec: TeamSpec,
-    providers: Map<string, ProviderRecord & { apiKey?: string }>,
     envConfig: Record<string, unknown>,
     secrets?: DeriveSecrets
   ): Promise<SpecFile[]> {
@@ -119,20 +119,15 @@ const gkeDeriver: DeploymentSpecDeriver = {
     files.push({ path: 'PROJECTS.md', content: projectsMd })
     files.push({ path: 'configmap-shared.yaml', content: teamConfig })
 
+    const openrouterApiKey = await getOpenRouterApiKey()
+
     for (const agent of spec.agents) {
       const isLead = agent.slug === spec.leadAgent
       const derivedEmail = hasEmail ? deriveAgentEmail(spec.teamEmail!, agent.slug, isLead) : undefined
       const effectiveEmail = agent.email || derivedEmail
-      const providerRecord = providers.get(agent.provider)
-      let modelProvider
-      try { modelProvider = providerRecord ? getProvider(providerRecord.type) : undefined } catch { /* unknown type */ }
-      const model = providerRecord?.model ?? 'claude-sonnet-4-6'
-      const openclawConfig = modelProvider && providerRecord
-        ? modelProvider.toOpenClawJson({ apiKey: providerRecord.apiKey, model })
-        : { agents: { defaults: { model: { primary: `anthropic/${model}` } } }, models: { providers: { anthropic: {} } } }
-      const envVars = modelProvider && providerRecord
-        ? modelProvider.toEnvVars({ apiKey: providerRecord.apiKey, model })
-        : {}
+      const model = agent.model || 'anthropic/claude-sonnet-4-6'
+      const openclawConfig = openrouterToOpenClawJson(model)
+      const envVars = openrouterToEnvVars(openrouterApiKey ?? '')
 
       const agentToken = teamGatewayToken
       const telegramBot = agent.telegramBot?.trim()
@@ -174,6 +169,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
           ...baseAgents,
           defaults: {
             ...baseAgentDefaults,
+            model: openclawConfig.agents.defaults.model,
             workspace: workspaceDir,
           },
         },
@@ -218,7 +214,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
       }
       const credentialSecretName = `${spec.slug}-${agent.slug}-credentials`
       files.push({ path: `agents/${agent.slug}/pvc.yaml`, content: generateAgentPvc({ teamSlug: spec.slug, agentSlug: agent.slug, namespace, diskGi: agent.diskGi }) })
-      files.push({ path: `agents/${agent.slug}/credentials.yaml`, content: generateProviderSecret({ teamSlug: spec.slug, providerSlug: agent.provider, agentSlug: agent.slug, namespace, envVars: envVarsWithTelegram }) })
+      files.push({ path: `agents/${agent.slug}/credentials.yaml`, content: generateProviderSecret({ teamSlug: spec.slug, providerSlug: 'openrouter', agentSlug: agent.slug, namespace, envVars: envVarsWithTelegram }) })
       const identityMd = generateIdentityMd({
         slug: agent.slug,
         name: agent.name,

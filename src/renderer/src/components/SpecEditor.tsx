@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Pencil, FileJson } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 import type { TeamSpec } from '../../../shared/types'
 import { Button, Input, Label, ReadField, Textarea } from './ui'
 
@@ -10,11 +10,13 @@ export interface SpecEditorProps {
   onEdit: () => void
   onCancel: () => void
   onSave: () => Promise<void>
+  onDelete: () => void
   isSaving: boolean
-  onShowJson: () => void
 }
 
-export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, onSave, isSaving, onShowJson }: SpecEditorProps) {
+export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, onSave, onDelete, isSaving }: SpecEditorProps) {
+  const [confirmDelete, setConfirmDelete] = useState(false)
+
   const set = useCallback(
     (key: keyof TeamSpec) => (value: unknown) => {
       onSpecChange({ ...spec, [key]: value })
@@ -74,18 +76,15 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
               Team overview
             </div>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" onClick={onShowJson} title="View JSON">
-                <FileJson className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="icon" onClick={onEdit} title="Edit team">
-                <Pencil className="w-4 h-4" />
-              </Button>
-            </div>
+            <Button variant="ghost" size="icon" onClick={onEdit} title="Edit team">
+              <Pencil className="w-4 h-4" />
+            </Button>
           </div>
 
+          <hr className="border-gray-200" />
+
           <div>
-            <h4 className="text-sm font-semibold text-gray-900 mb-1">Team details</h4>
+            <h4 className="text-sm font-semibold text-gray-900 mb-1">About</h4>
             <ReadField label="Name" value={spec.name} />
             <ReadField label="Slug" value={spec.slug} monospace />
             <ReadField label="Agents" value={spec.agents.length} />
@@ -94,7 +93,7 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
           <hr className="border-gray-200" />
 
           <div>
-            <h4 className="text-sm font-semibold text-gray-900 mb-1">Telegram integration</h4>
+            <h4 className="text-sm font-semibold text-gray-900 mb-1">Telegram</h4>
             <ReadField label="Group ID" value={spec.telegramGroupId} monospace />
             <ReadField label="Admin ID" value={spec.telegramAdminId} monospace />
           </div>
@@ -102,7 +101,7 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
           <hr className="border-gray-200" />
 
           <div>
-            <h4 className="text-sm font-semibold text-gray-900 mb-1">Email (Gmail only)</h4>
+            <h4 className="text-sm font-semibold text-gray-900 mb-1">Gmail</h4>
             <ReadField label="Team email" value={spec.teamEmail} monospace />
             <ReadField label="App password" value={emailPasswordMasked ?? undefined} monospace />
             {emailPasswordError && (
@@ -113,14 +112,17 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
           <hr className="border-gray-200" />
 
           <div>
-            <h4 className="text-sm font-semibold text-gray-900 mb-1">Infrastructure defaults</h4>
+            <h4 className="text-sm font-semibold text-gray-900 mb-1">Resources</h4>
             <ReadField label="Default container image" value={spec.defaultImage} monospace />
             <ReadField label="Storage (Gi)" value={spec.defaultDiskGi} />
           </div>
 
           <hr className="border-gray-200" />
 
-          <ReadField label="Startup instructions" value={spec.startupInstructions?.trim() || undefined} monospace />
+          <div>
+            <h4 className="text-sm font-semibold text-gray-900 mb-1">OpenClaw</h4>
+            <ReadField label="Bootstrap" value={spec.startupInstructions?.trim() || undefined} monospace />
+          </div>
         </div>
       </div>
     )
@@ -129,7 +131,7 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
   return (
     <div className="flex-1 overflow-y-auto min-h-0">
       <div className="max-w-2xl mx-auto space-y-5 py-6 px-6">
-        <div className="flex items-center justify-between">
+        <div className="space-y-2">
           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
             Edit team
           </div>
@@ -142,14 +144,24 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
             >
               {isSaving ? 'Saving...' : 'Save'}
             </Button>
-            <Button variant="secondary" size="sm" onClick={onCancel} disabled={isSaving}>
+            {confirmDelete ? (
+              <Button variant="destructive" size="sm" onClick={onDelete}>
+                Confirm delete
+              </Button>
+            ) : (
+              <Button variant="destructive" size="sm" onClick={() => setConfirmDelete(true)}>
+                Delete
+              </Button>
+            )}
+            <div className="flex-1" />
+            <Button variant="secondary" size="sm" onClick={() => { setConfirmDelete(false); onCancel() }} disabled={isSaving}>
               Cancel
             </Button>
           </div>
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Team details</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">About</h3>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Name</Label>
@@ -163,7 +175,7 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Telegram integration</h3>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Telegram</h3>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Group ID</Label>
@@ -187,8 +199,8 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Email (Gmail only)</h3>
-          <div className="grid grid-cols-2 gap-3">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Gmail</h3>
+          <div className="space-y-3">
             <div>
               <Label>Team email</Label>
               <Input
@@ -197,7 +209,7 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
                 onChange={(e) => set('teamEmail')(e.target.value || undefined)}
                 placeholder="team@gmail.com"
               />
-              <p className="text-xs text-gray-400 mt-0.5">Gmail only. Agents get plus-addressed variants (e.g., team+agent-slug@gmail.com)</p>
+              <p className="text-xs text-gray-400 mt-0.5">Agents get plus-addressed variants (e.g., team+agent-slug@gmail.com)</p>
             </div>
             <div>
               <Label>App password</Label>
@@ -241,10 +253,10 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
         </div>
 
         <div>
-          <h3 className="text-sm font-semibold text-gray-900 mb-3">Infrastructure defaults</h3>
-          <div className="grid grid-cols-2 gap-3">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Resources</h3>
+          <div className="space-y-3">
             <div>
-              <Label>Default container image</Label>
+              <Label>Container image</Label>
               <Input
                 mono
                 value={spec.defaultImage ?? ''}
@@ -252,28 +264,44 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
                 placeholder="ghcr.io/org/openclaw:latest"
               />
             </div>
-            <div>
-              <Label>Storage (Gi)</Label>
-              <Input
-                type="number"
-                min={1}
-                value={spec.defaultDiskGi ?? ''}
-                onChange={(e) => set('defaultDiskGi')(e.target.value ? parseInt(e.target.value, 10) : undefined)}
-                placeholder="100"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>CPU (cores)</Label>
+                <Input
+                  type="number"
+                  min={0.1}
+                  step={0.5}
+                  value={spec.defaultCpu ?? ''}
+                  onChange={(e) => set('defaultCpu')(e.target.value ? parseFloat(e.target.value) : undefined)}
+                  placeholder="1"
+                />
+              </div>
+              <div>
+                <Label>Disk (Gi)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={spec.defaultDiskGi ?? ''}
+                  onChange={(e) => set('defaultDiskGi')(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                  placeholder="10"
+                />
+              </div>
             </div>
           </div>
         </div>
 
         <div>
-          <Label>Startup instructions</Label>
-          <Textarea
-            mono
-            rows={4}
-            value={spec.startupInstructions ?? ''}
-            onChange={(e) => set('startupInstructions')(e.target.value || undefined)}
-            placeholder="Custom startup instructions..."
-          />
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">OpenClaw</h3>
+          <div>
+            <Label>Bootstrap</Label>
+            <Textarea
+              mono
+              rows={4}
+              value={spec.startupInstructions ?? ''}
+              onChange={(e) => set('startupInstructions')(e.target.value || undefined)}
+              placeholder="Custom bootstrap instructions..."
+            />
+          </div>
         </div>
       </div>
     </div>

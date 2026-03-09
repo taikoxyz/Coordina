@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AlertCircle, Check, ExternalLink, Loader2, Rocket, FileText, X } from 'lucide-react'
-import { useEnvironments } from '../hooks/useEnvironments'
+import { useGkeConfig } from '../hooks/useEnvironments'
+import { useTeam, useSaveTeam } from '../hooks/useTeams'
+import { useNav } from '../store/nav'
 import { highlightContent } from '../lib/highlight'
-import { Badge, Button, Select } from './ui'
-import type { TeamSpec } from '../../../shared/types'
+import { Badge, Button } from './ui'
 
 type DeployState = 'idle' | 'preparing' | 'deploying' | 'done' | 'error'
 
@@ -17,21 +18,22 @@ type LogEntry =
   | { type: 'status'; line: string; color: string }
 
 export function DeployPanel({
-  spec,
-  onSave,
-  isSaving,
+  teamSlug,
+  agentSlug,
 }: {
-  spec: TeamSpec
-  onSave: () => Promise<void>
-  isSaving: boolean
+  teamSlug: string
+  agentSlug?: string
 }) {
-  const { data: environments } = useEnvironments()
-  const [selectedEnvSlug, setSelectedEnvSlug] = useState('')
+  const { data: spec } = useTeam(teamSlug)
+  const saveTeam = useSaveTeam()
+  const onSave = async () => { if (spec) await saveTeam.mutateAsync(spec) }
 
-  const selectedEnv = (environments ?? []).find((e) => e.slug === selectedEnvSlug)
-  const gkeProjectId = selectedEnv?.type === 'gke'
-    ? (selectedEnv.config as { projectId?: string }).projectId
-    : undefined
+  const { data: gkeConfig } = useGkeConfig()
+  const { deployingTeamSlug, setDeployingTeamSlug } = useNav()
+  const isAnyDeploying = !!deployingTeamSlug
+  const isThisDeploying = deployingTeamSlug === teamSlug
+
+  const gkeProjectId = gkeConfig?.config.projectId
   const gkeConsoleUrl = gkeProjectId
     ? `https://console.cloud.google.com/kubernetes/workload/overview?project=${gkeProjectId}`
     : 'https://console.cloud.google.com/kubernetes/workload/overview?project=coordina-489002'
@@ -43,12 +45,7 @@ export function DeployPanel({
   const logEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (environments?.length && !selectedEnvSlug) {
-      setSelectedEnvSlug(environments[0].slug)
-    }
-  }, [environments, selectedEnvSlug])
-
-  useEffect(() => {
+    if (!spec) return
     window.api
       .invoke('deploy:getLogs', { teamSlug: spec.slug })
       .then((entries) => {
@@ -56,7 +53,7 @@ export function DeployPanel({
         if (loaded.length > 0) setLogEntries(loaded)
       })
       .catch(() => {})
-  }, [spec.slug])
+  }, [spec?.slug])
 
   useEffect(() => {
     return window.api.on?.('deploy:status', (data: unknown) => {
@@ -75,15 +72,17 @@ export function DeployPanel({
   }, [logEntries])
 
   useEffect(() => {
+    if (!spec) return
     if (logEntries.length > 0 && deployState !== 'idle') {
       window.api.invoke('deploy:saveLogs', { teamSlug: spec.slug, entries: logEntries }).catch(() => {})
     }
-  }, [deployState, logEntries, spec.slug])
+  }, [deployState, logEntries, spec?.slug])
 
-  const handleDeploy = useCallback(async () => {
-    if (!selectedEnvSlug) return
+  const handleDeploy = useCallback(async (deployAgentSlug?: string) => {
+    if (!gkeConfig || !spec || isAnyDeploying) return
 
     setDeployState('preparing')
+    setDeployingTeamSlug(spec.slug)
     setLogEntries([])
     setViewingFile(null)
     await window.api.invoke('deploy:clearLogs', { teamSlug: spec.slug }).catch(() => {})
@@ -94,7 +93,8 @@ export function DeployPanel({
 
       const preview = (await window.api.invoke('deploy:preview', {
         teamSlug: spec.slug,
-        envSlug: selectedEnvSlug,
+        envSlug: 'gke',
+        ...(deployAgentSlug ? { agentSlug: deployAgentSlug } : {}),
       })) as { ok: boolean; reason?: string; files?: DeployFile[] }
 
       if (!preview.ok) {
@@ -115,8 +115,9 @@ export function DeployPanel({
 
       const result = (await window.api.invoke('deploy:team', {
         teamSlug: spec.slug,
-        envSlug: selectedEnvSlug,
+        envSlug: 'gke',
         options: { keepDisks: !recreateDisks, forceRecreate: recreatePods },
+        ...(deployAgentSlug ? { agentSlug: deployAgentSlug } : {}),
       })) as { ok: boolean; reason?: string }
 
       if (result.ok) {
@@ -129,92 +130,115 @@ export function DeployPanel({
     } catch (error) {
       setDeployState('error')
       setLogEntries((prev) => [...prev, { type: 'status', line: `ERROR: ${error instanceof Error ? error.message : String(error)}`, color: 'text-red-600' }])
+    } finally {
+      setDeployingTeamSlug(null)
     }
-  }, [selectedEnvSlug, spec.slug, onSave, recreateDisks, recreatePods])
+  }, [gkeConfig, spec, recreateDisks, recreatePods, isAnyDeploying])
 
-  const statusBadgeVariant =
-    deployState === 'done'
-      ? 'success' as const
-      : deployState === 'error'
-        ? 'destructive' as const
-        : deployState === 'preparing' || deployState === 'deploying'
-          ? 'warning' as const
-          : 'default' as const
+  if (!spec) {
+    return (
+      <div className="flex items-center justify-center h-full text-sm text-gray-400">
+        Loading...
+      </div>
+    )
+  }
 
-  const statusLabel =
-    deployState === 'idle' ? 'Idle'
-      : deployState === 'preparing' ? 'Preparing'
-        : deployState === 'deploying' ? 'Deploying'
-          : deployState === 'done' ? 'Deployed'
-            : 'Failed'
+  const isDeploying = deployState === 'preparing' || deployState === 'deploying'
+  const buttonDisabled = !gkeConfig || isAnyDeploying
+  const disabledTitle = !gkeConfig
+    ? 'Configure Google Cloud in Settings first'
+    : (isAnyDeploying && !isThisDeploying)
+      ? 'Another deployment is in progress'
+      : undefined
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-center gap-4 px-5 py-3 border-b border-gray-200 shrink-0">
-        {(environments ?? []).length > 0 && (
-          <Select
-            className="w-auto px-2 py-1 text-xs"
-            value={selectedEnvSlug}
-            onChange={(e) => setSelectedEnvSlug(e.target.value)}
-          >
-            {(environments ?? []).map((env) => {
-              const cfg = env.config as { clusterName?: string }
-              const label = cfg.clusterName ? `${env.type}-${cfg.clusterName}` : env.slug
-              return <option key={env.slug} value={env.slug}>{label}</option>
-            })}
-          </Select>
-        )}
-        {(deployState === 'done' || deployState === 'error') && (
-          <Badge variant={statusBadgeVariant} className="uppercase tracking-wider">
-            {deployState === 'done' && <Check className="w-3 h-3" />}
-            {deployState === 'error' && <AlertCircle className="w-3 h-3" />}
-            {statusLabel}
-          </Badge>
-        )}
-        <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={recreateDisks}
-            onChange={(e) => setRecreateDisks(e.target.checked)}
-            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
-          Recreate disks
-        </label>
-        <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={recreatePods}
-            onChange={(e) => setRecreatePods(e.target.checked)}
-            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
-          Recreate pods
-        </label>
-        <a
-          href={gkeConsoleUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 transition-colors"
-        >
-          <ExternalLink className="w-3.5 h-3.5" />
-          GKE Workloads
-        </a>
-        <Button
-          variant="dark"
-          onClick={() => void handleDeploy()}
-          disabled={!selectedEnvSlug || isSaving || deployState === 'preparing' || deployState === 'deploying'}
-        >
-          {deployState === 'preparing' || deployState === 'deploying' ? (
-            <>
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              Deploying...
-            </>
-          ) : (
-            <>
-              <Rocket className="w-3.5 h-3.5" />
-              Deploy
-            </>
+      <div className="border-b border-gray-200 shrink-0 px-5 py-4 space-y-3">
+        {/* Row 1: Deploy buttons + status badge */}
+        <div className="flex items-center gap-2">
+          {agentSlug && (
+            <Button
+              variant="dark"
+              onClick={() => void handleDeploy(agentSlug)}
+              disabled={buttonDisabled}
+              title={disabledTitle}
+            >
+              {isDeploying ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  Deploying...
+                </>
+              ) : (
+                <>
+                  <Rocket className="w-3.5 h-3.5" />
+                  Deploy Agent
+                </>
+              )}
+            </Button>
           )}
-        </Button>
+          <Button
+            variant={agentSlug ? 'secondary' : 'dark'}
+            onClick={() => void handleDeploy()}
+            disabled={buttonDisabled}
+            title={disabledTitle}
+          >
+            {isDeploying && !agentSlug ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Deploying...
+              </>
+            ) : (
+              <>
+                <Rocket className="w-3.5 h-3.5" />
+                Deploy Team
+              </>
+            )}
+          </Button>
+          {(deployState === 'done' || deployState === 'error') && (
+            <Badge
+              variant={deployState === 'done' ? 'success' : 'destructive'}
+              className="uppercase tracking-wider"
+            >
+              {deployState === 'done' && <Check className="w-3 h-3" />}
+              {deployState === 'error' && <AlertCircle className="w-3 h-3" />}
+              {deployState === 'done' ? 'Deployed' : 'Failed'}
+            </Badge>
+          )}
+          {!gkeConfig && (
+            <span className="text-xs text-amber-600">Configure Google Cloud in Settings</span>
+          )}
+        </div>
+
+        {/* Row 2: Options + GKE link */}
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={recreateDisks}
+              onChange={(e) => setRecreateDisks(e.target.checked)}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            Recreate disks
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={recreatePods}
+              onChange={(e) => setRecreatePods(e.target.checked)}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            Recreate pods
+          </label>
+          <a
+            href={gkeConsoleUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 transition-colors"
+          >
+            <ExternalLink className="w-3 h-3" />
+            GKE Workloads
+          </a>
+        </div>
       </div>
 
       <div className="flex-1 flex min-h-0">
