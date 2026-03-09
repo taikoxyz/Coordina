@@ -31,7 +31,6 @@ const TEAM: TeamSpec = {
 const MC_CONFIG = {
   enabled: true,
   image: 'gcr.io/proj/mc:latest',
-  sessionSecret: '12345678901234567890123456789012',
 }
 
 describe('GKE deriver with Mission Control', () => {
@@ -45,10 +44,15 @@ describe('GKE deriver with Mission Control', () => {
     expect(paths).toContain('mission-control/service.yaml')
   })
 
-  it('omits MC manifest files when missionControl is not configured', async () => {
+  it('omits MC manifest files when missionControlEnabled is false on the team', async () => {
     const deriver = getDeriver('gke')
-    const files = await deriver.derive(TEAM, {})
+    const files = await deriver.derive({ ...TEAM, missionControlEnabled: false }, { missionControl: MC_CONFIG })
     const paths = files.map(f => f.path)
     expect(paths).not.toContain('mission-control/secret.yaml')
+  })
+
+  it('throws when MC is enabled per-team but not configured globally', async () => {
+    const deriver = getDeriver('gke')
+    await expect(deriver.derive(TEAM, {})).rejects.toThrow('Mission Control is enabled for this team but not configured globally')
   })
 })
