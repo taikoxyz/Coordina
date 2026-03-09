@@ -42,7 +42,12 @@ export const useNav = create<NavStore>()(
       deployingTeamSlug: null,
       deployingAgentSlug: null,
 
-      selectItem: (item) => set({ selectedItem: item, contentTab: 'deploy' }),
+      selectItem: (item) => set((s) => {
+        const agentOnlyTabs: ContentTab[] = ['files', 'connect']
+        const isTeam = item.type === 'team'
+        const tabInvalid = isTeam && agentOnlyTabs.includes(s.contentTab)
+        return { selectedItem: item, contentTab: tabInvalid ? 'deploy' : s.contentTab }
+      }),
       setContentTab: (contentTab) => set({ contentTab }),
       setSettingsSection: (settingsSection) => set({ settingsSection }),
       openSettings: (section) => set({ selectedItem: { type: 'settings' }, settingsSection: section ?? 'general' }),

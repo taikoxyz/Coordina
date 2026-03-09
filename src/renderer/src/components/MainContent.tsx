@@ -89,7 +89,7 @@ export function MainContent() {
         <TabBar tabs={tabs} active={activeTab} onSelect={setContentTab} />
         <div className="flex-1 min-h-0 overflow-hidden">
           {activeTab === 'deploy' && (
-            <DeployPanel teamSlug={teamSlug} agentSlug={agentSlug} />
+            <DeployPanel key={`${teamSlug}:${agentSlug ?? ''}`} teamSlug={teamSlug} agentSlug={agentSlug} />
           )}
           {activeTab === 'spec' && (
             <SpecJsonPanel teamSlug={teamSlug} agentSlug={agentSlug} />
