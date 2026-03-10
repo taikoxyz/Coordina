@@ -10,6 +10,7 @@ export interface ChatMessage {
 export interface AgentSpec {
   slug: string
   name: string
+  title?: string
   role: string
   avatar?: string
   telegramBot?: string
@@ -51,7 +52,7 @@ export interface TeamSpec {
   logLevel?: string
 }
 
-export interface PersonaTemplate {
+export interface AgentTemplate {
   id: string
   name: string
   division: string

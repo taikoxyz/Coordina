@@ -1,24 +1,28 @@
 import { useEffect, useState } from 'react'
-import { Pencil } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
 import { useTeam, useSaveTeam } from '../hooks/useTeams'
+import { useGkeConfig } from '../hooks/useEnvironments'
 import { agentTextColor } from '../lib/agentColors'
 import { AgentCard } from './team/AgentCard'
 import { AgentAvatar } from './AgentAvatar'
-import { Button } from './ui'
+import { Button, DialogShell } from './ui'
 import type { TeamSpec } from '../../../shared/types'
 
 export function AgentSpecPanel({ teamSlug, agentSlug }: { teamSlug: string; agentSlug: string }) {
   const { data: savedSpec } = useTeam(teamSlug)
   const saveTeam = useSaveTeam()
+  const { data: gkeConfig } = useGkeConfig()
   const [localSpec, setLocalSpec] = useState<TeamSpec | null>(null)
   const [isEditing, setIsEditing] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [alsoUndeploy, setAlsoUndeploy] = useState(false)
+  const [deleteDisks, setDeleteDisks] = useState(false)
 
   useEffect(() => {
     if (savedSpec) {
       setLocalSpec(savedSpec)
       setIsEditing(false)
-      setConfirmDelete(false)
+      setShowDeleteDialog(false)
     }
   }, [savedSpec])
 
@@ -48,6 +52,15 @@ export function AgentSpecPanel({ teamSlug, agentSlug }: { teamSlug: string; agen
   }
 
   const deleteAgent = async () => {
+    setShowDeleteDialog(false)
+    if (alsoUndeploy && gkeConfig) {
+      await window.api.invoke('undeploy:agent', {
+        teamSlug: localSpec.slug,
+        agentSlug,
+        envSlug: 'gke',
+        deleteDisks,
+      })
+    }
     const newAgents = localSpec.agents.filter((_, j) => j !== agentIndex)
     const newSpec = { ...localSpec, agents: newAgents, leadAgent: newAgents[0]?.slug || undefined }
     await saveTeam.mutateAsync(newSpec)
@@ -61,7 +74,7 @@ export function AgentSpecPanel({ teamSlug, agentSlug }: { teamSlug: string; agen
   const handleCancel = () => {
     setLocalSpec(savedSpec ?? null)
     setIsEditing(false)
-    setConfirmDelete(false)
+    setShowDeleteDialog(false)
   }
 
   return (
@@ -79,19 +92,13 @@ export function AgentSpecPanel({ teamSlug, agentSlug }: { teamSlug: string; agen
                 variant="primary"
                 size="sm"
                 onClick={() => void handleSave()}
-                disabled={saveTeam.isPending || !agent.name.trim() || !agent.role.trim() || !agent.persona.trim() || agent.models.length === 0}
+                disabled={saveTeam.isPending || !(agent.name ?? '').trim() || (agent.models ?? []).length === 0}
               >
                 {saveTeam.isPending ? 'Saving...' : 'Save'}
               </Button>
-              {confirmDelete ? (
-                <Button variant="destructive" size="sm" onClick={() => void deleteAgent()}>
-                  Confirm delete
-                </Button>
-              ) : (
-                <Button variant="destructive" size="sm" onClick={() => setConfirmDelete(true)}>
-                  Delete
-                </Button>
-              )}
+              <Button variant="destructive" size="sm" onClick={() => { setAlsoUndeploy(false); setDeleteDisks(false); setShowDeleteDialog(true) }}>
+                Delete
+              </Button>
               <Button variant="secondary" size="sm" onClick={handleCancel} disabled={saveTeam.isPending}>
                 Cancel
               </Button>
@@ -116,6 +123,55 @@ export function AgentSpecPanel({ teamSlug, agentSlug }: { teamSlug: string; agen
           />
         </div>
       </div>
+
+      <DialogShell
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        title="Delete Agent"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            This will remove <span className="font-medium text-foreground">{agent.name || agent.slug}</span> from the team spec.
+          </p>
+          {gkeConfig && (
+            <>
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={alsoUndeploy}
+                  onChange={(e) => { setAlsoUndeploy(e.target.checked); if (!e.target.checked) setDeleteDisks(false) }}
+                  className="mt-0.5 rounded border-gray-300 text-destructive focus:ring-destructive"
+                />
+                <span className="text-sm">
+                  <span className="font-medium text-foreground">Also delete deployment</span>
+                  <span className="block text-xs text-muted-foreground mt-0.5">Remove Kubernetes resources (StatefulSet, Service, Pod) for this agent.</span>
+                </span>
+              </label>
+              {alsoUndeploy && (
+                <label className="flex items-start gap-2.5 cursor-pointer select-none ml-6">
+                  <input
+                    type="checkbox"
+                    checked={deleteDisks}
+                    onChange={(e) => setDeleteDisks(e.target.checked)}
+                    className="mt-0.5 rounded border-gray-300 text-destructive focus:ring-destructive"
+                  />
+                  <span className="text-sm">
+                    <span className="font-medium text-foreground">Also delete disks</span>
+                    <span className="block text-xs text-muted-foreground mt-0.5">Permanently removes all agent memory, workspace files, and stored data. This cannot be undone.</span>
+                  </span>
+                </label>
+              )}
+            </>
+          )}
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => void deleteAgent()}>
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete Agent
+            </Button>
+          </div>
+        </div>
+      </DialogShell>
     </>
   )
 }
