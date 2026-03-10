@@ -23,7 +23,8 @@ export function AgentPatternsSettings() {
     setMemoryRules(toTextarea(p.memoryRules ?? DEFAULT_PATTERNS.agents.memoryRules))
     setSafetyRules(toTextarea(p.safetyRules ?? DEFAULT_PATTERNS.agents.safetyRules))
     setPriorities(toTextarea(p.priorities ?? DEFAULT_PATTERNS.agents.priorities))
-    setDefaultRules(toTextarea(p.defaultRules ?? DEFAULT_PATTERNS.agents.defaultRules))
+    const legacyRule = (p as Record<string, unknown>).defaultRule as string | undefined
+    setDefaultRules(toTextarea(p.defaultRules ?? (legacyRule ? [legacyRule] : DEFAULT_PATTERNS.agents.defaultRules)))
   }, [storedSettings])
 
   const handleSave = () => save((current) => cleanObj({
