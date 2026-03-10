@@ -1,16 +1,15 @@
 import { useState, useEffect } from 'react'
 import { Button } from '../ui'
 import {
-  ListEditor, SaveBar, usePatterns,
-  toKeyed, cleanArray, cleanObj,
+  SectionTextarea, SaveBar, usePatterns,
+  toTextarea, cleanTextarea, cleanObj,
   DEFAULT_PATTERNS,
-  type KeyedList,
 } from './pattern-utils'
 
 export function LeadPatternsSettings() {
   const { storedSettings, saveSettings, saved, save, initialized } = usePatterns()
-  const [responsibilities, setResponsibilities] = useState<KeyedList>(
-    toKeyed(DEFAULT_PATTERNS.agents.teamLeadResponsibilities),
+  const [responsibilities, setResponsibilities] = useState(
+    toTextarea(DEFAULT_PATTERNS.agents.teamLeadResponsibilities),
   )
 
   useEffect(() => {
@@ -18,19 +17,19 @@ export function LeadPatternsSettings() {
     initialized.current = true
     const p = storedSettings.derivationPatterns?.agents
     if (!p?.teamLeadResponsibilities) return
-    setResponsibilities(toKeyed(p.teamLeadResponsibilities))
+    setResponsibilities(toTextarea(p.teamLeadResponsibilities))
   }, [storedSettings])
 
   const handleSave = () => save((current) => cleanObj({
     ...current,
     agents: cleanObj({
       ...current?.agents,
-      teamLeadResponsibilities: cleanArray(responsibilities),
+      teamLeadResponsibilities: cleanTextarea(responsibilities),
     }),
   }))
 
   const handleReset = () => {
-    setResponsibilities(toKeyed(DEFAULT_PATTERNS.agents.teamLeadResponsibilities))
+    setResponsibilities(toTextarea(DEFAULT_PATTERNS.agents.teamLeadResponsibilities))
   }
 
   return (
@@ -41,7 +40,7 @@ export function LeadPatternsSettings() {
           Reset to defaults
         </Button>
       </div>
-      <ListEditor label="Responsibilities" items={responsibilities} onChange={setResponsibilities} />
+      <SectionTextarea label="Responsibilities" value={responsibilities} onChange={setResponsibilities} />
       <SaveBar onSave={handleSave} isPending={saveSettings.isPending} saved={saved} />
     </div>
   )

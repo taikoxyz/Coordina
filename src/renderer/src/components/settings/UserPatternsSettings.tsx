@@ -1,16 +1,15 @@
 import { useState, useEffect } from 'react'
 import { Button } from '../ui'
 import {
-  ListEditor, SaveBar, usePatterns,
-  toKeyed, cleanArray, cleanObj,
+  SectionTextarea, SaveBar, usePatterns,
+  toTextarea, cleanTextarea, cleanObj,
   DEFAULT_PATTERNS,
-  type KeyedList,
 } from './pattern-utils'
 
 export function UserPatternsSettings() {
   const { storedSettings, saveSettings, saved, save, initialized } = usePatterns()
-  const [introLines, setIntroLines] = useState<KeyedList>(
-    toKeyed(DEFAULT_PATTERNS.user.introLines),
+  const [introLines, setIntroLines] = useState(
+    toTextarea(DEFAULT_PATTERNS.user.introLines),
   )
 
   useEffect(() => {
@@ -18,16 +17,16 @@ export function UserPatternsSettings() {
     initialized.current = true
     const p = storedSettings.derivationPatterns?.user
     if (!p?.introLines) return
-    setIntroLines(toKeyed(p.introLines))
+    setIntroLines(toTextarea(p.introLines))
   }, [storedSettings])
 
   const handleSave = () => save((current) => cleanObj({
     ...current,
-    user: cleanObj({ introLines: cleanArray(introLines) }),
+    user: cleanObj({ introLines: cleanTextarea(introLines) }),
   }))
 
   const handleReset = () => {
-    setIntroLines(toKeyed(DEFAULT_PATTERNS.user.introLines))
+    setIntroLines(toTextarea(DEFAULT_PATTERNS.user.introLines))
   }
 
   return (
@@ -38,7 +37,7 @@ export function UserPatternsSettings() {
           Reset to defaults
         </Button>
       </div>
-      <ListEditor label="Intro Lines" items={introLines} onChange={setIntroLines} />
+      <SectionTextarea label="Intro Lines" value={introLines} onChange={setIntroLines} />
       <SaveBar onSave={handleSave} isPending={saveSettings.isPending} saved={saved} />
     </div>
   )

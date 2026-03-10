@@ -19,12 +19,42 @@ export const cleanArray = (keyed: KeyedList): string[] | undefined => {
   return filtered.length > 0 ? filtered : undefined
 }
 
+export const toTextarea = (items: string[]): string => items.join('\n')
+
+export const cleanTextarea = (text: string): string[] | undefined => {
+  const filtered = text.split('\n').filter((s) => s.trim() !== '')
+  return filtered.length > 0 ? filtered : undefined
+}
+
 export const cleanString = (s: string): string | undefined =>
   s.trim() || undefined
 
 export const cleanObj = <T extends Record<string, unknown>>(o: T): T | undefined => {
   const entries = Object.entries(o).filter(([, v]) => v !== undefined)
   return entries.length > 0 ? (Object.fromEntries(entries) as T) : undefined
+}
+
+export function SectionTextarea({
+  value,
+  onChange,
+  label,
+}: {
+  value: string
+  onChange: (value: string) => void
+  label: string
+}) {
+  const lineCount = value ? value.split('\n').length : 1
+  return (
+    <div className="space-y-1">
+      <Label>{label}</Label>
+      <Textarea
+        className="text-xs font-mono"
+        rows={Math.max(3, lineCount + 1)}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  )
 }
 
 export function ListEditor({
