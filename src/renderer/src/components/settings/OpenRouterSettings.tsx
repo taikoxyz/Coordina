@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import { Check, ExternalLink, X } from 'lucide-react'
-import { useOpenRouterStatus, useConnectOpenRouter, useDisconnectOpenRouter } from '../../hooks/useProviders'
+import { useOpenRouterStatus, useConnectOpenRouter, useDisconnectOpenRouter, useTestOpenRouter } from '../../hooks/useProviders'
 import { Button, Input, Label } from '../ui'
 
 export function OpenRouterSettings() {
   const { data: status } = useOpenRouterStatus()
   const connect = useConnectOpenRouter()
   const disconnect = useDisconnectOpenRouter()
+  const testConnection = useTestOpenRouter()
   const [apiKey, setApiKey] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [testResult, setTestResult] = useState<'idle' | 'ok' | 'fail'>('idle')
 
   const handleConnect = async () => {
     if (!apiKey.trim()) return
@@ -21,10 +23,24 @@ export function OpenRouterSettings() {
     }
   }
 
+  const handleTest = async () => {
+    setTestResult('idle')
+    setError(null)
+    const result = await testConnection.mutateAsync()
+    if (result.ok) {
+      setTestResult('ok')
+      setTimeout(() => setTestResult('idle'), 3000)
+    } else {
+      setTestResult('fail')
+      setError(result.error ?? 'Authentication failed')
+    }
+  }
+
   const handleDisconnect = async () => {
     await disconnect.mutateAsync()
     setApiKey('')
     setError(null)
+    setTestResult('idle')
   }
 
   return (
@@ -49,9 +65,21 @@ export function OpenRouterSettings() {
           <p className="text-xs text-gray-500">
             Your OpenRouter API key is stored securely in the system keychain.
           </p>
-          <Button variant="secondary" size="sm" onClick={() => void handleDisconnect()} disabled={disconnect.isPending}>
-            {disconnect.isPending ? 'Disconnecting...' : 'Disconnect'}
-          </Button>
+          {error && <p className="text-xs text-red-600">{error}</p>}
+          <div className="flex items-center gap-3">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => void handleTest()}
+              disabled={testConnection.isPending}
+            >
+              {testConnection.isPending ? 'Testing...' : testResult === 'ok' ? 'Key is valid' : 'Test API Key'}
+            </Button>
+            {testResult === 'ok' && <Check className="w-4 h-4 text-green-600" />}
+            <Button variant="secondary" size="sm" onClick={() => void handleDisconnect()} disabled={disconnect.isPending}>
+              {disconnect.isPending ? 'Disconnecting...' : 'Disconnect'}
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="space-y-3">

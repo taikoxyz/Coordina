@@ -24,6 +24,22 @@ export const useGkeAuthStatus = () =>
     queryFn: () => window.api.invoke('gke:authStatus') as Promise<{ authenticated: boolean }>,
   })
 
+export const useTestGkeAuth = () =>
+  useMutation({
+    mutationFn: () =>
+      window.api.invoke('gke:testAuth') as Promise<{ ok: boolean; error?: string }>,
+  })
+
+export const useGcpProjects = (enabled: boolean) =>
+  useQuery<{ projectId: string; name: string }[]>({
+    queryKey: ['gcp', 'projects'],
+    queryFn: async () => {
+      const result = await window.api.invoke('gcp:projects:list') as { ok: boolean; projects: { projectId: string; name: string }[] }
+      return result.ok ? result.projects : []
+    },
+    enabled,
+  })
+
 export const useGcpRegions = (projectId: string | undefined) =>
   useQuery<string[]>({
     queryKey: ['gcp', 'regions', projectId],

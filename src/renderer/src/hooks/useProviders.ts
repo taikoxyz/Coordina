@@ -15,6 +15,12 @@ export const useConnectOpenRouter = () => {
   })
 }
 
+export const useTestOpenRouter = () =>
+  useMutation({
+    mutationFn: () =>
+      window.api.invoke('openrouter:test') as Promise<{ ok: boolean; error?: string }>,
+  })
+
 export const useDisconnectOpenRouter = () => {
   const qc = useQueryClient()
   return useMutation({

@@ -10,7 +10,7 @@ import '../specs/gke'
 import { validateDerivedSpecFiles } from '../specs/validate'
 import { deployTeam, undeployTeam, undeployAgent, getTeamStatus, resolveClusterForTeam } from '../environments/gke/deploy'
 import { listGcpRegions, listGcpZones, listGkeClusters } from '../environments/gke/gcloud'
-import { authenticateGke } from '../environments/gke/auth'
+import { authenticateGke, getOAuth2Client } from '../environments/gke/auth'
 import { resolveGatewayMode } from '../gateway/mode'
 import type { DeployOptions } from '../../shared/types'
 import { validateTeamSpec } from '../validation/teamSpec'
@@ -65,6 +65,27 @@ export function registerDeployHandlers(): void {
     return { authenticated: !!token }
   })
 
+  ipcMain.handle('gke:testAuth', async () => {
+    const env = await getEnvironment('gke')
+    if (!env) return { ok: false, error: 'GKE environment not configured' }
+    const { clientId, clientSecret, projectId } = env.config as { clientId: string; clientSecret: string; projectId: string }
+    try {
+      const client = await getOAuth2Client('gke', { clientId, clientSecret })
+      const token = await client.getAccessToken()
+      if (!token.token) return { ok: false, error: 'No access token — sign in again' }
+      const res = await fetch(`https://cloudresourcemanager.googleapis.com/v1/projects/${projectId}`, {
+        headers: { Authorization: `Bearer ${token.token}` },
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: { message?: string } }
+        return { ok: false, error: body.error?.message ?? `HTTP ${res.status} — token may be expired` }
+      }
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  })
+
   ipcMain.handle('gke:auth', async (_e, envSlug: string) => {
     const env = await getEnvironment(envSlug)
     if (!env) return { ok: false, reason: 'Environment not found' }
@@ -74,6 +95,29 @@ export function registerDeployHandlers(): void {
       return { ok: true }
     } catch (e) {
       return { ok: false, reason: e instanceof Error ? e.message : String(e) }
+    }
+  })
+
+  ipcMain.handle('gcp:projects:list', async () => {
+    const env = await getEnvironment('gke')
+    if (!env) return { ok: false, projects: [], error: 'GKE environment not configured' }
+    const { clientId, clientSecret } = env.config as { clientId: string; clientSecret: string }
+    try {
+      const client = await getOAuth2Client('gke', { clientId, clientSecret })
+      const token = await client.getAccessToken()
+      if (!token.token) return { ok: false, projects: [], error: 'No access token — sign in first' }
+      const res = await fetch('https://cloudresourcemanager.googleapis.com/v1/projects?filter=lifecycleState:ACTIVE', {
+        headers: { Authorization: `Bearer ${token.token}` },
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: { message?: string } }
+        return { ok: false, projects: [], error: body.error?.message ?? `HTTP ${res.status}` }
+      }
+      const body = await res.json() as { projects?: { projectId: string; name: string }[] }
+      const projects = (body.projects ?? []).map(p => ({ projectId: p.projectId, name: p.name })).sort((a, b) => a.projectId.localeCompare(b.projectId))
+      return { ok: true, projects }
+    } catch (e) {
+      return { ok: false, projects: [], error: e instanceof Error ? e.message : String(e) }
     }
   })
 

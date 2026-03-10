@@ -19,6 +19,13 @@ export function registerProviderHandlers(): void {
     }
   })
 
+  ipcMain.handle('openrouter:test', async () => {
+    const apiKey = await getOpenRouterApiKey()
+    if (!apiKey) return { ok: false, error: 'No API key configured' }
+    const result = await testOpenRouterConnection(apiKey)
+    return result.valid ? { ok: true } : { ok: false, error: result.error ?? 'Authentication failed' }
+  })
+
   ipcMain.handle('openrouter:disconnect', async () => {
     await deleteOpenRouterApiKey()
     return { ok: true }
