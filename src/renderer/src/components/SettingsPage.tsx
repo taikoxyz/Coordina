@@ -12,10 +12,10 @@ import { UserPatternsSettings } from './settings/UserPatternsSettings'
 import { cn } from '../lib/utils'
 
 const sections: Array<{ id: SettingsSection; label: string; group?: string }> = [
-  { id: 'general', label: 'General' },
-  { id: 'openrouter', label: 'OpenRouter' },
-  { id: 'google-cloud', label: 'Google Cloud' },
-{ id: 'patterns-soul', label: 'Soul', group: 'Agent Patterns' },
+  { id: 'general', label: 'Naming', group: 'General' },
+  { id: 'openrouter', label: 'OpenRouter', group: 'General' },
+  { id: 'google-cloud', label: 'Google Cloud', group: 'General' },
+  { id: 'patterns-soul', label: 'Soul', group: 'Agent Patterns' },
   { id: 'patterns-agents', label: 'Behavior', group: 'Agent Patterns' },
   { id: 'patterns-lead', label: 'Team Lead', group: 'Agent Patterns' },
   { id: 'patterns-user', label: 'User', group: 'Agent Patterns' },
@@ -50,7 +50,7 @@ function FallbackHelpPanel() {
 }
 
 const sectionTitles: Record<SettingsSection, string> = {
-  'general': 'General',
+  'general': 'Naming',
   'openrouter': 'OpenRouter',
   'google-cloud': 'Google Cloud',
   'patterns-soul': 'Soul Patterns',
