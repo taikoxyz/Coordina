@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AlertCircle, Check, ExternalLink, Loader2, Pencil } from 'lucide-react'
 import type { TeamSpec } from '../../../shared/types'
-import { Button, Input, Label, ReadField, Textarea } from './ui'
+import { Button, DialogShell, Input, Label, ReadField, Textarea } from './ui'
 
 export interface SpecEditorProps {
   spec: TeamSpec
@@ -15,7 +15,7 @@ export interface SpecEditorProps {
 }
 
 export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, onSave, onDelete, isSaving }: SpecEditorProps) {
-  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   const set = useCallback(
     (key: keyof TeamSpec) => (value: unknown) => {
@@ -263,16 +263,17 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
           >
             {isSaving ? 'Saving...' : 'Save'}
           </Button>
-          {confirmDelete ? (
-            <Button variant="destructive" size="sm" onClick={onDelete}>
-              Confirm delete
-            </Button>
-          ) : (
-            <Button variant="destructive" size="sm" onClick={() => setConfirmDelete(true)}>
-              Delete
-            </Button>
-          )}
-          <Button variant="secondary" size="sm" onClick={() => { setConfirmDelete(false); onCancel() }} disabled={isSaving}>
+          <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+            Delete
+          </Button>
+          <DialogShell open={deleteOpen} onOpenChange={setDeleteOpen} title="Delete team" maxWidth="max-w-sm">
+            <p className="text-sm text-gray-600 mb-6">Are you sure you want to delete this team? This action cannot be undone.</p>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+              <Button variant="destructive" size="sm" onClick={() => { setDeleteOpen(false); onDelete() }}>Delete team</Button>
+            </div>
+          </DialogShell>
+          <Button variant="secondary" size="sm" onClick={onCancel} disabled={isSaving}>
             Cancel
           </Button>
         </div>

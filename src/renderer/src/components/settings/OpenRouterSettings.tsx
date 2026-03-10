@@ -28,7 +28,7 @@ export function OpenRouterSettings() {
   }
 
   return (
-    <div className="space-y-5 max-w-lg">
+    <div className="space-y-3 max-w-lg">
       <div className="flex items-start justify-between gap-4">
         <p className="text-xs text-gray-500">
           Connect your OpenRouter account to use AI models for your agents.

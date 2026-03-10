@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Input, Label } from '../ui'
+import { Input } from '../ui'
 import {
   SectionTextarea, SaveBar, usePatterns,
   toTextarea, cleanTextarea, cleanString, cleanObj,
@@ -47,17 +47,22 @@ export function AgentPatternsSettings() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <p className="text-xs text-gray-500">Rules and instructions injected into AGENTS.md for every agent.</p>
+      <hr className="border-gray-200" />
       <div>
-        <Label>First Run</Label>
+        <h4 className="text-sm font-semibold text-gray-900 mb-1">First Run</h4>
         <Input value={firstRun} onChange={(e) => setFirstRun(e.target.value)} />
       </div>
+      <hr className="border-gray-200" />
       <SectionTextarea label="Memory Rules" value={memoryRules} onChange={setMemoryRules} />
+      <hr className="border-gray-200" />
       <SectionTextarea label="Safety Rules" value={safetyRules} onChange={setSafetyRules} />
+      <hr className="border-gray-200" />
       <SectionTextarea label="Priorities" value={priorities} onChange={setPriorities} />
+      <hr className="border-gray-200" />
       <div>
-        <Label>Default Rule</Label>
+        <h4 className="text-sm font-semibold text-gray-900 mb-1">Default Rule</h4>
         <Input value={defaultRule} onChange={(e) => setDefaultRule(e.target.value)} />
       </div>
       <SaveBar onSave={handleSave} isPending={saveSettings.isPending} saved={saved} onReset={handleReset} />

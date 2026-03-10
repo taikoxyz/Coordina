@@ -32,8 +32,9 @@ export function LeadPatternsSettings() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <p className="text-xs text-gray-500">Responsibilities injected into AGENTS.md for agents marked as team lead.</p>
+      <hr className="border-gray-200" />
       <SectionTextarea label="Responsibilities" value={responsibilities} onChange={setResponsibilities} />
       <SaveBar onSave={handleSave} isPending={saveSettings.isPending} saved={saved} onReset={handleReset} />
     </div>

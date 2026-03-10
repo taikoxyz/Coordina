@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Info } from 'lucide-react'
 import { cn } from '@renderer/lib/utils'
 import { Tooltip } from './tooltip'
 
@@ -26,7 +27,7 @@ function ReadField({ label, value, monospace = false, defaultValue, full = false
         <div className="text-xs font-medium text-muted-foreground mb-0.5">
           {label}{tooltip && (
             <Tooltip content={tooltip}>
-              <span className="text-gray-300 cursor-help ml-0.5">ⓘ</span>
+              <Info className="inline w-3.5 h-3.5 text-gray-400 cursor-help ml-1 align-middle hover:text-gray-600" />
             </Tooltip>
           )}
         </div>
