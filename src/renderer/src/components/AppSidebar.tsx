@@ -106,7 +106,14 @@ export function AppSidebar() {
               </div>
 
               {/* Agent list (when expanded) */}
-              {isExpanded && team.agents.map((agent, i) => {
+              {isExpanded && [...team.agents]
+                .sort((a, b) => {
+                  const leadSlug = team.leadAgent ?? team.agents[0]?.slug
+                  if (a.slug === leadSlug) return -1
+                  if (b.slug === leadSlug) return 1
+                  return (a.name || a.slug).localeCompare(b.name || b.slug)
+                })
+                .map((agent, i) => {
                 const isLead = agent.slug === (team.leadAgent ?? team.agents[0]?.slug)
                 return (
                   <button
