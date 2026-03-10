@@ -16,11 +16,12 @@ function AppContent() {
 
   useEffect(() => {
     if (!isFetched || !teams?.length) return
-    const slugs = new Set(teams.map((t) => t.slug))
+    const teamBySlug = new Map(teams.map((t) => [t.slug, t]))
     const validSelection =
       selectedItem?.type === 'settings' ||
-      (selectedItem?.type === 'team' && slugs.has(selectedItem.slug)) ||
-      (selectedItem?.type === 'agent' && slugs.has(selectedItem.teamSlug))
+      (selectedItem?.type === 'team' && teamBySlug.has(selectedItem.slug)) ||
+      (selectedItem?.type === 'agent' &&
+        teamBySlug.get(selectedItem.teamSlug)?.agents.some((a) => a.slug === selectedItem.agentSlug))
     if (!validSelection) {
       selectItem({ type: 'team', slug: teams[0].slug })
     }
