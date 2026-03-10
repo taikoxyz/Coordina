@@ -1,8 +1,8 @@
 // Static persona template catalog sourced from agency-agents project
 // FEATURE: Pre-built agent persona templates organized by division
-import type { PersonaTemplate } from './types'
+import type { AgentTemplate } from './types'
 
-export const PERSONA_CATALOG: readonly PersonaTemplate[] = [
+export const PERSONA_CATALOG: readonly AgentTemplate[] = [
   // Engineering
   {
     id: 'engineering-frontend-developer',
@@ -518,8 +518,8 @@ export const PERSONA_CATALOG: readonly PersonaTemplate[] = [
   },
 ] as const
 
-export function getPersonasByDivision(): Map<string, PersonaTemplate[]> {
-  const grouped = new Map<string, PersonaTemplate[]>()
+export function getPersonasByDivision(): Map<string, AgentTemplate[]> {
+  const grouped = new Map<string, AgentTemplate[]>()
   for (const p of PERSONA_CATALOG) {
     const list = grouped.get(p.division) ?? []
     list.push(p)

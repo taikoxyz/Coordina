@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AppSidebar } from './components/AppSidebar'
 import { MainContent } from './components/MainContent'
@@ -13,17 +13,18 @@ const queryClient = new QueryClient()
 function AppContent() {
   const { selectedItem, selectItem } = useNav()
   const { data: teams, isFetched } = useTeams()
-  const [hasResolved, setHasResolved] = useState(false)
 
   useEffect(() => {
-    if (hasResolved || !isFetched) return
-
-    if (!selectedItem && teams?.length) {
+    if (!isFetched || !teams?.length) return
+    const slugs = new Set(teams.map((t) => t.slug))
+    const validSelection =
+      selectedItem?.type === 'settings' ||
+      (selectedItem?.type === 'team' && slugs.has(selectedItem.slug)) ||
+      (selectedItem?.type === 'agent' && slugs.has(selectedItem.teamSlug))
+    if (!validSelection) {
       selectItem({ type: 'team', slug: teams[0].slug })
     }
-
-    setHasResolved(true)
-  }, [hasResolved, isFetched, teams, selectedItem, selectItem])
+  }, [isFetched, teams, selectedItem, selectItem])
 
   return (
     <div className="flex h-screen bg-background text-foreground">

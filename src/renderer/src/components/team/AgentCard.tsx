@@ -37,7 +37,7 @@ export function AgentCard({
 
   const personasByDivision = useMemo(() => getPersonasByDivision(), [])
   const [selectedTemplate, setSelectedTemplate] = useState<string>(() => {
-    if (agent.role || agent.persona || agent.skills.length > 0) {
+    if (agent.role || agent.persona || (agent.skills ?? []).length > 0) {
       const match = PERSONA_CATALOG.find(
         (p) => p.role === agent.role && p.persona === agent.persona,
       )
@@ -49,13 +49,13 @@ export function AgentCard({
   const applyTemplate = (templateId: string) => {
     setSelectedTemplate(templateId)
     if (templateId === 'custom') {
-      onChange({ ...agent, role: '', persona: '', skills: [] })
+      onChange({ ...agent, title: undefined, role: '', persona: '', skills: [] })
       return
     }
     if (!templateId) return
     const tmpl = PERSONA_CATALOG.find(p => p.id === templateId)
     if (!tmpl) return
-    onChange({ ...agent, role: tmpl.role, persona: tmpl.persona, skills: tmpl.skills })
+    onChange({ ...agent, title: tmpl.name, role: tmpl.role, persona: tmpl.persona, skills: tmpl.skills })
   }
 
   useEffect(() => {
@@ -137,10 +137,10 @@ export function AgentCard({
         {isEditing ? (
           <>
             <div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">About</h3>
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Persona</h3>
               <div className="space-y-3">
                 <div>
-                  <Label>Persona Template</Label>
+                  <Label>Title</Label>
                   <Select
                     value={selectedTemplate}
                     onChange={(e) => applyTemplate(e.target.value)}
@@ -161,7 +161,6 @@ export function AgentCard({
 
             {selectedTemplate && (
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Persona</h3>
                 <div className="space-y-3">
                   <div>
                     <Label>Role <Tooltip content="Used as the 'Creature' field in identity.md and to contextualize the agent in agents.md"><span className="text-gray-300 cursor-help">ⓘ</span></Tooltip></Label>
@@ -184,7 +183,7 @@ export function AgentCard({
                     <Label>Skills (comma-separated) <Tooltip content="Each skill becomes a bullet point in skills.md, telling the agent what it can do"><span className="text-gray-300 cursor-help">ⓘ</span></Tooltip></Label>
                     <Textarea
                       rows={2}
-                      value={agent.skills.join(', ')}
+                      value={(agent.skills ?? []).join(', ')}
                       onChange={(e) =>
                         set('skills')(
                           e.target.value
@@ -203,7 +202,7 @@ export function AgentCard({
             <div>
               <h3 className="text-sm font-semibold text-gray-900 mb-3">OpenRouter Models</h3>
               <div className="space-y-2">
-                {agent.models.map((modelId, mi) => (
+                {(agent.models ?? []).map((modelId, mi) => (
                   <div key={mi} className="flex items-center gap-2">
                     <Select
                       value={modelId}
@@ -221,7 +220,7 @@ export function AgentCard({
                     <Button
                       variant="ghost-destructive"
                       size="sm"
-                      onClick={() => onChange({ ...agent, models: agent.models.filter((_, j) => j !== mi) })}
+                      onClick={() => onChange({ ...agent, models: (agent.models ?? []).filter((_, j) => j !== mi) })}
                       title="Remove model"
                     >
                       &times;
@@ -233,7 +232,7 @@ export function AgentCard({
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => onChange({ ...agent, models: [...agent.models, ''] })}
+                  onClick={() => onChange({ ...agent, models: [...(agent.models ?? []), ''] })}
                 >
                   + Add model
                 </Button>
@@ -383,11 +382,12 @@ export function AgentCard({
 
             <div>
               <h4 className="text-sm font-semibold text-gray-900 mb-1">Persona</h4>
+              <ReadField label="Title" value={agent.title} />
               <ReadField label="Role" value={agent.role} full tooltip="Used as the 'Creature' field in identity.md and to contextualize the agent in agents.md" />
               <ReadField label="Persona" value={agent.persona?.trim() || undefined} full tooltip="Used as 'Vibe' in identity.md and as the core description in soul.md under 'Core Truths'" />
               <ReadField
                 label="Skills"
-                value={agent.skills.length > 0 ? agent.skills.join(', ') : undefined}
+                value={(agent.skills ?? []).length > 0 ? (agent.skills ?? []).join(', ') : undefined}
                 full
                 tooltip="Each skill becomes a bullet point in skills.md, telling the agent what it can do"
               />
@@ -397,7 +397,7 @@ export function AgentCard({
 
             <div>
               <h4 className="text-sm font-semibold text-gray-900 mb-1">OpenRouter Models</h4>
-              {agent.models.length > 0 ? agent.models.map((m, mi) => (
+              {(agent.models ?? []).length > 0 ? (agent.models ?? []).map((m, mi) => (
                 <ReadField key={mi} label={mi === 0 ? 'Primary' : `Fallback ${mi}`} value={m} monospace />
               )) : (
                 <ReadField label="Model" value={undefined} />

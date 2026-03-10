@@ -27,7 +27,7 @@ export function AppSidebar() {
       slug: identity.slug,
       name: identity.name,
       role: '',
-      models: [],
+      models: ['moonshotai/kimi-k2.5'],
       skills: [],
       persona: '',
     }
@@ -114,7 +114,7 @@ export function AppSidebar() {
                         : 'text-gray-500 hover:bg-white/50 hover:text-gray-900',
                     )}
                   >
-                    <AgentAvatar slug={agent.slug} colorIndex={i} size={20} />
+                    <AgentAvatar slug={agent.slug} colorIndex={i} size={24} />
                     <span className="text-xs truncate min-w-0 flex-1">{agent.name || agent.slug}</span>
                     {deployingTeamSlug === team.slug && deployingAgentSlug === agent.slug && (
                       <Loader2 className="w-3 h-3 text-blue-500 animate-spin shrink-0" />
