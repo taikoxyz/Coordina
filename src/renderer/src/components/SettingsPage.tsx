@@ -38,7 +38,7 @@ const sectionHelpPanel: Partial<Record<SettingsSection, () => JSX.Element>> = {
 function FallbackHelpPanel() {
   return (
     <div className="space-y-3">
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Setup Guide</p>
+      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Guide</p>
       <p className="text-xs text-gray-400 italic">Not available</p>
     </div>
   )

@@ -199,7 +199,7 @@ export function GkeSettings() {
 export function GkeHelpPanel() {
   return (
     <div className="space-y-5">
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Setup Guide</p>
+      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Guide</p>
       {GUIDE_STEPS.map((s) => (
         <div key={s.title} className="space-y-1">
           <p className="text-xs font-medium text-gray-700">{s.title}</p>
