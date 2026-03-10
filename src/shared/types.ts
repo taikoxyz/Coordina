@@ -148,3 +148,13 @@ export interface Project {
   createdAt: number
   createdBy: string
 }
+
+export interface PodLogOptions {
+  tailLines?: number
+  sinceSeconds?: number
+}
+
+export interface AgentLogEntry {
+  agentSlug: string
+  logs: string
+}

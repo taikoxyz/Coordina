@@ -32,6 +32,10 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
   const [ghTokenMasked, setGhTokenMasked] = useState<string | null>(null)
   const [ghTokenBusy, setGhTokenBusy] = useState(false)
   const [ghTokenError, setGhTokenError] = useState<string | null>(null)
+  const [orKey, setOrKey] = useState('')
+  const [orKeyMasked, setOrKeyMasked] = useState<string | null>(null)
+  const [orKeyBusy, setOrKeyBusy] = useState(false)
+  const [orKeyError, setOrKeyError] = useState<string | null>(null)
   const [mcRegState, setMcRegState] = useState<'idle' | 'registering' | 'done' | 'error'>('idle')
   const [mcUrl, setMcUrl] = useState<string | null>(null)
   const [mcAdminPassword, setMcAdminPassword] = useState<string | null>(null)
@@ -60,6 +64,16 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
       .invoke('teams:getGitHubTokenMasked', { teamSlug: spec.slug })
       .then((value) => { if (active) setGhTokenMasked((value as string | null) ?? null) })
       .catch((e) => { if (active) setGhTokenError((e as Error).message) })
+    return () => { active = false }
+  }, [spec.slug])
+
+  useEffect(() => {
+    if (!spec.slug) return
+    let active = true
+    window.api
+      .invoke('teams:getOpenRouterKeyMasked', { teamSlug: spec.slug })
+      .then((value) => { if (active) setOrKeyMasked((value as string | null) ?? null) })
+      .catch((e) => { if (active) setOrKeyError((e as Error).message) })
     return () => { active = false }
   }, [spec.slug])
 
@@ -131,6 +145,37 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
     }
   }
 
+  const saveOrKey = async () => {
+    if (!spec.slug || !orKey.trim()) return
+    setOrKeyBusy(true)
+    setOrKeyError(null)
+    try {
+      await window.api.invoke('teams:setOpenRouterKey', { teamSlug: spec.slug, key: orKey })
+      const masked = (await window.api.invoke('teams:getOpenRouterKeyMasked', { teamSlug: spec.slug })) as string | null
+      setOrKeyMasked(masked)
+      setOrKey('')
+    } catch (e) {
+      setOrKeyError((e as Error).message)
+    } finally {
+      setOrKeyBusy(false)
+    }
+  }
+
+  const clearOrKey = async () => {
+    if (!spec.slug) return
+    setOrKeyBusy(true)
+    setOrKeyError(null)
+    try {
+      await window.api.invoke('teams:setOpenRouterKey', { teamSlug: spec.slug, key: '' })
+      setOrKeyMasked(null)
+      setOrKey('')
+    } catch (e) {
+      setOrKeyError((e as Error).message)
+    } finally {
+      setOrKeyBusy(false)
+    }
+  }
+
   const handleRegisterMC = useCallback(async () => {
     if (!spec.deployedEnvSlug) return
     setMcRegState('registering')
@@ -190,6 +235,16 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
             <ReadField label="Token" value={ghTokenMasked ?? undefined} monospace />
             {ghTokenError && (
               <p className="text-xs text-red-600 mt-0.5">{ghTokenError}</p>
+            )}
+          </div>
+
+          <hr className="border-gray-200" />
+
+          <div>
+            <h4 className="text-sm font-semibold text-gray-900 mb-1">OpenRouter</h4>
+            <ReadField label="API Key" value={orKeyMasked ?? undefined} monospace />
+            {orKeyError && (
+              <p className="text-xs text-red-600 mt-0.5">{orKeyError}</p>
             )}
           </div>
 
@@ -396,6 +451,51 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
             )}
             {ghTokenError && (
               <p className="text-xs text-red-600 mt-0.5">{ghTokenError}</p>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">OpenRouter</h3>
+          <div>
+            <Label>OpenRouter API Key <span className="text-gray-400 font-normal">(overrides global)</span></Label>
+            <div className="flex gap-2">
+              <Input
+                mono
+                type="password"
+                value={orKey}
+                onChange={(e) => setOrKey(e.target.value)}
+                placeholder={orKeyMasked ? 'Update key' : 'sk-or-v1-...'}
+              />
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => void saveOrKey()}
+                disabled={orKeyBusy || !spec.slug || !orKey.trim()}
+                className="shrink-0"
+              >
+                Save
+              </Button>
+              {orKeyMasked && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void clearOrKey()}
+                  disabled={orKeyBusy}
+                  className="shrink-0"
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+            {orKeyMasked && (
+              <p className="text-xs text-gray-400 font-mono mt-0.5">{orKeyMasked}</p>
+            )}
+            {!orKeyMasked && (
+              <p className="text-xs text-gray-400 mt-0.5">Uses global OpenRouter key when not set</p>
+            )}
+            {orKeyError && (
+              <p className="text-xs text-red-600 mt-0.5">{orKeyError}</p>
             )}
           </div>
         </div>

@@ -139,7 +139,8 @@ const gkeDeriver: DeploymentSpecDeriver = {
     files.push({ path: 'PROJECTS.md', content: projectsMd })
     files.push({ path: 'configmap-shared.yaml', content: teamConfig })
 
-    const openrouterApiKey = await getOpenRouterApiKey()
+    const perTeamKey = await getSecret(`team:${spec.slug}`, 'team-openrouter-key')
+    const openrouterApiKey = perTeamKey || await getOpenRouterApiKey()
     if (!openrouterApiKey) {
       throw new Error('OpenRouter API key is not configured. Go to Settings → OpenRouter to connect your account.')
     }

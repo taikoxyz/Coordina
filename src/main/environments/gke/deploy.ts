@@ -6,7 +6,7 @@ import yaml from 'js-yaml'
 import { PassThrough } from 'node:stream'
 import { getOAuth2Client } from './auth'
 import { deleteDisk, labelDisk, listDisksByLabels, toZone } from './gcloud'
-import type { DeployOptions, DeployStatus, AgentStatus, SpecFile } from '../../../shared/types'
+import type { DeployOptions, DeployStatus, AgentStatus, SpecFile, PodLogOptions, AgentLogEntry } from '../../../shared/types'
 
 export interface GkeDeployConfig {
   slug: string
@@ -452,4 +452,46 @@ export async function execInPod(
       }
     }).catch((err) => settle(reject, err))
   })
+}
+
+export async function getAgentLogs(
+  teamSlug: string,
+  agentSlug: string,
+  config: GkeDeployConfig,
+  opts?: PodLogOptions,
+): Promise<string> {
+  const kc = await buildKubeConfig(config)
+  const coreApi = kc.makeApiClient(k8s.CoreV1Api)
+  const response = await coreApi.readNamespacedPodLog({
+    name: `agent-${agentSlug}-0`,
+    namespace: teamSlug,
+    container: 'openclaw',
+    tailLines: opts?.tailLines ?? 200,
+    ...(opts?.sinceSeconds ? { sinceSeconds: opts.sinceSeconds } : {}),
+  })
+  return response
+}
+
+export async function getTeamLogs(
+  teamSlug: string,
+  agentSlugs: string[],
+  config: GkeDeployConfig,
+  opts?: PodLogOptions,
+): Promise<AgentLogEntry[]> {
+  const kc = await buildKubeConfig(config)
+  const coreApi = kc.makeApiClient(k8s.CoreV1Api)
+  return Promise.all(agentSlugs.map(async (slug) => {
+    try {
+      const logs = await coreApi.readNamespacedPodLog({
+        name: `agent-${slug}-0`,
+        namespace: teamSlug,
+        container: 'openclaw',
+        tailLines: opts?.tailLines ?? 200,
+        ...(opts?.sinceSeconds ? { sinceSeconds: opts.sinceSeconds } : {}),
+      })
+      return { agentSlug: slug, logs }
+    } catch {
+      return { agentSlug: slug, logs: '' }
+    }
+  }))
 }
