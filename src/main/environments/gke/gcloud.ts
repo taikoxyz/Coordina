@@ -174,7 +174,7 @@ export function listGcpZones(projectId: string, region?: string): Promise<{ name
 export function createAutopilotCluster(projectId: string, name: string, location: string): Promise<void> {
   return new Promise((resolve, reject) => {
     let stderr = ''
-    const child = spawn('gcloud', ['container', 'clusters', 'create-auto', name, `--project=${projectId}`, `--location=${location}`], {
+    const child = spawn('gcloud', ['container', 'clusters', 'create-auto', name, `--project=${projectId}`, `--location=${location}`, '--logging=SYSTEM,WORKLOAD'], {
       stdio: ['ignore', 'pipe', 'pipe'],
     })
     child.stderr?.on('data', (d: Buffer) => { stderr += d.toString() })
