@@ -11,7 +11,12 @@ async function getGkeConfig(teamSlug: string): Promise<GkeDeployConfig | null> {
   if (!deployment) return null
   const env = await getEnvironment(deployment.envSlug)
   if (!env || env.type !== 'gke') return null
-  return { slug: deployment.envSlug, ...env.config as Omit<GkeDeployConfig, 'slug'> }
+  return {
+    slug: deployment.envSlug,
+    ...env.config as Omit<GkeDeployConfig, 'slug'>,
+    clusterName: teamSlug,
+    ...(deployment.clusterZone ? { clusterZone: deployment.clusterZone } : {}),
+  }
 }
 
 interface FileEntry {
