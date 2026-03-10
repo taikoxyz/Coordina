@@ -27,7 +27,7 @@ export const useGkeAuthStatus = () =>
 export const useTestGkeAuth = () =>
   useMutation({
     mutationFn: () =>
-      window.api.invoke('gke:testAuth') as Promise<{ ok: boolean; error?: string }>,
+      window.api.invoke('gke:testAuth') as Promise<{ ok: boolean; error?: string; email?: string }>,
   })
 
 export const useGcpProjects = (enabled: boolean) =>

@@ -5,7 +5,8 @@ import { testOpenRouterConnection } from '../providers/base'
 export function registerProviderHandlers(): void {
   ipcMain.handle('openrouter:getStatus', async () => {
     const apiKey = await getOpenRouterApiKey()
-    return { connected: !!apiKey }
+    const maskedKey = apiKey ? apiKey.slice(0, 10) + '...' + apiKey.slice(-4) : undefined
+    return { connected: !!apiKey, maskedKey }
   })
 
   ipcMain.handle('openrouter:connect', async (_e, data: { apiKey: string }) => {

@@ -3,6 +3,30 @@ import { AlertCircle, Check, ExternalLink, X } from 'lucide-react'
 import { useGkeConfig, useSaveGkeConfig, useGkeAuthStatus, useTestGkeAuth, useGcpProjects, useGcpRegions, useGcpZones } from '../../hooks/useEnvironments'
 import { Button, Input, Label, Select } from '../ui'
 
+export function GkeStatusBadge() {
+  const { data: gkeConfig } = useGkeConfig()
+  const { data: authStatus } = useGkeAuthStatus()
+  if (authStatus?.authenticated) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 px-2.5 py-1 rounded-full">
+        <Check className="w-3 h-3" /> Connected
+      </span>
+    )
+  }
+  if (gkeConfig) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full">
+        <X className="w-3 h-3" /> Not connected
+      </span>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
+      <X className="w-3 h-3" /> Not configured
+    </span>
+  )
+}
+
 interface GkeForm {
   projectId: string
   clusterZone: string
@@ -51,6 +75,8 @@ export function GkeSettings() {
   const [formError, setFormError] = useState<string | null>(null)
   const [authState, setAuthState] = useState<'idle' | 'authing' | 'done' | 'error'>('idle')
   const [authTestResult, setAuthTestResult] = useState<'idle' | 'ok' | 'fail'>('idle')
+  const [authEmail, setAuthEmail] = useState<string | null>(null)
+  const [showReauth, setShowReauth] = useState(false)
   const [saved, setSaved] = useState(false)
   const { data: projects } = useGcpProjects(!!authStatus?.authenticated)
   const { data: regions } = useGcpRegions(form.projectId || undefined)
@@ -70,6 +96,14 @@ export function GkeSettings() {
       })
     }
   }, [gkeConfig])
+
+  useEffect(() => {
+    if (authStatus?.authenticated && !authEmail) {
+      void testAuth.mutateAsync().then((result) => {
+        if (result.ok) setAuthEmail(result.email ?? null)
+      })
+    }
+  }, [authStatus?.authenticated]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const buildPayload = () => ({
     projectId: form.projectId,
@@ -96,9 +130,11 @@ export function GkeSettings() {
     const result = await testAuth.mutateAsync()
     if (result.ok) {
       setAuthTestResult('ok')
+      setAuthEmail(result.email ?? null)
       setTimeout(() => setAuthTestResult('idle'), 3000)
     } else {
       setAuthTestResult('fail')
+      setAuthEmail(null)
       setFormError(result.error ?? 'Authentication test failed')
     }
   }
@@ -111,6 +147,7 @@ export function GkeSettings() {
     setAuthState('authing')
     const result = await window.api.invoke('gke:auth', 'gke') as { ok: boolean }
     setAuthState(result.ok ? 'done' : 'error')
+    if (result.ok) setShowReauth(false)
   }
 
   const updateField = (key: keyof GkeForm, value: string | boolean) => {
@@ -121,63 +158,71 @@ export function GkeSettings() {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-start justify-between gap-4">
-        <p className="text-xs text-gray-500">Configure your GKE cluster for agent deployment.</p>
-        {authStatus?.authenticated ? (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 px-2.5 py-1 rounded-full shrink-0">
-            <Check className="w-3 h-3" /> Authenticated
-          </span>
-        ) : gkeConfig ? (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full shrink-0">
-            <X className="w-3 h-3" /> Not authenticated
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full shrink-0">
-            <X className="w-3 h-3" /> Not configured
-          </span>
-        )}
-      </div>
+      <hr className="border-gray-200" />
+      <h4 className="text-sm font-semibold text-gray-900 mb-1">Authentication</h4>
+
+      {authStatus?.authenticated && !showReauth ? (
+        <div className="space-y-3">
+          {authEmail && (
+            <p className="text-xs text-gray-500">
+              Connected as <span className="font-mono text-gray-700">{authEmail}</span>
+            </p>
+          )}
+          {!authEmail && (
+            <p className="text-xs text-gray-500">
+              Your Google credentials are stored securely.
+            </p>
+          )}
+          <div className="flex items-center gap-3">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => void handleTestAuth()}
+              disabled={testAuth.isPending}
+            >
+              {testAuth.isPending ? 'Testing...' : authTestResult === 'ok' ? 'Connection valid' : 'Test connection'}
+            </Button>
+            {authTestResult === 'ok' && <Check className="w-4 h-4 text-green-600" />}
+            <Button variant="ghost-destructive" size="sm" onClick={() => setShowReauth(true)}>
+              Disconnect
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div>
+            <Label>OAuth Client ID</Label>
+            <Input mono value={form.clientId} onChange={(e) => updateField('clientId', e.target.value)} placeholder="0123456789-abc.apps.googleusercontent.com" />
+          </div>
+
+          <div>
+            <Label>OAuth Client Secret</Label>
+            <Input mono type="password" value={form.clientSecret} onChange={(e) => updateField('clientSecret', e.target.value)} />
+          </div>
+
+          <p className="text-xs text-gray-400 leading-relaxed">
+            The signing-in Google account must have the{' '}
+            <span className="font-mono text-gray-500">Kubernetes Engine Developer</span>{' '}
+            role (<span className="font-mono text-gray-500">roles/container.developer</span>) on the GCP project.
+            For ingress mode with IAP, also grant{' '}
+            <span className="font-mono text-gray-500">IAP-secured Web App User</span>.
+          </p>
+
+          <div className="flex items-center gap-3">
+            <Button variant="primary" size="sm" onClick={() => void handleAuth()} disabled={authState === 'authing' || saveConfig.isPending}>
+              {authState === 'authing' ? 'Signing in...' : 'Sign in with Google'}
+            </Button>
+            {showReauth && (
+              <Button variant="ghost" size="sm" onClick={() => setShowReauth(false)}>
+                Cancel
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
 
       <hr className="border-gray-200" />
-      <h4 className="text-sm font-semibold text-gray-900 mb-1">Google OAuth</h4>
-
-      <div>
-        <Label>OAuth Client ID</Label>
-        <Input mono value={form.clientId} onChange={(e) => updateField('clientId', e.target.value)} placeholder="0123456789-abc.apps.googleusercontent.com" />
-      </div>
-
-      <div>
-        <Label>OAuth Client Secret</Label>
-        <Input mono type="password" value={form.clientSecret} onChange={(e) => updateField('clientSecret', e.target.value)} />
-      </div>
-
-      <p className="text-xs text-gray-400 leading-relaxed">
-        The signing-in Google account must have the{' '}
-        <span className="font-mono text-gray-500">Kubernetes Engine Developer</span>{' '}
-        role (<span className="font-mono text-gray-500">roles/container.developer</span>) on the GCP project.
-        For ingress mode with IAP, also grant{' '}
-        <span className="font-mono text-gray-500">IAP-secured Web App User</span>.
-      </p>
-
-      <div className="flex items-center gap-3">
-        <Button variant="secondary" size="sm" onClick={() => void handleAuth()} disabled={authState === 'authing' || saveConfig.isPending}>
-          {authState === 'authing' ? 'Signing in...' : 'Sign in with Google'}
-        </Button>
-        {authStatus?.authenticated && (
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => void handleTestAuth()}
-            disabled={testAuth.isPending}
-          >
-            {testAuth.isPending ? 'Testing...' : authTestResult === 'ok' ? 'Token valid' : 'Test Auth'}
-          </Button>
-        )}
-        {authTestResult === 'ok' && <Check className="w-4 h-4 text-green-600" />}
-      </div>
-
-      <hr className="border-gray-200" />
-      <h4 className="text-sm font-semibold text-gray-900 mb-1">Project</h4>
+      <h4 className="text-sm font-semibold text-gray-900 mb-1">Deployment</h4>
 
       <div>
         <Label>GCP Project</Label>
@@ -193,9 +238,6 @@ export function GkeSettings() {
           <Input mono value={form.projectId} onChange={(e) => updateField('projectId', e.target.value)} placeholder="my-gcp-project" />
         )}
       </div>
-
-      <hr className="border-gray-200" />
-      <h4 className="text-sm font-semibold text-gray-900 mb-1">Deployment Preferences</h4>
 
       <div>
         <Label>Cluster location</Label>
@@ -228,10 +270,12 @@ export function GkeSettings() {
         </Select>
       </div>
 
-      <div>
-        <Label>Base domain</Label>
-        <Input mono value={form.domain} onChange={(e) => updateField('domain', e.target.value)} placeholder="example.com" disabled={form.gatewayMode !== 'ingress'} />
-      </div>
+      {form.gatewayMode === 'ingress' && (
+        <div>
+          <Label>Base domain</Label>
+          <Input mono value={form.domain} onChange={(e) => updateField('domain', e.target.value)} placeholder="example.com" />
+        </div>
+      )}
 
       {formError && (
         <div className="flex items-center gap-2 text-xs text-red-600">

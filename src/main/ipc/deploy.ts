@@ -68,19 +68,17 @@ export function registerDeployHandlers(): void {
   ipcMain.handle('gke:testAuth', async () => {
     const env = await getEnvironment('gke')
     if (!env) return { ok: false, error: 'GKE environment not configured' }
-    const { clientId, clientSecret, projectId } = env.config as { clientId: string; clientSecret: string; projectId: string }
+    const { clientId, clientSecret } = env.config as { clientId: string; clientSecret: string }
     try {
       const client = await getOAuth2Client('gke', { clientId, clientSecret })
       const token = await client.getAccessToken()
       if (!token.token) return { ok: false, error: 'No access token — sign in again' }
-      const res = await fetch(`https://cloudresourcemanager.googleapis.com/v1/projects/${projectId}`, {
+      const res = await fetch('https://www.googleapis.com/oauth2/v1/userinfo', {
         headers: { Authorization: `Bearer ${token.token}` },
       })
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: { message?: string } }
-        return { ok: false, error: body.error?.message ?? `HTTP ${res.status} — token may be expired` }
-      }
-      return { ok: true }
+      if (!res.ok) return { ok: false, error: `HTTP ${res.status} — token may be expired` }
+      const info = await res.json() as { email?: string }
+      return { ok: true, email: info.email }
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) }
     }

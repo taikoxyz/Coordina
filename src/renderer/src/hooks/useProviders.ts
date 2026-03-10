@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 export const useOpenRouterStatus = () =>
-  useQuery<{ connected: boolean }>({
+  useQuery<{ connected: boolean; maskedKey?: string }>({
     queryKey: ['openrouter', 'status'],
     queryFn: () => window.api.invoke('openrouter:getStatus') as Promise<{ connected: boolean }>,
   })
