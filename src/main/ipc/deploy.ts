@@ -306,6 +306,14 @@ export function registerDeployHandlers(): void {
     if (!env) return { ok: false, reason: 'Environment not found' }
     const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof getTeamStatus>[2]
     try {
+      const clusters = await listGkeClusters(deployConfig.projectId)
+      const cluster = clusters.find(c => c.name === teamSlug)
+      if (cluster) {
+        deployConfig.clusterName = teamSlug
+        deployConfig.clusterZone = cluster.location
+      }
+    } catch { /* proceed with config values */ }
+    try {
       const logs = await getAgentLogs(teamSlug, agentSlug, deployConfig, opts)
       return { ok: true, logs }
     } catch (e) {
@@ -319,6 +327,14 @@ export function registerDeployHandlers(): void {
     const [spec, env] = await Promise.all([getTeam(teamSlug), getEnvironment(envSlug)])
     if (!spec || !env) return { ok: false, reason: 'Team or environment not found' }
     const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof getTeamStatus>[2]
+    try {
+      const clusters = await listGkeClusters(deployConfig.projectId)
+      const cluster = clusters.find(c => c.name === teamSlug)
+      if (cluster) {
+        deployConfig.clusterName = teamSlug
+        deployConfig.clusterZone = cluster.location
+      }
+    } catch { /* proceed with config values */ }
     try {
       const entries = await getTeamLogs(teamSlug, spec.agents.map(a => a.slug), deployConfig, opts)
       return { ok: true, entries }

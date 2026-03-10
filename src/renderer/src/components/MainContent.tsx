@@ -7,6 +7,7 @@ import { DeployPanel } from './DeployPanel'
 import { SpecJsonPanel } from './SpecJsonPanel'
 import { FileBrowser } from './files/FileBrowser'
 import { ConnectPane } from './agent/ConnectPane'
+import { LogsPanel } from './LogsPanel'
 import { SettingsPage } from './SettingsPage'
 import { EmptyState } from './EmptyState'
 import { cn } from '../lib/utils'
@@ -42,6 +43,7 @@ function TabBar({ tabs, active, onSelect }: { tabs: { id: ContentTab; label: str
 const teamTabs: { id: ContentTab; label: string }[] = [
   { id: 'spec', label: 'Spec' },
   { id: 'deploy', label: 'Deploy' },
+  { id: 'logs', label: 'Logs' },
 ]
 
 const agentTabs: { id: ContentTab; label: string }[] = [
@@ -49,6 +51,7 @@ const agentTabs: { id: ContentTab; label: string }[] = [
   { id: 'deploy', label: 'Deploy' },
   { id: 'files', label: 'Files' },
   { id: 'connect', label: 'Connect' },
+  { id: 'logs', label: 'Logs' },
 ]
 
 export function MainContent() {
@@ -103,6 +106,9 @@ export function MainContent() {
           )}
           {activeTab === 'connect' && agentSlug && (
             <ConnectPane teamSlug={teamSlug} agentSlug={agentSlug} />
+          )}
+          {activeTab === 'logs' && (
+            <LogsPanel key={`${teamSlug}:${agentSlug ?? ''}`} teamSlug={teamSlug} agentSlug={agentSlug} />
           )}
         </div>
       </div>

@@ -500,6 +500,7 @@ export async function getAgentLogs(
     namespace: teamSlug,
     container: 'openclaw',
     tailLines: opts?.tailLines ?? 200,
+    timestamps: true,
     ...(opts?.sinceSeconds ? { sinceSeconds: opts.sinceSeconds } : {}),
   })
   return response
@@ -520,6 +521,7 @@ export async function getTeamLogs(
         namespace: teamSlug,
         container: 'openclaw',
         tailLines: opts?.tailLines ?? 200,
+        timestamps: true,
         ...(opts?.sinceSeconds ? { sinceSeconds: opts.sinceSeconds } : {}),
       })
       return { agentSlug: slug, logs }

@@ -242,7 +242,7 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
 
           <div>
             <h4 className="text-sm font-semibold text-gray-900 mb-1">OpenRouter</h4>
-            <ReadField label="API Key" value={orKeyMasked ?? undefined} monospace />
+            <ReadField label="API Key" value={orKeyMasked ?? undefined} defaultValue="Global key" monospace />
             {orKeyError && (
               <p className="text-xs text-red-600 mt-0.5">{orKeyError}</p>
             )}

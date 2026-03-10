@@ -6,7 +6,7 @@ export type SelectedItem =
   | { type: 'agent'; teamSlug: string; agentSlug: string }
   | { type: 'settings' }
 
-export type ContentTab = 'deploy' | 'spec' | 'files' | 'connect'
+export type ContentTab = 'deploy' | 'spec' | 'files' | 'connect' | 'logs'
 
 export type SettingsSection = 'general' | 'openrouter' | 'google-cloud' | 'patterns-soul' | 'patterns-agents' | 'patterns-lead' | 'patterns-user'
 
