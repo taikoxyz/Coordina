@@ -5,7 +5,8 @@ import { testOpenRouterConnection } from '../providers/base'
 export function registerProviderHandlers(): void {
   ipcMain.handle('openrouter:getStatus', async () => {
     const apiKey = await getOpenRouterApiKey()
-    return { connected: !!apiKey }
+    const maskedKey = apiKey ? apiKey.slice(0, 10) + '...' + apiKey.slice(-4) : undefined
+    return { connected: !!apiKey, maskedKey }
   })
 
   ipcMain.handle('openrouter:connect', async (_e, data: { apiKey: string }) => {
@@ -17,6 +18,13 @@ export function registerProviderHandlers(): void {
     } catch (e) {
       return { ok: false, error: (e as Error).message }
     }
+  })
+
+  ipcMain.handle('openrouter:test', async () => {
+    const apiKey = await getOpenRouterApiKey()
+    if (!apiKey) return { ok: false, error: 'No API key configured' }
+    const result = await testOpenRouterConnection(apiKey)
+    return result.valid ? { ok: true } : { ok: false, error: result.error ?? 'Authentication failed' }
   })
 
   ipcMain.handle('openrouter:disconnect', async () => {

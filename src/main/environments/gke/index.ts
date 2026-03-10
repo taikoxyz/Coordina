@@ -12,21 +12,18 @@ registerEnvironment({
   displayName: 'Google Kubernetes Engine (GKE)',
   configSchema: {
     type: 'object',
-    required: ['projectId', 'clusterName', 'clusterZone'],
+    required: ['projectId'],
     properties: {
       projectId: { type: 'string', title: 'GCP Project ID' },
-      clusterName: { type: 'string', title: 'Cluster Name' },
       clusterZone: { type: 'string', title: 'Cluster Zone', description: 'e.g. us-central1-a' },
       gatewayMode: { type: 'string', title: 'Gateway Mode', enum: ['port-forward', 'ingress'] },
       domain: { type: 'string', title: 'Base Domain', description: 'Required for ingress mode (e.g. example.com)' },
     },
   },
   validate(config: unknown) {
-    const c = config as { projectId?: string; clusterName?: string; clusterZone?: string; domain?: string }
+    const c = config as { projectId?: string; clusterZone?: string; domain?: string }
     const errors: string[] = []
     if (!c.projectId) errors.push('GCP Project ID is required')
-    if (!c.clusterName) errors.push('Cluster Name is required')
-    if (!c.clusterZone) errors.push('Cluster Zone is required')
     const mode = resolveGatewayMode(config)
     if (mode === 'ingress' && !c.domain) errors.push('Base domain is required when gateway mode is ingress')
     return errors.length ? { valid: false, errors } : { valid: true }

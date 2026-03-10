@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import type { DerivationPatterns } from '../../../../shared/types'
 import { DEFAULT_PATTERNS } from '../../../../shared/derivationDefaults'
 import { useSaveSettings, useSettings } from '../../hooks/useSettings'
@@ -7,8 +7,8 @@ import { Button, Textarea } from '../ui'
 export type KeyedList = Array<{ id: number; value: string }>
 
 let nextId = 0
-export const toKeyed = (items: string[]): KeyedList =>
-  items.map((value) => ({ id: nextId++, value }))
+export const toKeyed = (items: string[] | undefined): KeyedList =>
+  (items ?? []).map((value) => ({ id: nextId++, value }))
 export const fromKeyed = (items: KeyedList): string[] =>
   items.map((item) => item.value)
 export const addKeyed = (items: KeyedList): KeyedList =>
@@ -19,15 +19,15 @@ export const cleanArray = (keyed: KeyedList): string[] | undefined => {
   return filtered.length > 0 ? filtered : undefined
 }
 
-export const toTextarea = (items: string[]): string => items.join('\n')
+export const toTextarea = (items: string[] | undefined): string => (items ?? []).join('\n')
 
 export const cleanTextarea = (text: string): string[] | undefined => {
   const filtered = text.split('\n').filter((s) => s.trim() !== '')
   return filtered.length > 0 ? filtered : undefined
 }
 
-export const cleanString = (s: string): string | undefined =>
-  s.trim() || undefined
+export const cleanString = (s: string | undefined): string | undefined =>
+  s?.trim() || undefined
 
 export const cleanObj = <T extends Record<string, unknown>>(o: T): T | undefined => {
   const entries = Object.entries(o).filter(([, v]) => v !== undefined)

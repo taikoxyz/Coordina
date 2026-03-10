@@ -27,8 +27,7 @@ interface ProxyRequestContext {
 
 interface GkeGatewayConfig {
   projectId: string
-  clusterName: string
-  clusterZone: string
+  clusterZone?: string
   clientId: string
   clientSecret: string
 }
@@ -59,15 +58,12 @@ function parseGkeGatewayConfig(config: unknown): GkeGatewayConfig | null {
   const c = config as Partial<GkeGatewayConfig>
   if (
     typeof c.projectId === 'string' &&
-    typeof c.clusterName === 'string' &&
-    typeof c.clusterZone === 'string' &&
     typeof c.clientId === 'string' &&
     typeof c.clientSecret === 'string'
   ) {
     return {
       projectId: c.projectId,
-      clusterName: c.clusterName,
-      clusterZone: c.clusterZone,
+      clusterZone: typeof c.clusterZone === 'string' ? c.clusterZone : undefined,
       clientId: c.clientId,
       clientSecret: c.clientSecret,
     }
@@ -78,23 +74,26 @@ function parseGkeGatewayConfig(config: unknown): GkeGatewayConfig | null {
 async function readGkeIngressAddress(envSlug: string, teamSlug: string): Promise<string | null> {
   const env = await getEnvironment(envSlug)
   if (!env || env.type !== 'gke') return null
-
   const cfg = parseGkeGatewayConfig(env.config)
   if (!cfg) return null
+
+  const deployment = await getTeamDeployment(teamSlug)
+  const clusterZone = deployment?.clusterZone ?? cfg.clusterZone
+  if (!clusterZone) return null
 
   const auth = await getOAuth2Client(env.slug, { clientId: cfg.clientId, clientSecret: cfg.clientSecret })
   const containerClient = new ClusterManagerClient({ authClient: auth })
   const [cluster] = await containerClient.getCluster({
-    name: `projects/${cfg.projectId}/locations/${cfg.clusterZone}/clusters/${cfg.clusterName}`,
+    name: `projects/${cfg.projectId}/locations/${clusterZone}/clusters/${teamSlug}`,
   })
 
   if (!cluster.endpoint || !cluster.masterAuth?.clusterCaCertificate) return null
 
   const kc = new k8s.KubeConfig()
   kc.loadFromOptions({
-    clusters: [{ name: cfg.clusterName, server: `https://${cluster.endpoint}`, caData: cluster.masterAuth.clusterCaCertificate }],
+    clusters: [{ name: teamSlug, server: `https://${cluster.endpoint}`, caData: cluster.masterAuth.clusterCaCertificate }],
     users: [{ name: 'gke-user', token: (await auth.getAccessToken()).token ?? '' }],
-    contexts: [{ name: 'gke', cluster: cfg.clusterName, user: 'gke-user' }],
+    contexts: [{ name: 'gke', cluster: teamSlug, user: 'gke-user' }],
     currentContext: 'gke',
   })
 
@@ -106,21 +105,20 @@ async function readGkeIngressAddress(envSlug: string, teamSlug: string): Promise
   return null
 }
 
-function parseGkeClusterRef(config: unknown): ClusterRef | null {
+function parseGkeClusterRef(config: unknown, overrides?: { clusterName?: string; clusterZone?: string }): ClusterRef | null {
   const c = config as Partial<ClusterRef>
+  const projectId = c.projectId
+  const clusterName = overrides?.clusterName ?? c.clusterName
+  const clusterZone = overrides?.clusterZone ?? c.clusterZone
   if (
-    typeof c.projectId === 'string' &&
-    typeof c.clusterName === 'string' &&
-    typeof c.clusterZone === 'string' &&
-    c.projectId.length > 0 &&
-    c.clusterName.length > 0 &&
-    c.clusterZone.length > 0
+    typeof projectId === 'string' &&
+    typeof clusterName === 'string' &&
+    typeof clusterZone === 'string' &&
+    projectId.length > 0 &&
+    clusterName.length > 0 &&
+    clusterZone.length > 0
   ) {
-    return {
-      projectId: c.projectId,
-      clusterName: c.clusterName,
-      clusterZone: c.clusterZone,
-    }
+    return { projectId, clusterName, clusterZone }
   }
   return null
 }
@@ -298,9 +296,13 @@ async function buildProxyRequestContext(req: IncomingMessage, getToken: TokenFet
 
   const upstream = await (async (): Promise<UpstreamTarget> => {
     if (mode === 'port-forward') {
-      const cluster = parseGkeClusterRef(env.config)
+      const pfDeployment = await getTeamDeployment(teamSlug)
+      const cluster = parseGkeClusterRef(env.config, {
+        clusterName: teamSlug,
+        clusterZone: pfDeployment?.clusterZone,
+      })
       if (!cluster) {
-        throw new Error(`Environment '${env.slug}' is missing GKE cluster settings (projectId, clusterName, clusterZone)`)
+        throw new Error(`Environment '${env.slug}' is missing GKE cluster settings (projectId, clusterZone)`)
       }
       const target = await ensureAgentPortForward({
         envSlug: deployment.envSlug,

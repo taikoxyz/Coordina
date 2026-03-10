@@ -6,6 +6,7 @@ import * as net from 'net'
 import * as k8s from '@kubernetes/client-node'
 import { getEnvironment } from '../store/environments'
 import { getTeam } from '../store/teams'
+import { getTeamDeployment } from '../store/deployments'
 import { buildKubeConfig } from '../environments/gke/deploy'
 import { deriveMcApiKey } from '../specs/gke'
 import type { MissionControlConfig } from '../../shared/types'
@@ -83,8 +84,11 @@ export function registerMissionControlHandlers(): void {
     if (!team.signingKey) return { ok: false, reason: 'Signing key not set on team' }
     const apiKey = deriveMcApiKey(team.signingKey)
 
-    const gkeConfig = env.config as { projectId: string; clusterName: string; clusterZone: string; clientId: string; clientSecret: string }
-    const kc = await buildKubeConfig({ slug: envSlug, projectId: gkeConfig.projectId, clusterName: gkeConfig.clusterName, clusterZone: gkeConfig.clusterZone, clientId: gkeConfig.clientId, clientSecret: gkeConfig.clientSecret })
+    const gkeConfig = env.config as { projectId: string; clusterZone?: string; clientId: string; clientSecret: string }
+    const deployment = await getTeamDeployment(teamSlug)
+    const clusterZone = deployment?.clusterZone ?? gkeConfig.clusterZone
+    if (!clusterZone) return { ok: false, reason: 'Cluster zone not found — deploy the team first' }
+    const kc = await buildKubeConfig({ slug: envSlug, projectId: gkeConfig.projectId, clusterName: teamSlug, clusterZone, clientId: gkeConfig.clientId, clientSecret: gkeConfig.clientSecret })
     const agents = team.agents.map(a => ({ slug: a.slug, isLead: a.slug === team.leadAgent }))
 
     try {

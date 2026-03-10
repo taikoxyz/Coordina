@@ -3,8 +3,8 @@ import { useNav } from '../store/nav'
 import type { SettingsSection } from '../store/nav'
 import { useTeams } from '../hooks/useTeams'
 import { GeneralSettings } from './settings/GeneralSettings'
-import { OpenRouterSettings } from './settings/OpenRouterSettings'
-import { GkeSettings, GkeHelpPanel } from './settings/GkeSettings'
+import { OpenRouterSettings, OpenRouterStatusBadge } from './settings/OpenRouterSettings'
+import { GkeSettings, GkeHelpPanel, GkeStatusBadge } from './settings/GkeSettings'
 import { SoulPatternsSettings } from './settings/SoulPatternsSettings'
 import { AgentPatternsSettings } from './settings/AgentPatternsSettings'
 import { LeadPatternsSettings } from './settings/LeadPatternsSettings'
@@ -12,16 +12,16 @@ import { UserPatternsSettings } from './settings/UserPatternsSettings'
 import { cn } from '../lib/utils'
 
 const sections: Array<{ id: SettingsSection; label: string; group?: string }> = [
-  { id: 'general', label: 'General' },
-  { id: 'openrouter', label: 'OpenRouter' },
-  { id: 'google-cloud', label: 'Google Cloud' },
-{ id: 'patterns-soul', label: 'Soul', group: 'Agent Patterns' },
+  { id: 'general', label: 'Naming', group: 'General' },
+  { id: 'openrouter', label: 'OpenRouter', group: 'General' },
+  { id: 'google-cloud', label: 'Google Cloud', group: 'General' },
+  { id: 'patterns-soul', label: 'Soul', group: 'Agent Patterns' },
   { id: 'patterns-agents', label: 'Behavior', group: 'Agent Patterns' },
   { id: 'patterns-lead', label: 'Team Lead', group: 'Agent Patterns' },
   { id: 'patterns-user', label: 'User', group: 'Agent Patterns' },
 ]
 
-const sectionContent: Record<SettingsSection, () => JSX.Element> = {
+const sectionContent: Record<SettingsSection, () => ReturnType<typeof GeneralSettings>> = {
   'general': GeneralSettings,
   'openrouter': OpenRouterSettings,
   'google-cloud': GkeSettings,
@@ -31,7 +31,12 @@ const sectionContent: Record<SettingsSection, () => JSX.Element> = {
   'patterns-user': UserPatternsSettings,
 }
 
-const sectionHelpPanel: Partial<Record<SettingsSection, () => JSX.Element>> = {
+const sectionStatusBadge: Partial<Record<SettingsSection, () => ReturnType<typeof GeneralSettings>>> = {
+  'openrouter': OpenRouterStatusBadge,
+  'google-cloud': GkeStatusBadge,
+}
+
+const sectionHelpPanel: Partial<Record<SettingsSection, () => ReturnType<typeof GkeHelpPanel>>> = {
   'google-cloud': GkeHelpPanel,
 }
 
@@ -45,7 +50,7 @@ function FallbackHelpPanel() {
 }
 
 const sectionTitles: Record<SettingsSection, string> = {
-  'general': 'General',
+  'general': 'Naming',
   'openrouter': 'OpenRouter',
   'google-cloud': 'Google Cloud',
   'patterns-soul': 'Soul Patterns',
@@ -67,6 +72,7 @@ export function SettingsPage() {
     }
   }
 
+  const StatusBadge = sectionStatusBadge[settingsSection]
   const HelpPanel = sectionHelpPanel[settingsSection] ?? FallbackHelpPanel
 
   let lastGroup: string | undefined
@@ -121,9 +127,16 @@ export function SettingsPage() {
 
       <div className="flex-1 overflow-y-auto scrollbar-hide">
         <div className="max-w-2xl px-10 py-8">
-          <h1 className="text-lg font-semibold text-gray-900 mb-6">
-            {sectionTitles[settingsSection]}
-          </h1>
+          <div className="mb-6">
+            <h1 className="text-lg font-semibold text-gray-900">
+              {sectionTitles[settingsSection]}
+            </h1>
+            {StatusBadge && (
+              <div className="mt-2">
+                <StatusBadge />
+              </div>
+            )}
+          </div>
           <Content />
         </div>
       </div>

@@ -8,8 +8,9 @@ import { saveTeamDeployment, deleteTeamDeployment } from '../store/deployments'
 import { getDeriver } from '../specs/base'
 import '../specs/gke'
 import { validateDerivedSpecFiles } from '../specs/validate'
-import { deployTeam, undeployTeam, undeployAgent, getTeamStatus, getAgentLogs, getTeamLogs } from '../environments/gke/deploy'
-import { authenticateGke } from '../environments/gke/auth'
+import { deployTeam, undeployTeam, undeployAgent, getTeamStatus, getAgentLogs, getTeamLogs, resolveClusterForTeam } from '../environments/gke/deploy'
+import { listGcpRegions, listGcpZones, listGkeClusters } from '../environments/gke/gcloud'
+import { authenticateGke, getOAuth2Client } from '../environments/gke/auth'
 import { resolveGatewayMode } from '../gateway/mode'
 import type { DeployOptions, PodLogOptions } from '../../shared/types'
 import { validateTeamSpec } from '../validation/teamSpec'
@@ -64,6 +65,25 @@ export function registerDeployHandlers(): void {
     return { authenticated: !!token }
   })
 
+  ipcMain.handle('gke:testAuth', async () => {
+    const env = await getEnvironment('gke')
+    if (!env) return { ok: false, error: 'GKE environment not configured' }
+    const { clientId, clientSecret } = env.config as { clientId: string; clientSecret: string }
+    try {
+      const client = await getOAuth2Client('gke', { clientId, clientSecret })
+      const token = await client.getAccessToken()
+      if (!token.token) return { ok: false, error: 'No access token — sign in again' }
+      const res = await fetch('https://www.googleapis.com/oauth2/v1/userinfo', {
+        headers: { Authorization: `Bearer ${token.token}` },
+      })
+      if (!res.ok) return { ok: false, error: `HTTP ${res.status} — token may be expired` }
+      const info = await res.json() as { email?: string }
+      return { ok: true, email: info.email }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) }
+    }
+  })
+
   ipcMain.handle('gke:auth', async (_e, envSlug: string) => {
     const env = await getEnvironment(envSlug)
     if (!env) return { ok: false, reason: 'Environment not found' }
@@ -73,6 +93,47 @@ export function registerDeployHandlers(): void {
       return { ok: true }
     } catch (e) {
       return { ok: false, reason: e instanceof Error ? e.message : String(e) }
+    }
+  })
+
+  ipcMain.handle('gcp:projects:list', async () => {
+    const env = await getEnvironment('gke')
+    if (!env) return { ok: false, projects: [], error: 'GKE environment not configured' }
+    const { clientId, clientSecret } = env.config as { clientId: string; clientSecret: string }
+    try {
+      const client = await getOAuth2Client('gke', { clientId, clientSecret })
+      const token = await client.getAccessToken()
+      if (!token.token) return { ok: false, projects: [], error: 'No access token — sign in first' }
+      const res = await fetch('https://cloudresourcemanager.googleapis.com/v1/projects?filter=lifecycleState:ACTIVE', {
+        headers: { Authorization: `Bearer ${token.token}` },
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: { message?: string } }
+        return { ok: false, projects: [], error: body.error?.message ?? `HTTP ${res.status}` }
+      }
+      const body = await res.json() as { projects?: { projectId: string; name: string }[] }
+      const projects = (body.projects ?? []).map(p => ({ projectId: p.projectId, name: p.name })).sort((a, b) => a.projectId.localeCompare(b.projectId))
+      return { ok: true, projects }
+    } catch (e) {
+      return { ok: false, projects: [], error: e instanceof Error ? e.message : String(e) }
+    }
+  })
+
+  ipcMain.handle('gcp:regions:list', async (_e, projectId: string) => {
+    try {
+      const regions = await listGcpRegions(projectId)
+      return { ok: true, regions }
+    } catch (e) {
+      return { ok: false, regions: [], reason: e instanceof Error ? e.message : String(e) }
+    }
+  })
+
+  ipcMain.handle('gcp:zones:list', async (_e, { projectId, region }: { projectId: string; region?: string }) => {
+    try {
+      const zones = await listGcpZones(projectId, region)
+      return { ok: true, zones }
+    } catch (e) {
+      return { ok: false, zones: [], reason: e instanceof Error ? e.message : String(e) }
     }
   })
 
@@ -109,6 +170,18 @@ export function registerDeployHandlers(): void {
     const win = BrowserWindow.fromWebContents(event.sender)
     const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof deployTeam>[2]
 
+    let resolved: { clusterName: string; clusterZone: string }
+    try {
+      resolved = await resolveClusterForTeam(teamSlug, {
+        projectId: deployConfig.projectId,
+        defaultLocation: deployConfig.clusterZone || 'us-central1',
+      }, (msg) => win?.webContents.send('deploy:status', { resource: 'Cluster', status: 'exists', message: msg }))
+      deployConfig.clusterName = resolved.clusterName
+      deployConfig.clusterZone = resolved.clusterZone
+    } catch (e) {
+      return { ok: false, reason: `Cluster resolution failed: ${e instanceof Error ? e.message : String(e)}` }
+    }
+
     try {
       for await (const status of deployTeam(filesToDeploy, teamSlug, deployConfig, options)) {
         win?.webContents.send('deploy:status', status)
@@ -128,6 +201,7 @@ export function registerDeployHandlers(): void {
           gatewayBaseUrl: mode === 'ingress'
             ? `https://${teamSlug}.${envDomain}`.replace(/\/+$/, '')
             : 'http://127.0.0.1',
+          clusterZone: resolved.clusterZone,
           deployedAt,
         })
         const currentSpec = await getTeam(teamSlug)
@@ -145,6 +219,15 @@ export function registerDeployHandlers(): void {
 
     const win = BrowserWindow.fromWebContents(event.sender)
     const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof undeployTeam>[1]
+
+    try {
+      const clusters = await listGkeClusters(deployConfig.projectId)
+      const cluster = clusters.find(c => c.name === teamSlug)
+      if (cluster) {
+        deployConfig.clusterName = teamSlug
+        deployConfig.clusterZone = cluster.location
+      }
+    } catch { /* proceed with config values */ }
 
     try {
       for await (const status of undeployTeam(teamSlug, deployConfig, { deleteDisks })) {
@@ -165,6 +248,15 @@ export function registerDeployHandlers(): void {
 
     const win = BrowserWindow.fromWebContents(event.sender)
     const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof undeployAgent>[2]
+
+    try {
+      const clusters = await listGkeClusters(deployConfig.projectId)
+      const cluster = clusters.find(c => c.name === teamSlug)
+      if (cluster) {
+        deployConfig.clusterName = teamSlug
+        deployConfig.clusterZone = cluster.location
+      }
+    } catch { /* proceed with config values */ }
 
     try {
       for await (const status of undeployAgent(teamSlug, agentSlug, deployConfig, { deleteDisks })) {
@@ -194,6 +286,16 @@ export function registerDeployHandlers(): void {
     const [spec, env] = await Promise.all([getTeam(teamSlug), getEnvironment(envSlug)])
     if (!spec || !env) return []
     const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof getTeamStatus>[2]
+
+    try {
+      const clusters = await listGkeClusters(deployConfig.projectId)
+      const cluster = clusters.find(c => c.name === teamSlug)
+      if (cluster) {
+        deployConfig.clusterName = teamSlug
+        deployConfig.clusterZone = cluster.location
+      }
+    } catch { /* proceed with config values */ }
+
     return getTeamStatus(teamSlug, spec.agents.map(a => a.slug), deployConfig)
   })
 

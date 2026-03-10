@@ -5,7 +5,7 @@ import { ClusterManagerClient } from '@google-cloud/container'
 import yaml from 'js-yaml'
 import { PassThrough } from 'node:stream'
 import { getOAuth2Client } from './auth'
-import { deleteDisk, labelDisk, listDisksByLabels, toZone } from './gcloud'
+import { deleteDisk, labelDisk, listDisksByLabels, toZone, listGkeClusters, createAutopilotCluster } from './gcloud'
 import type { DeployOptions, DeployStatus, AgentStatus, SpecFile, PodLogOptions, AgentLogEntry } from '../../../shared/types'
 
 export interface GkeDeployConfig {
@@ -44,6 +44,39 @@ export async function buildKubeConfig(config: GkeDeployConfig): Promise<k8s.Kube
     currentContext: 'gke',
   })
   return kc
+}
+
+export async function resolveClusterForTeam(
+  teamSlug: string,
+  config: { projectId: string; defaultLocation: string },
+  onStatus?: (msg: string) => void,
+): Promise<{ clusterName: string; clusterZone: string }> {
+  const pollForRunning = async (): Promise<{ clusterName: string; clusterZone: string }> => {
+    for (let i = 0; i < 60; i++) {
+      await new Promise(r => setTimeout(r, 15000))
+      const clusters = await listGkeClusters(config.projectId)
+      const found = clusters.find(c => c.name === teamSlug)
+      if (found && found.status === 'RUNNING') return { clusterName: teamSlug, clusterZone: found.location }
+    }
+    throw new Error(`Cluster '${teamSlug}' did not become ready within 15 minutes`)
+  }
+
+  const clusters = await listGkeClusters(config.projectId)
+  const existing = clusters.find(c => c.name === teamSlug)
+
+  if (existing && existing.status === 'RUNNING') {
+    return { clusterName: teamSlug, clusterZone: existing.location }
+  }
+
+  if (existing) {
+    onStatus?.('Waiting for cluster to become ready...')
+    return pollForRunning()
+  }
+
+  onStatus?.('Creating cluster ' + teamSlug + ' in ' + config.defaultLocation + '...')
+  await createAutopilotCluster(config.projectId, teamSlug, config.defaultLocation)
+  onStatus?.('Cluster created, waiting for it to become ready...')
+  return pollForRunning()
 }
 
 async function applyManifest(client: k8s.KubernetesObjectApi, content: string): Promise<DeployStatus[]> {
@@ -435,7 +468,7 @@ export async function execInPod(
       stderr.destroy()
       reject(new Error('exec timed out after 15s'))
     }, 15_000)
-    const settle = (fn: (v: unknown) => void, v: unknown): void => {
+    const settle = <T>(fn: (v: T) => void, v: T): void => {
       if (settled) return
       settled = true
       clearTimeout(timer)

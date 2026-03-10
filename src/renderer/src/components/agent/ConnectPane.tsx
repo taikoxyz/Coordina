@@ -4,7 +4,6 @@ import { useGkeConfig } from '../../hooks/useEnvironments'
 
 interface GkeConfig {
   projectId?: string
-  clusterName?: string
   clusterZone?: string
 }
 
@@ -57,8 +56,9 @@ export function ConnectPane({ teamSlug, agentSlug }: {
     )
   }
 
-  const { projectId, clusterName, clusterZone } = config
-  const missing = !projectId || !clusterName || !clusterZone
+  const { projectId, clusterZone } = config
+  const clusterName = teamSlug
+  const missing = !projectId || !clusterZone
 
   return (
     <div className="h-full overflow-y-auto p-6">
@@ -70,7 +70,7 @@ export function ConnectPane({ teamSlug, agentSlug }: {
 
         {missing ? (
           <div className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg p-3">
-            Environment is missing GKE cluster details (projectId, clusterName, or clusterZone).
+            Environment is missing GKE cluster details (projectId or clusterZone).
           </div>
         ) : (
           <div className="space-y-4">
