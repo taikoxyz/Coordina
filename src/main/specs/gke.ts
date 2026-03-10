@@ -90,7 +90,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
     envConfig: Record<string, unknown>,
     secrets?: DeriveSecrets
   ): Promise<SpecFile[]> {
-    const { domain: envDomain } = envConfig as { domain?: string }
+    const { domain: envDomain, logLevel } = envConfig as { domain?: string; logLevel?: string }
     const namespace = spec.slug
     const mode = resolveGatewayMode(envConfig)
     const ingressDomain = mode === 'ingress' ? envDomain : undefined
@@ -208,7 +208,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
       const baseTools = (openclawConfig as { tools?: Record<string, unknown> }).tools ?? {}
       const openclawConfigWithGateway = {
         ...openclawConfig,
-        ...(spec.logLevel ? { logging: { level: spec.logLevel, consoleLevel: spec.logLevel } } : {}),
+        logging: { level: spec.logLevel ?? logLevel ?? 'info', consoleLevel: spec.logLevel ?? logLevel ?? 'info' },
         agents: {
           ...baseAgents,
           defaults: {
@@ -295,6 +295,8 @@ const gkeDeriver: DeploymentSpecDeriver = {
       const toolsMd = generateToolsMd({
         hasGateways,
         isLead: agent.slug === spec.leadAgent,
+        agentName: agent.name,
+        agentSlug: agent.slug,
         teamSlug: spec.slug,
         primaryModel: openclawConfig.agents?.defaults?.model?.primary,
         toolGuidance: agent.toolGuidance,
