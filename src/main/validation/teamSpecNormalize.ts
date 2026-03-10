@@ -17,6 +17,7 @@ function normalizeAgent(agent: AgentSpec): AgentSpec {
   return {
     slug: normalizeOptional(agent.slug) ?? '',
     name: normalizeOptional(agent.name) ?? '',
+    title: normalizeOptional(agent.title),
     role: normalizeOptional(agent.role) ?? '',
     avatar: normalizeOptional(agent.avatar),
     telegramBot: normalizeOptional(agent.telegramBot),

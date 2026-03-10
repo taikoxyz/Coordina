@@ -22,6 +22,11 @@ function migrateAgent(a: Record<string, unknown>): Record<string, unknown> {
   if ('model' in out && !('models' in out)) { out.models = out.model ? [out.model] : []; delete out.model }
   delete out.emoji
   delete out.isLead
+  if (typeof out.name !== 'string') out.name = typeof out.slug === 'string' ? out.slug : ''
+  if (typeof out.role !== 'string') out.role = ''
+  if (typeof out.persona !== 'string') out.persona = ''
+  if (!Array.isArray(out.skills)) out.skills = []
+  if (!Array.isArray(out.models)) out.models = []
   return out
 }
 
