@@ -20,7 +20,7 @@ interface NavStore {
   deployingTeamSlug: string | null
   deployingAgentSlug: string | null
 
-  selectItem: (item: SelectedItem) => void
+  selectItem: (item: SelectedItem | null) => void
   setContentTab: (tab: ContentTab) => void
   toggleTeam: (slug: string) => void
   setSettingsSection: (section: SettingsSection) => void
@@ -43,6 +43,7 @@ export const useNav = create<NavStore>()(
       deployingAgentSlug: null,
 
       selectItem: (item) => set((s) => {
+        if (!item) return { selectedItem: null }
         const agentOnlyTabs: ContentTab[] = ['files', 'connect']
         const isTeam = item.type === 'team'
         const tabInvalid = isTeam && agentOnlyTabs.includes(s.contentTab)

@@ -68,7 +68,7 @@ export function SettingsPage() {
     if (teams?.length) {
       selectItem({ type: 'team', slug: teams[0].slug })
     } else {
-      selectItem(null as never)
+      selectItem(null)
     }
   }
 
