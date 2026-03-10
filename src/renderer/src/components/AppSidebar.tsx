@@ -126,7 +126,7 @@ export function AppSidebar() {
                         : 'text-gray-500 hover:bg-white/50 hover:text-gray-900',
                     )}
                   >
-                    <AgentAvatar slug={agent.slug} colorIndex={i} size={24} />
+                    <AgentAvatar slug={agent.slug} colorIndex={team.agents.findIndex(a => a.slug === agent.slug)} size={24} />
                     <div className="truncate min-w-0 flex-1">
                       <span className="text-xs block truncate">{agent.name || agent.slug}</span>
                       {agent.title && <span className="text-[10px] block truncate text-gray-400 leading-tight">{agent.title}</span>}
