@@ -41,7 +41,7 @@ export function GeneralSettings() {
   }
 
   const activeTheme = settings.agentNameTheme ?? DEFAULT_AGENT_NAME_THEME
-  const examples = THEME_EXAMPLES[activeTheme].slice(0, 5).join(', ')
+  const examples = THEME_EXAMPLES[activeTheme].slice(0, 20)
 
   return (
     <div className="space-y-3 max-w-lg">
@@ -71,7 +71,11 @@ export function GeneralSettings() {
           )
         })}
       </div>
-      <p className="text-xs text-gray-400">e.g. {examples}, …</p>
+      <ul className="space-y-0.5 pl-3">
+        {examples.map((name) => (
+          <li key={name} className="text-xs text-gray-400">{name}</li>
+        ))}
+      </ul>
 
       <hr className="border-gray-200" />
 

@@ -62,7 +62,7 @@ export function AppSidebar() {
               {/* Team row */}
               <div
                 className={cn(
-                  'flex items-center gap-1 px-2 py-1.5 transition-colors',
+                  'flex items-center gap-1 px-2 py-2 transition-colors',
                   isTeamSelected(team.slug)
                     ? 'bg-white/80 text-gray-900'
                     : isTeamActive(team.slug)
@@ -108,7 +108,7 @@ export function AppSidebar() {
                     key={agent.slug}
                     onClick={() => selectItem({ type: 'agent', teamSlug: team.slug, agentSlug: agent.slug })}
                     className={cn(
-                      'w-full pl-8 pr-3 py-1 text-left transition-colors flex items-center gap-2',
+                      'w-full pl-8 pr-3 py-1.5 text-left transition-colors flex items-center gap-2',
                       isAgentSelected(team.slug, agent.slug)
                         ? 'bg-white/80 text-gray-900'
                         : 'text-gray-500 hover:bg-white/50 hover:text-gray-900',
