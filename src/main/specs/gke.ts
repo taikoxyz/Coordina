@@ -294,6 +294,8 @@ const gkeDeriver: DeploymentSpecDeriver = {
       const toolsMd = generateToolsMd({
         hasGateways,
         isLead: agent.slug === spec.leadAgent,
+        agentName: agent.name,
+        agentSlug: agent.slug,
         teamSlug: spec.slug,
         primaryModel: openclawConfig.agents?.defaults?.model?.primary,
         toolGuidance: agent.toolGuidance,
