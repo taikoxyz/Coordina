@@ -261,6 +261,7 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
 
           <div>
             <h4 className="text-sm font-semibold text-gray-900 mb-1">OpenClaw</h4>
+            <ReadField label="Log level" value={spec.logLevel} defaultValue="info" />
             <ReadField label="Bootstrap" value={spec.startupInstructions?.trim() || undefined} monospace full />
           </div>
 
@@ -540,7 +541,23 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
 
         <div>
           <h3 className="text-sm font-semibold text-gray-900 mb-3">OpenClaw</h3>
-          <div>
+          <div className="space-y-3">
+            <div>
+              <Label>Log level</Label>
+              <select
+                className="flex h-8 w-full rounded-md border border-gray-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-400"
+                value={spec.logLevel ?? ''}
+                onChange={(e) => set('logLevel')(e.target.value || undefined)}
+              >
+                <option value="">info (default)</option>
+                <option value="error">error</option>
+                <option value="warn">warn</option>
+                <option value="info">info</option>
+                <option value="debug">debug</option>
+                <option value="trace">trace</option>
+              </select>
+            </div>
+            <div>
             <Label>Bootstrap</Label>
             <Textarea
               mono
@@ -549,6 +566,7 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
               onChange={(e) => set('startupInstructions')(e.target.value || undefined)}
               placeholder="Custom bootstrap instructions..."
             />
+            </div>
           </div>
         </div>
 

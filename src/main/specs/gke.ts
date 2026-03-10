@@ -208,6 +208,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
       const baseTools = (openclawConfig as { tools?: Record<string, unknown> }).tools ?? {}
       const openclawConfigWithGateway = {
         ...openclawConfig,
+        ...(spec.logLevel ? { logging: { level: spec.logLevel, consoleLevel: spec.logLevel } } : {}),
         agents: {
           ...baseAgents,
           defaults: {
