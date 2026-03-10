@@ -35,11 +35,12 @@ interface GkeForm {
   clientSecret: string
   gatewayMode: 'port-forward' | 'ingress'
   domain: string
+  logLevel: 'debug' | 'info' | 'warn' | 'error'
 }
 
 const emptyGke = (): GkeForm => ({
   projectId: '', clusterZone: 'us-central1', diskZone: 'us-central1-a',
-  clientId: '', clientSecret: '', gatewayMode: 'port-forward', domain: '',
+  clientId: '', clientSecret: '', gatewayMode: 'port-forward', domain: '', logLevel: 'info',
 })
 
 function validateForm(form: GkeForm): string | null {
@@ -93,6 +94,7 @@ export function GkeSettings() {
         clientSecret: c.clientSecret ?? '',
         gatewayMode: (c.gatewayMode as 'port-forward' | 'ingress') ?? 'port-forward',
         domain: c.domain ?? '',
+        logLevel: (c.logLevel as 'debug' | 'info' | 'warn' | 'error') ?? 'info',
       })
     }
   }, [gkeConfig])
@@ -113,6 +115,7 @@ export function GkeSettings() {
     clientSecret: form.clientSecret,
     gatewayMode: form.gatewayMode,
     domain: form.gatewayMode === 'ingress' ? (form.domain || undefined) : undefined,
+    logLevel: form.logLevel,
   })
 
   const handleSave = async () => {
@@ -276,6 +279,20 @@ export function GkeSettings() {
           <Input mono value={form.domain} onChange={(e) => updateField('domain', e.target.value)} placeholder="example.com" />
         </div>
       )}
+
+      <hr className="border-gray-200" />
+      <h4 className="text-sm font-semibold text-gray-900 mb-1">Logging</h4>
+
+      <div>
+        <Label>OpenClaw log level</Label>
+        <Select mono value={form.logLevel} onChange={(e) => updateField('logLevel', e.target.value)}>
+          <option value="debug">debug</option>
+          <option value="info">info</option>
+          <option value="warn">warn</option>
+          <option value="error">error</option>
+        </Select>
+        <p className="text-xs text-gray-400 italic mt-1">Controls the logging.level written to each agent's openclaw.json. Agent logs are shipped to GCP Cloud Logging automatically.</p>
+      </div>
 
       {formError && (
         <div className="flex items-center gap-2 text-xs text-red-600">
