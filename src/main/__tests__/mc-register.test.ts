@@ -19,9 +19,9 @@ describe('registerAgentsWithMissionControl', () => {
       ],
     })
 
-    const calls = mockFetch.mock.calls.map((c: [string, ...unknown[]]) => c[0] as string)
-    expect(calls.some((u: string) => u.includes('/api/gateways'))).toBe(true)
-    expect(calls.filter((u: string) => u.includes('/api/agents')).length).toBe(2)
+    const calls = (mockFetch.mock.calls as unknown[][]).map(c => c[0] as string)
+    expect(calls.some(u => u.includes('/api/gateways'))).toBe(true)
+    expect(calls.filter(u => u.includes('/api/agents')).length).toBe(2)
   })
 
   it('only calls /api/agents when all agents are lead', async () => {
@@ -35,8 +35,8 @@ describe('registerAgentsWithMissionControl', () => {
       agents: [{ slug: 'alice', isLead: true }],
     })
 
-    const calls = mockFetch.mock.calls.map((c: [string, ...unknown[]]) => c[0] as string)
-    expect(calls.some((u: string) => u.includes('/api/gateways'))).toBe(false)
-    expect(calls.filter((u: string) => u.includes('/api/agents')).length).toBe(1)
+    const calls = (mockFetch.mock.calls as unknown[][]).map(c => c[0] as string)
+    expect(calls.some(u => u.includes('/api/gateways'))).toBe(false)
+    expect(calls.filter(u => u.includes('/api/agents')).length).toBe(1)
   })
 })
