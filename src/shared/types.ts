@@ -49,6 +49,7 @@ export interface TeamSpec {
   teamEmail?: string
   teamDescription?: string
   missionControlEnabled?: boolean
+  logLevel?: string
 }
 
 export interface AgentTemplate {
@@ -148,4 +149,14 @@ export interface Project {
   status: 'active' | 'completed' | 'archived'
   createdAt: number
   createdBy: string
+}
+
+export interface PodLogOptions {
+  tailLines?: number
+  sinceSeconds?: number
+}
+
+export interface AgentLogEntry {
+  agentSlug: string
+  logs: string
 }

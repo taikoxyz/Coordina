@@ -8,11 +8,11 @@ import { saveTeamDeployment, deleteTeamDeployment } from '../store/deployments'
 import { getDeriver } from '../specs/base'
 import '../specs/gke'
 import { validateDerivedSpecFiles } from '../specs/validate'
-import { deployTeam, undeployTeam, undeployAgent, getTeamStatus, resolveClusterForTeam } from '../environments/gke/deploy'
+import { deployTeam, undeployTeam, undeployAgent, getTeamStatus, getAgentLogs, getTeamLogs, resolveClusterForTeam } from '../environments/gke/deploy'
 import { listGcpRegions, listGcpZones, listGkeClusters } from '../environments/gke/gcloud'
 import { authenticateGke, getOAuth2Client } from '../environments/gke/auth'
 import { resolveGatewayMode } from '../gateway/mode'
-import type { DeployOptions } from '../../shared/types'
+import type { DeployOptions, PodLogOptions } from '../../shared/types'
 import { validateTeamSpec } from '../validation/teamSpec'
 import { getDeployLogs, saveDeployLogs, clearDeployLogs } from '../store/deployLogs'
 
@@ -297,5 +297,49 @@ export function registerDeployHandlers(): void {
     } catch { /* proceed with config values */ }
 
     return getTeamStatus(teamSlug, spec.agents.map(a => a.slug), deployConfig)
+  })
+
+  ipcMain.handle('agent:getLogs', async (_e, { teamSlug, agentSlug, envSlug, opts }: {
+    teamSlug: string; agentSlug: string; envSlug: string; opts?: PodLogOptions
+  }) => {
+    const env = await getEnvironment(envSlug)
+    if (!env) return { ok: false, reason: 'Environment not found' }
+    const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof getTeamStatus>[2]
+    try {
+      const clusters = await listGkeClusters(deployConfig.projectId)
+      const cluster = clusters.find(c => c.name === teamSlug)
+      if (cluster) {
+        deployConfig.clusterName = teamSlug
+        deployConfig.clusterZone = cluster.location
+      }
+    } catch { /* proceed with config values */ }
+    try {
+      const logs = await getAgentLogs(teamSlug, agentSlug, deployConfig, opts)
+      return { ok: true, logs }
+    } catch (e) {
+      return { ok: false, reason: e instanceof Error ? e.message : String(e) }
+    }
+  })
+
+  ipcMain.handle('team:getLogs', async (_e, { teamSlug, envSlug, opts }: {
+    teamSlug: string; envSlug: string; opts?: PodLogOptions
+  }) => {
+    const [spec, env] = await Promise.all([getTeam(teamSlug), getEnvironment(envSlug)])
+    if (!spec || !env) return { ok: false, reason: 'Team or environment not found' }
+    const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof getTeamStatus>[2]
+    try {
+      const clusters = await listGkeClusters(deployConfig.projectId)
+      const cluster = clusters.find(c => c.name === teamSlug)
+      if (cluster) {
+        deployConfig.clusterName = teamSlug
+        deployConfig.clusterZone = cluster.location
+      }
+    } catch { /* proceed with config values */ }
+    try {
+      const entries = await getTeamLogs(teamSlug, spec.agents.map(a => a.slug), deployConfig, opts)
+      return { ok: true, entries }
+    } catch (e) {
+      return { ok: false, reason: e instanceof Error ? e.message : String(e) }
+    }
   })
 }

@@ -14,6 +14,8 @@ interface Props {
   teamEmail?: string
   isLead?: boolean
   defaultImage?: string
+  defaultCpu?: number
+  defaultDiskGi?: number
 }
 
 export function AgentCard({
@@ -24,6 +26,8 @@ export function AgentCard({
   teamEmail,
   isLead,
   defaultImage,
+  defaultCpu,
+  defaultDiskGi,
 }: Props) {
   const { data: models } = useModels('openrouter')
   const derivedEmail = teamEmail ? deriveAgentEmail(teamEmail, agent.slug, isLead ?? false) : undefined
@@ -349,7 +353,7 @@ export function AgentCard({
                           e.target.value ? parseFloat(e.target.value) : undefined,
                         )
                       }
-                      placeholder="1"
+                      placeholder={`${defaultCpu ?? 1}`}
                     />
                   </div>
                   <div>
@@ -364,7 +368,7 @@ export function AgentCard({
                           e.target.value ? parseInt(e.target.value) : undefined,
                         )
                       }
-                      placeholder="10"
+                      placeholder={`${defaultDiskGi ?? 10}`}
                     />
                   </div>
                 </div>
@@ -430,8 +434,8 @@ export function AgentCard({
             <div>
               <h4 className="text-sm font-semibold text-gray-900 mb-1">Resources</h4>
               <ReadField label="Container image" value={agent.image} defaultValue={defaultImage ?? 'alpine/openclaw:latest'} />
-              <ReadField label="CPU (cores)" value={agent.cpu} defaultValue={1} />
-              <ReadField label="Disk (Gi)" value={agent.diskGi} defaultValue={10} />
+              <ReadField label="CPU (cores)" value={agent.cpu} defaultValue={defaultCpu ?? 1} />
+              <ReadField label="Disk (Gi)" value={agent.diskGi} defaultValue={defaultDiskGi ?? 10} />
             </div>
           </>
         )}

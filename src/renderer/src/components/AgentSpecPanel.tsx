@@ -120,6 +120,8 @@ export function AgentSpecPanel({ teamSlug, agentSlug }: { teamSlug: string; agen
             teamEmail={localSpec.teamEmail}
             isLead={agent.slug === localSpec.leadAgent}
             defaultImage={localSpec.defaultImage}
+            defaultCpu={localSpec.defaultCpu}
+            defaultDiskGi={localSpec.defaultDiskGi}
           />
         </div>
       </div>
