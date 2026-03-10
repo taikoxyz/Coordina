@@ -61,13 +61,14 @@ export function generateAgentConfigMap(input: {
   userMd: string
   toolsMd: string
   openclawJson: string
+  envMd?: string
 }): string {
-  const { teamSlug, agentSlug, namespace, identityMd, soulMd, skillsMd, agentsMd, userMd, toolsMd, openclawJson } = input
+  const { teamSlug, agentSlug, namespace, identityMd, soulMd, skillsMd, agentsMd, userMd, toolsMd, openclawJson, envMd } = input
   return generateConfigMap({
     name: `${teamSlug}-${agentSlug}-config`,
     namespace,
     labels: { 'coordina.team': teamSlug, 'coordina.agent': agentSlug },
-    data: { 'IDENTITY.md': identityMd, 'SOUL.md': soulMd, 'SKILLS.md': skillsMd, 'AGENTS.md': agentsMd, 'USER.md': userMd, 'TOOLS.md': toolsMd, 'openclaw.json': openclawJson },
+    data: { 'IDENTITY.md': identityMd, 'SOUL.md': soulMd, 'SKILLS.md': skillsMd, 'AGENTS.md': agentsMd, 'USER.md': userMd, 'TOOLS.md': toolsMd, 'openclaw.json': openclawJson, ...(envMd ? { 'ENV.md': envMd } : {}) },
   })
 }
 
@@ -154,6 +155,7 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
     `cp /config/agent/AGENTS.md ${workspaceDir}/AGENTS.md`,
     `cp /config/agent/USER.md ${workspaceDir}/USER.md`,
     `cp /config/agent/TOOLS.md ${workspaceDir}/TOOLS.md`,
+    `test -f /config/agent/ENV.md && cp /config/agent/ENV.md ${workspaceDir}/ENV.md || true`,
     `cp /config/agent/openclaw.json ${stateDir}/openclaw.json`,
     'chown -R 1000:1000 /agent-data/openclaw',
     'chmod -R u+rwX,g+rwX /agent-data/openclaw',
@@ -206,6 +208,12 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
               { name: 'GOPATH', value: toolsDir },
               { name: 'CARGO_HOME', value: `${toolsDir}/cargo` },
               { name: 'PATH', value: `${toolsDir}/bin:${toolsDir}/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin` },
+              { name: 'K8S_POD_NAME', valueFrom: { fieldRef: { fieldPath: 'metadata.name' } } },
+              { name: 'K8S_NAMESPACE', valueFrom: { fieldRef: { fieldPath: 'metadata.namespace' } } },
+              { name: 'K8S_NODE_NAME', valueFrom: { fieldRef: { fieldPath: 'spec.nodeName' } } },
+              { name: 'K8S_POD_IP', valueFrom: { fieldRef: { fieldPath: 'status.podIP' } } },
+              { name: 'K8S_CPU_REQUEST', valueFrom: { resourceFieldRef: { resource: 'requests.cpu' } } },
+              { name: 'K8S_CPU_LIMIT', valueFrom: { resourceFieldRef: { resource: 'limits.cpu' } } },
             ],
             ...(credentialSecretName ? { envFrom: [{ secretRef: { name: credentialSecretName } }] } : {}),
             volumeMounts: containerVolumeMounts,

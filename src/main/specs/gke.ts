@@ -28,6 +28,7 @@ import {
   generateToolsMd,
   generateOpenClawJson,
   generateProjectsMd,
+  generateEnvMd,
 } from '../github/spec'
 
 import { deriveAgentEmail } from '../../shared/email'
@@ -90,7 +91,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
     envConfig: Record<string, unknown>,
     secrets?: DeriveSecrets
   ): Promise<SpecFile[]> {
-    const { domain: envDomain, logLevel } = envConfig as { domain?: string; logLevel?: string }
+    const { domain: envDomain, logLevel, projectId, clusterZone } = envConfig as { domain?: string; logLevel?: string; projectId?: string; clusterZone?: string }
     const namespace = spec.slug
     const mode = resolveGatewayMode(envConfig)
     const ingressDomain = mode === 'ingress' ? envDomain : undefined
@@ -305,6 +306,26 @@ const gkeDeriver: DeploymentSpecDeriver = {
         hasEmail,
         hasGitHub,
         githubUsername,
+        peers: spec.agents
+          .filter(a => a.slug !== agent.slug)
+          .map(a => ({
+            slug: a.slug,
+            gatewayUrl: `http://agent-${a.slug}.${namespace}.svc.cluster.local:18789`,
+          })),
+        namespace,
+      })
+      const effectiveImage = agent.image || spec.defaultImage || 'alpine/openclaw:latest'
+      const envMd = generateEnvMd({
+        agentSlug: agent.slug,
+        teamSlug: spec.slug,
+        clusterName: spec.slug,
+        clusterZone: clusterZone || 'unknown',
+        projectId: projectId || 'unknown',
+        image: effectiveImage,
+        diskGi: agent.diskGi ?? 10,
+        cpu: agent.cpu ?? 1,
+        gatewayMode: mode,
+        namespace,
       })
       const openclawJson = generateOpenClawJson(openclawConfigWithGateway)
       const agentConfigMap = generateAgentConfigMap({
@@ -318,6 +339,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
         userMd,
         toolsMd,
         openclawJson,
+        envMd,
       })
       const agentConfigHash = createHash('sha256').update(agentConfigMap).digest('hex')
 
@@ -328,6 +350,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
       files.push({ path: `agents/${agent.slug}/USER.md`, content: userMd })
       files.push({ path: `agents/${agent.slug}/TOOLS.md`, content: toolsMd })
       files.push({ path: `agents/${agent.slug}/openclaw.json`, content: openclawJson })
+      files.push({ path: `agents/${agent.slug}/ENV.md`, content: envMd })
       files.push({ path: `agents/${agent.slug}/configmap.yaml`, content: agentConfigMap })
       files.push({ path: `agents/${agent.slug}/statefulset.yaml`, content: generateAgentStatefulSet({
         teamSlug: spec.slug,

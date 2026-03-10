@@ -91,6 +91,21 @@ export interface ToolsInput {
   hasEmail?: boolean
   hasGitHub?: boolean
   githubUsername?: string
+  peers?: { slug: string; gatewayUrl: string }[]
+  namespace?: string
+}
+
+export interface EnvMdInput {
+  agentSlug: string
+  teamSlug: string
+  clusterName: string
+  clusterZone: string
+  projectId: string
+  image: string
+  diskGi: number
+  cpu: number
+  gatewayMode: string
+  namespace: string
 }
 
 export function generateIdentityMd(agent: AgentIdentity): string {
@@ -473,6 +488,86 @@ export function generateToolsMd(input: ToolsInput): string {
     '| cargo | `cargo install <pkg>` | CARGO_HOME is set |',
   )
 
+  lines.push(
+    '',
+    '## Self-Diagnostics',
+    'Run these commands to diagnose deployment problems. Use the `exec` tool.',
+    '',
+    '### Health Checks',
+    '```bash',
+    '# Gateway health',
+    'curl -s http://127.0.0.1:18789/v1/version',
+    '',
+    '# Disk space',
+    'df -h /agent-data',
+    '',
+    '# Memory usage',
+    'cat /proc/meminfo | head -5',
+    '',
+    '# DNS resolution',
+    'nslookup kubernetes.default.svc.cluster.local',
+    '',
+    '# External network connectivity',
+    'curl -s -m 5 https://openrouter.ai/api/v1/models | head -c 100',
+    '',
+    '# Environment variables',
+    'env | grep -E "^(K8S_|OPENCLAW_|PATH)" | sort',
+    '```',
+    '',
+    '### Peer Connectivity',
+  )
+  if (input.peers && input.peers.length > 0) {
+    lines.push('```bash')
+    for (const peer of input.peers) {
+      lines.push(`# Check ${peer.slug}`)
+      lines.push(`curl -s -m 5 ${peer.gatewayUrl}/v1/version`)
+    }
+    lines.push('```')
+  } else {
+    lines.push('No peer agents configured.')
+  }
+  lines.push(
+    '',
+    '### Troubleshooting',
+    '- **Gateway not responding**: Check if the process is running with `ps aux | grep openclaw`',
+    '- **DNS failure**: Cluster DNS may be down. Try `cat /etc/resolv.conf` and `ping 8.8.8.8`',
+    '- **Disk full**: Check with `df -h /agent-data`. Remove unnecessary files from `/agent-data/openclaw/workspace/`',
+    '- **Cannot reach peers**: Verify the peer pod is running. Check `K8S_NAMESPACE` matches expectations',
+    '- **High memory**: Check `cat /proc/meminfo` for MemAvailable. Restart may be needed if critically low',
+    '- **API errors**: Verify credentials with `env | grep OPENROUTER`. Check `curl -s https://openrouter.ai/api/v1/models -H "Authorization: Bearer $OPENROUTER_API_KEY" | head -c 200`',
+  )
+
   lines.push('')
+  return lines.join('\n')
+}
+
+export function generateEnvMd(input: EnvMdInput): string {
+  const lines: string[] = [
+    '# Deployment Environment',
+    '',
+    '## Cluster',
+    `- GCP Project: ${input.projectId}`,
+    `- Cluster: ${input.clusterName}`,
+    `- Zone: ${input.clusterZone}`,
+    `- Namespace: ${input.namespace}`,
+    '',
+    '## Pod',
+    `- Pod name: agent-${input.agentSlug}-0`,
+    `- Image: ${input.image}`,
+    `- CPU: ${input.cpu} vCPU`,
+    `- Disk: ${input.diskGi}Gi at /agent-data`,
+    '- Gateway port: 18789',
+    `- Gateway mode: ${input.gatewayMode}`,
+    '',
+    '## Runtime Variables',
+    'These environment variables are populated by the Kubernetes Downward API at runtime:',
+    '- `K8S_POD_NAME` - Actual pod name',
+    '- `K8S_NAMESPACE` - Kubernetes namespace',
+    '- `K8S_NODE_NAME` - Node the pod is scheduled on',
+    '- `K8S_POD_IP` - Pod cluster IP address',
+    '- `K8S_CPU_REQUEST` - CPU request',
+    '- `K8S_CPU_LIMIT` - CPU limit',
+    '',
+  ]
   return lines.join('\n')
 }
