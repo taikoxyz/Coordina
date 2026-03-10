@@ -6,7 +6,7 @@ export const DEFAULT_BOOTSTRAP_INSTRUCTIONS = `# Bootstrap Instructions
 - Verify network connectivity: \`curl -s -m 5 https://openrouter.ai/api/v1/models | head -c 100\`
 - Check DNS resolution: \`nslookup kubernetes.default.svc.cluster.local\`
 - Check available disk space: \`df -h /agent-data\`
-- Verify gateway is healthy: \`curl -s http://127.0.0.1:18789/v1/version\`
+- Verify gateway is healthy: \`curl -s http://127.0.0.1:18789/health\`
 
 ## Tool Installation
 - Tools install to /agent-data/openclaw/tools/ (on PATH, persists across restarts)

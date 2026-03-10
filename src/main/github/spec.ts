@@ -7,7 +7,7 @@ import {
   DEFAULT_SAFETY_RULES,
   DEFAULT_PRIORITIES,
   DEFAULT_TEAM_LEAD_RESPONSIBILITIES,
-  DEFAULT_RULE,
+  DEFAULT_RULES,
   DEFAULT_USER_INTRO,
 } from '../../shared/derivationDefaults'
 
@@ -47,6 +47,9 @@ export interface OpenClawConfig {
           enabled?: boolean
         }
       }
+    }
+    controlUi?: {
+      enabled?: boolean
     }
   }
   tools?: {
@@ -278,7 +281,7 @@ export function generateAgentsMd(input: AgentsInput, patterns?: DerivationPatter
   const ruleLines: string[] = [
     '',
     '### Rules',
-    `- ${patterns?.defaultRule ?? DEFAULT_RULE}`,
+    ...(patterns?.defaultRules ?? DEFAULT_RULES).map(r => `- ${r}`),
   ]
   if (input.operatingRules && input.operatingRules.length > 0) {
     for (const rule of input.operatingRules) ruleLines.push(`- ${rule}`)
@@ -358,7 +361,7 @@ export function generateToolsMd(input: ToolsInput): string {
       '4. Run the `curl` command with the `exec` tool',
       '',
       '### Rules',
-      '- Verify the agent is reachable before messaging: `GET /v1/version`',
+      '- Verify the agent is reachable before messaging: `GET /health`',
       '- Use standardized JSON payloads for all requests — see the curl example above for the required shape',
       '- Check the agent\'s `IDENTITY.md` for preferred communication protocols before messaging',
       '- Always use `-m 300` (5-minute timeout) — responses can take time',
@@ -496,7 +499,7 @@ export function generateToolsMd(input: ToolsInput): string {
     '### Health Checks',
     '```bash',
     '# Gateway health',
-    'curl -s http://127.0.0.1:18789/v1/version',
+    'curl -s http://127.0.0.1:18789/health',
     '',
     '# Disk space',
     'df -h /agent-data',
@@ -520,7 +523,7 @@ export function generateToolsMd(input: ToolsInput): string {
     lines.push('```bash')
     for (const peer of input.peers) {
       lines.push(`# Check ${peer.slug}`)
-      lines.push(`curl -s -m 5 ${peer.gatewayUrl}/v1/version`)
+      lines.push(`curl -s -m 5 ${peer.gatewayUrl}/health`)
     }
     lines.push('```')
   } else {

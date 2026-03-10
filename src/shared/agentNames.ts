@@ -15,7 +15,6 @@ export interface ExistingAgentIdentity {
 
 export const SCI_FI_AGENT_NAMES = [
   'Aeryn',
-  'Andromeda',
   'Data',
   'Deckard',
   'Garrus',

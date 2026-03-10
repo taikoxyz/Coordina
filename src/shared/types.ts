@@ -80,7 +80,7 @@ export interface DerivationPatterns {
     safetyRules?: string[]
     priorities?: string[]
     teamLeadResponsibilities?: string[]
-    defaultRule?: string
+    defaultRules?: string[]
   }
   user?: {
     introLines?: string[]

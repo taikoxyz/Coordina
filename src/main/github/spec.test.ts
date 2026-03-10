@@ -243,7 +243,7 @@ describe('generateAgentsMd', () => {
   })
 
   it('uses custom default rule when patterns provided', () => {
-    const md = generateAgentsMd(base, { defaultRule: 'Think twice before acting' })
+    const md = generateAgentsMd(base, { defaultRules: ['Think twice before acting'] })
     expect(md).toContain('- Think twice before acting')
     expect(md).not.toContain('Always verify your understanding')
   })
@@ -498,7 +498,7 @@ describe('generateToolsMd - Self-Diagnostics section', () => {
     const md = generateToolsMd({ hasGateways: true })
     expect(md).toContain('## Self-Diagnostics')
     expect(md).toContain('Gateway health')
-    expect(md).toContain('curl -s http://127.0.0.1:18789/v1/version')
+    expect(md).toContain('curl -s http://127.0.0.1:18789/health')
     expect(md).toContain('Disk space')
     expect(md).toContain('df -h /agent-data')
     expect(md).toContain('Memory usage')
@@ -521,9 +521,9 @@ describe('generateToolsMd - Self-Diagnostics section', () => {
     })
     expect(md).toContain('### Peer Connectivity')
     expect(md).toContain('Check bob')
-    expect(md).toContain('curl -s -m 5 http://agent-bob.team.svc.cluster.local:18789/v1/version')
+    expect(md).toContain('curl -s -m 5 http://agent-bob.team.svc.cluster.local:18789/health')
     expect(md).toContain('Check charlie')
-    expect(md).toContain('curl -s -m 5 http://agent-charlie.team.svc.cluster.local:18789/v1/version')
+    expect(md).toContain('curl -s -m 5 http://agent-charlie.team.svc.cluster.local:18789/health')
   })
 
   it('shows "No peer agents configured" when peers list is empty', () => {
