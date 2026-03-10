@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { generateIdentityMd, generateSoulMd, generateOpenClawJson, generateSkillsMd, generateAgentsMd, generateTeamMd, generateUserMd, generateToolsMd } from './spec'
+import { generateIdentityMd, generateSoulMd, generateOpenClawJson, generateSkillsMd, generateAgentsMd, generateTeamMd, generateUserMd, generateToolsMd, generateEnvMd } from './spec'
 
 describe('generateIdentityMd', () => {
   it('outputs key-value format with Name and Creature', () => {
@@ -454,5 +454,94 @@ describe('generateTeamMd', () => {
     })
 
     expect(md).not.toContain('## Mission')
+  })
+})
+
+describe('generateEnvMd', () => {
+  it('outputs cluster, pod, and runtime variables sections', () => {
+    const md = generateEnvMd({
+      agentSlug: 'alice',
+      teamSlug: 'eng-alpha',
+      clusterName: 'eng-alpha',
+      clusterZone: 'us-central1-a',
+      projectId: 'my-gcp-project',
+      image: 'alpine/openclaw:latest',
+      diskGi: 10,
+      cpu: 1,
+      gatewayMode: 'port-forward',
+      namespace: 'eng-alpha',
+    })
+    expect(md).toContain('# Deployment Environment')
+    expect(md).toContain('## Cluster')
+    expect(md).toContain('GCP Project: my-gcp-project')
+    expect(md).toContain('Cluster: eng-alpha')
+    expect(md).toContain('Zone: us-central1-a')
+    expect(md).toContain('## Pod')
+    expect(md).toContain('Pod name: agent-alice-0')
+    expect(md).toContain('Image: alpine/openclaw:latest')
+    expect(md).toContain('CPU: 1 vCPU')
+    expect(md).toContain('Disk: 10Gi at /agent-data')
+    expect(md).toContain('Gateway port: 18789')
+    expect(md).toContain('Gateway mode: port-forward')
+    expect(md).toContain('## Runtime Variables')
+    expect(md).toContain('K8S_POD_NAME')
+    expect(md).toContain('K8S_NAMESPACE')
+    expect(md).toContain('K8S_NODE_NAME')
+    expect(md).toContain('K8S_POD_IP')
+    expect(md).toContain('K8S_CPU_REQUEST')
+    expect(md).toContain('K8S_CPU_LIMIT')
+  })
+})
+
+describe('generateToolsMd - Self-Diagnostics section', () => {
+  it('includes Self-Diagnostics heading and health checks', () => {
+    const md = generateToolsMd({ hasGateways: true })
+    expect(md).toContain('## Self-Diagnostics')
+    expect(md).toContain('Gateway health')
+    expect(md).toContain('curl -s http://127.0.0.1:18789/v1/version')
+    expect(md).toContain('Disk space')
+    expect(md).toContain('df -h /agent-data')
+    expect(md).toContain('Memory usage')
+    expect(md).toContain('cat /proc/meminfo | head -5')
+    expect(md).toContain('DNS resolution')
+    expect(md).toContain('nslookup kubernetes.default.svc.cluster.local')
+    expect(md).toContain('External network connectivity')
+    expect(md).toContain('curl -s -m 5 https://openrouter.ai/api/v1/models | head -c 100')
+    expect(md).toContain('Environment variables')
+    expect(md).toContain('env | grep -E "^(K8S_|OPENCLAW_|PATH)" | sort')
+  })
+
+  it('includes peer connectivity checks when peers provided', () => {
+    const md = generateToolsMd({
+      hasGateways: true,
+      peers: [
+        { slug: 'bob', gatewayUrl: 'http://agent-bob.team.svc.cluster.local:18789' },
+        { slug: 'charlie', gatewayUrl: 'http://agent-charlie.team.svc.cluster.local:18789' },
+      ],
+    })
+    expect(md).toContain('### Peer Connectivity')
+    expect(md).toContain('Check bob')
+    expect(md).toContain('curl -s -m 5 http://agent-bob.team.svc.cluster.local:18789/v1/version')
+    expect(md).toContain('Check charlie')
+    expect(md).toContain('curl -s -m 5 http://agent-charlie.team.svc.cluster.local:18789/v1/version')
+  })
+
+  it('shows "No peer agents configured" when peers list is empty', () => {
+    const md = generateToolsMd({
+      hasGateways: true,
+      peers: [],
+    })
+    expect(md).toContain('No peer agents configured.')
+  })
+
+  it('includes troubleshooting guide', () => {
+    const md = generateToolsMd({ hasGateways: true })
+    expect(md).toContain('### Troubleshooting')
+    expect(md).toContain('Gateway not responding')
+    expect(md).toContain('DNS failure')
+    expect(md).toContain('Disk full')
+    expect(md).toContain('Cannot reach peers')
+    expect(md).toContain('High memory')
+    expect(md).toContain('API errors')
   })
 })

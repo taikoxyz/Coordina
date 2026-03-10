@@ -70,6 +70,29 @@ describe('generateAgentStatefulSet', () => {
     expect(manifest).toContain('fsGroup: 1000')
     expect(manifest).toContain('fsGroupChangePolicy: OnRootMismatch')
   })
+
+  it('includes Downward API env vars (K8S_POD_NAME, K8S_NAMESPACE, K8S_NODE_NAME, K8S_POD_IP, K8S_CPU_REQUEST, K8S_CPU_LIMIT)', () => {
+    const manifest = generateAgentStatefulSet({ teamSlug: 'eng-alpha', agentSlug: 'alice' })
+    expect(manifest).toContain('K8S_POD_NAME')
+    expect(manifest).toContain('metadata.name')
+    expect(manifest).toContain('K8S_NAMESPACE')
+    expect(manifest).toContain('metadata.namespace')
+    expect(manifest).toContain('K8S_NODE_NAME')
+    expect(manifest).toContain('spec.nodeName')
+    expect(manifest).toContain('K8S_POD_IP')
+    expect(manifest).toContain('status.podIP')
+    expect(manifest).toContain('K8S_CPU_REQUEST')
+    expect(manifest).toContain('K8S_CPU_LIMIT')
+    expect(manifest).toContain('requests.cpu')
+    expect(manifest).toContain('limits.cpu')
+  })
+
+  it('init container copies ENV.md when present in ConfigMap', () => {
+    const manifest = generateAgentStatefulSet({ teamSlug: 'eng-alpha', agentSlug: 'alice' })
+    expect(manifest).toContain('ENV.md')
+    expect(manifest).toContain('/config/agent/ENV.md')
+    expect(manifest).toContain('/agent-data/openclaw/workspace/ENV.md')
+  })
 })
 
 describe('generateIapBackendConfig', () => {
@@ -164,6 +187,40 @@ describe('generateAgentConfigMap', () => {
     expect(yaml).toContain('AGENTS.md: |')
     expect(yaml).toContain('USER.md: |')
     expect(yaml).toContain('TOOLS.md: |')
+  })
+
+  it('includes ENV.md when provided', () => {
+    const yaml = generateAgentConfigMap({
+      teamSlug: 'alpha',
+      agentSlug: 'alice',
+      namespace: 'team-alpha',
+      identityMd: '# Identity',
+      soulMd: '# Soul',
+      skillsMd: '# Skills',
+      agentsMd: '# Agents',
+      userMd: '# User',
+      toolsMd: '# Tools',
+      openclawJson: '{}',
+      envMd: '# Deployment Environment\n\n## Cluster\n- GCP Project: my-proj',
+    })
+    expect(yaml).toContain('ENV.md: |')
+    expect(yaml).toContain('Deployment Environment')
+  })
+
+  it('omits ENV.md when not provided', () => {
+    const yaml = generateAgentConfigMap({
+      teamSlug: 'alpha',
+      agentSlug: 'alice',
+      namespace: 'team-alpha',
+      identityMd: '# Identity',
+      soulMd: '# Soul',
+      skillsMd: '# Skills',
+      agentsMd: '# Agents',
+      userMd: '# User',
+      toolsMd: '# Tools',
+      openclawJson: '{}',
+    })
+    expect(yaml).not.toContain('ENV.md:')
   })
 })
 
