@@ -32,6 +32,7 @@ const GUIDE_STEPS = [
   { title: 'Cluster Location', desc: 'Go to Kubernetes Engine > Clusters. Each team gets its own cluster.', url: 'https://console.cloud.google.com/kubernetes/list' },
   { title: 'OAuth Credentials', desc: 'APIs & Services > Credentials > Create OAuth client ID (Desktop app). Add http://localhost as redirect URI.', url: 'https://console.cloud.google.com/apis/credentials' },
   { title: 'Required APIs', desc: 'Enable container.googleapis.com and compute.googleapis.com.', url: 'https://console.cloud.google.com/apis/library' },
+  { title: 'Required IAM Role', desc: 'Grant the signing-in Google account the "Kubernetes Engine Developer" role (roles/container.developer) on your GCP project. For ingress mode with IAP, also grant "IAP-secured Web App User".', url: 'https://console.cloud.google.com/iam-admin/iam' },
 ]
 
 export function GkeSettings() {
@@ -114,6 +115,9 @@ export function GkeSettings() {
         )}
       </div>
 
+      <hr className="border-gray-200" />
+      <h4 className="text-sm font-semibold text-gray-900 mb-1">Cluster</h4>
+
       <div>
         <Label>GCP Project ID</Label>
         <Input mono value={form.projectId} onChange={(e) => updateField('projectId', e.target.value)} placeholder="my-gcp-project" />
@@ -142,6 +146,9 @@ export function GkeSettings() {
         <p className="text-xs text-gray-400 italic mt-1">Location and zone only apply when creating new clusters for teams.</p>
       </div>
 
+      <hr className="border-gray-200" />
+      <h4 className="text-sm font-semibold text-gray-900 mb-1">Gateway</h4>
+
       <div>
         <Label>Gateway mode</Label>
         <Select mono value={form.gatewayMode} onChange={(e) => updateField('gatewayMode', e.target.value)}>
@@ -155,6 +162,9 @@ export function GkeSettings() {
         <Input mono value={form.domain} onChange={(e) => updateField('domain', e.target.value)} placeholder="example.com" disabled={form.gatewayMode !== 'ingress'} />
       </div>
 
+      <hr className="border-gray-200" />
+      <h4 className="text-sm font-semibold text-gray-900 mb-1">Authentication</h4>
+
       <div>
         <Label>OAuth Client ID</Label>
         <Input mono value={form.clientId} onChange={(e) => updateField('clientId', e.target.value)} placeholder="0123456789-abc.apps.googleusercontent.com" />
@@ -164,6 +174,14 @@ export function GkeSettings() {
         <Label>OAuth Client Secret</Label>
         <Input mono type="password" value={form.clientSecret} onChange={(e) => updateField('clientSecret', e.target.value)} />
       </div>
+
+      <p className="text-xs text-gray-400 leading-relaxed">
+        The signing-in Google account must have the{' '}
+        <span className="font-mono text-gray-500">Kubernetes Engine Developer</span>{' '}
+        role (<span className="font-mono text-gray-500">roles/container.developer</span>) on the GCP project.
+        For ingress mode with IAP, also grant{' '}
+        <span className="font-mono text-gray-500">IAP-secured Web App User</span>.
+      </p>
 
       {formError && (
         <div className="flex items-center gap-2 text-xs text-red-600">
@@ -187,7 +205,7 @@ export function GkeSettings() {
 export function GkeHelpPanel() {
   return (
     <div className="space-y-5">
-      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Setup Guide</p>
+      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Guide</p>
       {GUIDE_STEPS.map((s) => (
         <div key={s.title} className="space-y-1">
           <p className="text-xs font-medium text-gray-700">{s.title}</p>

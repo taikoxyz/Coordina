@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import type { DerivationPatterns } from '../../../../shared/types'
 import { DEFAULT_PATTERNS } from '../../../../shared/derivationDefaults'
 import { useSaveSettings, useSettings } from '../../hooks/useSettings'
-import { Button, Label, Textarea } from '../ui'
+import { Button, Textarea } from '../ui'
 
 export type KeyedList = Array<{ id: number; value: string }>
 
@@ -46,7 +46,7 @@ export function SectionTextarea({
   const lineCount = value ? value.split('\n').length : 1
   return (
     <div className="space-y-1">
-      <Label>{label}</Label>
+      <h4 className="text-sm font-semibold text-gray-900 mb-1">{label}</h4>
       <Textarea
         className="text-xs font-mono"
         rows={Math.max(3, lineCount + 1)}
@@ -68,7 +68,7 @@ export function ListEditor({
 }) {
   return (
     <div className="space-y-2">
-      <Label>{label}</Label>
+      <h4 className="text-sm font-semibold text-gray-900 mb-1">{label}</h4>
       {items.map((item, i) => (
         <div key={item.id} className="flex gap-2 items-start">
           <span className="text-xs text-gray-400 mt-2 w-5 shrink-0 text-right">{i + 1}.</span>

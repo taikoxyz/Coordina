@@ -1,6 +1,6 @@
 import { deriveSlug } from './slug'
 
-export type AgentNameTheme = 'sci-fi' | 'movies' | 'mixed'
+export type AgentNameTheme = 'sci-fi' | 'movies' | 'mythology'
 export const DEFAULT_AGENT_NAME_THEME: AgentNameTheme = 'sci-fi'
 
 export interface AgentIdentity {
@@ -14,49 +14,72 @@ export interface ExistingAgentIdentity {
 }
 
 export const SCI_FI_AGENT_NAMES = [
-  'Ripley',
-  'Deckard',
-  'Leeloo',
-  'Neo',
-  'Trinity',
-  'Spock',
-  'Uhura',
-  'Data',
-  'TARS',
-  'Motoko',
-  'Kara Thrace',
-  'River',
   'Aeryn',
-  'Riker',
-  'Seven',
-  'Korben',
-  'Kaylee',
   'Andromeda',
+  'Data',
+  'Deckard',
   'Garrus',
-  'Jadzia'
+  'Jadzia',
+  'Kara Thrace',
+  'Kaylee',
+  'Korben',
+  'Leeloo',
+  'Motoko',
+  'Neo',
+  'Riker',
+  'Ripley',
+  'River',
+  'Seven',
+  'Spock',
+  'TARS',
+  'Trinity',
+  'Uhura',
 ] as const
 
 export const MOVIE_AGENT_NAMES = [
-  'Maverick',
-  'Furiosa',
-  'Aragorn',
-  'Indiana',
-  'Mulan',
-  'Katniss',
-  'Hermione',
-  'Maximus',
   'Amelie',
-  'Clarice',
-  'Moana',
-  'Elsa',
+  'Aragorn',
+  'Arthur Fleck',
   'Bond',
+  'Bourne',
+  'Chihiro',
+  'Clarice',
+  'Elsa',
+  'Furiosa',
+  'Hermione',
+  'Indiana',
+  'Katniss',
+  'Maverick',
+  'Maximus',
+  'Moana',
+  'Mulan',
+  'Padme',
   'Rocky',
   'Vito',
   'Wallace',
-  'Chihiro',
-  'Bourne',
-  'Padme',
-  'Arthur Fleck'
+] as const
+
+export const MYTHOLOGY_AGENT_NAMES = [
+  'Achilles',
+  'Apollo',
+  'Ariadne',
+  'Artemis',
+  'Athena',
+  'Calypso',
+  'Cassandra',
+  'Circe',
+  'Freya',
+  'Hermes',
+  'Icarus',
+  'Loki',
+  'Odysseus',
+  'Odin',
+  'Orpheus',
+  'Penelope',
+  'Perseus',
+  'Selene',
+  'Skadi',
+  'Thor',
 ] as const
 
 const NAME_VARIANTS = ['Prime', 'Nova', 'Echo', 'Vector', 'Comet', 'Cipher', 'Atlas', 'Drift'] as const
@@ -66,7 +89,7 @@ const normalize = (value: string): string => value.trim().toLowerCase()
 const namePoolForTheme = (theme: AgentNameTheme): readonly string[] => {
   if (theme === 'sci-fi') return SCI_FI_AGENT_NAMES
   if (theme === 'movies') return MOVIE_AGENT_NAMES
-  return [...SCI_FI_AGENT_NAMES, ...MOVIE_AGENT_NAMES]
+  return MYTHOLOGY_AGENT_NAMES
 }
 
 const chooseUniqueName = (pool: readonly string[], usedNames: Set<string>): string => {

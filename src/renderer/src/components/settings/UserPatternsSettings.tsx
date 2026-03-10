@@ -29,8 +29,9 @@ export function UserPatternsSettings() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <p className="text-xs text-gray-500">Intro text injected into USER.md for every agent.</p>
+      <hr className="border-gray-200" />
       <SectionTextarea label="Intro Lines" value={introLines} onChange={setIntroLines} />
       <SaveBar onSave={handleSave} isPending={saveSettings.isPending} saved={saved} onReset={handleReset} />
     </div>
