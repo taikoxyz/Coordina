@@ -21,7 +21,7 @@ const sections: Array<{ id: SettingsSection; label: string; group?: string }> = 
   { id: 'patterns-user', label: 'User', group: 'Agent Patterns' },
 ]
 
-const sectionContent: Record<SettingsSection, () => JSX.Element> = {
+const sectionContent: Record<SettingsSection, () => ReturnType<typeof GeneralSettings>> = {
   'general': GeneralSettings,
   'openrouter': OpenRouterSettings,
   'google-cloud': GkeSettings,

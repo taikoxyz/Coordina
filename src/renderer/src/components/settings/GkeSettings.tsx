@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
 import { AlertCircle, Check, ExternalLink, X } from 'lucide-react'
-import { useGkeConfig, useSaveGkeConfig, useGkeAuthStatus } from '../../hooks/useEnvironments'
+import { useGkeConfig, useSaveGkeConfig, useGkeAuthStatus, useGcpRegions, useGcpZones } from '../../hooks/useEnvironments'
 import { Button, Input, Label, Select } from '../ui'
 
 interface GkeForm {
   projectId: string
-  clusterName: string
   clusterZone: string
   diskZone: string
   clientId: string
@@ -15,13 +14,12 @@ interface GkeForm {
 }
 
 const emptyGke = (): GkeForm => ({
-  projectId: '', clusterName: '', clusterZone: 'us-central1', diskZone: 'us-central1-a',
+  projectId: '', clusterZone: 'us-central1', diskZone: 'us-central1-a',
   clientId: '', clientSecret: '', gatewayMode: 'port-forward', domain: '',
 })
 
 function validateForm(form: GkeForm): string | null {
   if (!form.projectId.trim()) return 'GCP project ID is required'
-  if (!form.clusterName.trim()) return 'Cluster name is required'
   if (!form.clientId.trim()) return 'OAuth client ID is required'
   if (!form.clientId.includes('.apps.googleusercontent.com')) return 'OAuth client ID must end with .apps.googleusercontent.com'
   if (!form.clientSecret.trim()) return 'OAuth client secret is required'
@@ -31,7 +29,7 @@ function validateForm(form: GkeForm): string | null {
 
 const GUIDE_STEPS = [
   { title: 'GCP Project ID', desc: 'Find this on the GCP Console home page.', url: 'https://console.cloud.google.com/home/dashboard' },
-  { title: 'Cluster Name & Zone', desc: 'Go to Kubernetes Engine > Clusters.', url: 'https://console.cloud.google.com/kubernetes/list' },
+  { title: 'Cluster Location', desc: 'Go to Kubernetes Engine > Clusters. Each team gets its own cluster.', url: 'https://console.cloud.google.com/kubernetes/list' },
   { title: 'OAuth Credentials', desc: 'APIs & Services > Credentials > Create OAuth client ID (Desktop app). Add http://localhost as redirect URI.', url: 'https://console.cloud.google.com/apis/credentials' },
   { title: 'Required APIs', desc: 'Enable container.googleapis.com and compute.googleapis.com.', url: 'https://console.cloud.google.com/apis/library' },
 ]
@@ -44,13 +42,14 @@ export function GkeSettings() {
   const [formError, setFormError] = useState<string | null>(null)
   const [authState, setAuthState] = useState<'idle' | 'authing' | 'done' | 'error'>('idle')
   const [saved, setSaved] = useState(false)
+  const { data: regions } = useGcpRegions(form.projectId || undefined)
+  const { data: zones } = useGcpZones(form.projectId || undefined, form.clusterZone || undefined)
 
   useEffect(() => {
     if (gkeConfig?.config) {
       const c = gkeConfig.config as Record<string, string>
       setForm({
         projectId: c.projectId ?? '',
-        clusterName: c.clusterName ?? '',
         clusterZone: c.clusterZone ?? 'us-central1',
         diskZone: c.diskZone ?? 'us-central1-a',
         clientId: c.clientId ?? '',
@@ -63,7 +62,6 @@ export function GkeSettings() {
 
   const buildPayload = () => ({
     projectId: form.projectId,
-    clusterName: form.clusterName,
     clusterZone: form.clusterZone,
     diskZone: form.diskZone || undefined,
     clientId: form.clientId,
@@ -122,18 +120,26 @@ export function GkeSettings() {
       </div>
 
       <div>
-        <Label>Cluster name</Label>
-        <Input mono value={form.clusterName} onChange={(e) => updateField('clusterName', e.target.value)} placeholder="coordina-cluster" />
-      </div>
-
-      <div>
         <Label>Cluster location</Label>
-        <Input mono value={form.clusterZone} onChange={(e) => updateField('clusterZone', e.target.value)} placeholder="us-central1" />
+        <Select mono value={form.clusterZone} onChange={(e) => updateField('clusterZone', e.target.value)}>
+          {form.clusterZone && (!regions || !regions.includes(form.clusterZone)) && (
+            <option value={form.clusterZone}>{form.clusterZone}</option>
+          )}
+          <option value="">Select a region...</option>
+          {(regions ?? []).map(r => <option key={r} value={r}>{r}</option>)}
+        </Select>
       </div>
 
       <div>
         <Label>Disk zone</Label>
-        <Input mono value={form.diskZone} onChange={(e) => updateField('diskZone', e.target.value)} placeholder="us-central1-a" />
+        <Select mono value={form.diskZone} onChange={(e) => updateField('diskZone', e.target.value)}>
+          {form.diskZone && (!zones || !zones.includes(form.diskZone)) && (
+            <option value={form.diskZone}>{form.diskZone}</option>
+          )}
+          <option value="">Select a zone...</option>
+          {(zones ?? []).map(z => <option key={z} value={z}>{z}</option>)}
+        </Select>
+        <p className="text-xs text-gray-400 italic mt-1">Location and zone only apply when creating new clusters for teams.</p>
       </div>
 
       <div>

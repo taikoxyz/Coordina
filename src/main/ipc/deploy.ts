@@ -8,7 +8,8 @@ import { saveTeamDeployment, deleteTeamDeployment } from '../store/deployments'
 import { getDeriver } from '../specs/base'
 import '../specs/gke'
 import { validateDerivedSpecFiles } from '../specs/validate'
-import { deployTeam, undeployTeam, undeployAgent, getTeamStatus } from '../environments/gke/deploy'
+import { deployTeam, undeployTeam, undeployAgent, getTeamStatus, resolveClusterForTeam } from '../environments/gke/deploy'
+import { listGcpRegions, listGcpZones, listGkeClusters } from '../environments/gke/gcloud'
 import { authenticateGke } from '../environments/gke/auth'
 import { resolveGatewayMode } from '../gateway/mode'
 import type { DeployOptions } from '../../shared/types'
@@ -76,6 +77,24 @@ export function registerDeployHandlers(): void {
     }
   })
 
+  ipcMain.handle('gcp:regions:list', async (_e, projectId: string) => {
+    try {
+      const regions = await listGcpRegions(projectId)
+      return { ok: true, regions }
+    } catch (e) {
+      return { ok: false, regions: [], reason: e instanceof Error ? e.message : String(e) }
+    }
+  })
+
+  ipcMain.handle('gcp:zones:list', async (_e, { projectId, region }: { projectId: string; region?: string }) => {
+    try {
+      const zones = await listGcpZones(projectId, region)
+      return { ok: true, zones }
+    } catch (e) {
+      return { ok: false, zones: [], reason: e instanceof Error ? e.message : String(e) }
+    }
+  })
+
   ipcMain.handle('deploy:preview', async (_event, { teamSlug, envSlug, agentSlug }: { teamSlug: string; envSlug: string; agentSlug?: string }) => {
     try {
       const { specFiles } = await deriveValidatedDeployFiles(teamSlug, envSlug)
@@ -109,6 +128,18 @@ export function registerDeployHandlers(): void {
     const win = BrowserWindow.fromWebContents(event.sender)
     const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof deployTeam>[2]
 
+    let resolved: { clusterName: string; clusterZone: string }
+    try {
+      resolved = await resolveClusterForTeam(teamSlug, {
+        projectId: deployConfig.projectId,
+        defaultLocation: deployConfig.clusterZone || 'us-central1',
+      }, (msg) => win?.webContents.send('deploy:status', { resource: 'Cluster', status: 'exists', message: msg }))
+      deployConfig.clusterName = resolved.clusterName
+      deployConfig.clusterZone = resolved.clusterZone
+    } catch (e) {
+      return { ok: false, reason: `Cluster resolution failed: ${e instanceof Error ? e.message : String(e)}` }
+    }
+
     try {
       for await (const status of deployTeam(filesToDeploy, teamSlug, deployConfig, options)) {
         win?.webContents.send('deploy:status', status)
@@ -128,6 +159,7 @@ export function registerDeployHandlers(): void {
           gatewayBaseUrl: mode === 'ingress'
             ? `https://${teamSlug}.${envDomain}`.replace(/\/+$/, '')
             : 'http://127.0.0.1',
+          clusterZone: resolved.clusterZone,
           deployedAt,
         })
         const currentSpec = await getTeam(teamSlug)
@@ -145,6 +177,15 @@ export function registerDeployHandlers(): void {
 
     const win = BrowserWindow.fromWebContents(event.sender)
     const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof undeployTeam>[1]
+
+    try {
+      const clusters = await listGkeClusters(deployConfig.projectId)
+      const cluster = clusters.find(c => c.name === teamSlug)
+      if (cluster) {
+        deployConfig.clusterName = teamSlug
+        deployConfig.clusterZone = cluster.location
+      }
+    } catch { /* proceed with config values */ }
 
     try {
       for await (const status of undeployTeam(teamSlug, deployConfig, { deleteDisks })) {
@@ -165,6 +206,15 @@ export function registerDeployHandlers(): void {
 
     const win = BrowserWindow.fromWebContents(event.sender)
     const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof undeployAgent>[2]
+
+    try {
+      const clusters = await listGkeClusters(deployConfig.projectId)
+      const cluster = clusters.find(c => c.name === teamSlug)
+      if (cluster) {
+        deployConfig.clusterName = teamSlug
+        deployConfig.clusterZone = cluster.location
+      }
+    } catch { /* proceed with config values */ }
 
     try {
       for await (const status of undeployAgent(teamSlug, agentSlug, deployConfig, { deleteDisks })) {
@@ -194,6 +244,16 @@ export function registerDeployHandlers(): void {
     const [spec, env] = await Promise.all([getTeam(teamSlug), getEnvironment(envSlug)])
     if (!spec || !env) return []
     const deployConfig = { slug: envSlug, ...env.config as object } as Parameters<typeof getTeamStatus>[2]
+
+    try {
+      const clusters = await listGkeClusters(deployConfig.projectId)
+      const cluster = clusters.find(c => c.name === teamSlug)
+      if (cluster) {
+        deployConfig.clusterName = teamSlug
+        deployConfig.clusterZone = cluster.location
+      }
+    } catch { /* proceed with config values */ }
+
     return getTeamStatus(teamSlug, spec.agents.map(a => a.slug), deployConfig)
   })
 }

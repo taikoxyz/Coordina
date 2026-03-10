@@ -80,7 +80,7 @@ function Message() {
   )
 }
 
-export function ChatPane({ teamSlug, envSlug, agentSlug, agentName, projectSlug, onClose }: Props) {
+export function ChatPane({ teamSlug, envSlug, agentSlug, agentName: _agentName, projectSlug, onClose: _onClose }: Props) {
   const { messages, connected, error, sendMessage, hasMore, loadingOlder, loadingInitial, loadOlderMessages } =
     useGatewayChat(teamSlug, agentSlug, envSlug, projectSlug)
   const [sending, setSending] = useState(false)

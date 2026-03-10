@@ -7,6 +7,7 @@ export interface TeamDeploymentRecord {
   envSlug: string
   leadAgent: string
   gatewayBaseUrl: string
+  clusterZone?: string
   deployedAt: number
 }
 

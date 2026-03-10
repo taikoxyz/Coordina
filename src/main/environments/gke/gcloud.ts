@@ -125,6 +125,75 @@ export function listDisksByLabels(projectId: string, labels: Record<string, stri
   }
 }
 
+export function listGcpRegions(projectId: string): Promise<{ name: string }[]> {
+  return new Promise((resolve, reject) => {
+    let stdout = ''
+    let stderr = ''
+    const child = spawn('gcloud', ['compute', 'regions', 'list', `--project=${projectId}`, '--format=json(name)'], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    child.stdout?.on('data', (d: Buffer) => { stdout += d.toString() })
+    child.stderr?.on('data', (d: Buffer) => { stderr += d.toString() })
+    child.on('close', code => {
+      if (code !== 0) { reject(new Error(stderr.trim() || `gcloud regions list failed (exit code ${code})`)); return }
+      try {
+        const raw = JSON.parse(stdout) as Array<{ name: string }>
+        resolve(raw.map(r => ({ name: r.name })))
+      } catch {
+        reject(new Error('Failed to parse region list from gcloud'))
+      }
+    })
+    child.on('error', err => reject(new Error(`Failed to run gcloud: ${err.message}`)))
+  })
+}
+
+export function listGcpZones(projectId: string, region?: string): Promise<{ name: string }[]> {
+  return new Promise((resolve, reject) => {
+    let stdout = ''
+    let stderr = ''
+    const args = ['compute', 'zones', 'list', `--project=${projectId}`, '--format=json(name)']
+    if (region) args.push(`--filter=region~${region}`)
+    const child = spawn('gcloud', args, {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    child.stdout?.on('data', (d: Buffer) => { stdout += d.toString() })
+    child.stderr?.on('data', (d: Buffer) => { stderr += d.toString() })
+    child.on('close', code => {
+      if (code !== 0) { reject(new Error(stderr.trim() || `gcloud zones list failed (exit code ${code})`)); return }
+      try {
+        const raw = JSON.parse(stdout) as Array<{ name: string }>
+        resolve(raw.map(z => ({ name: z.name })))
+      } catch {
+        reject(new Error('Failed to parse zone list from gcloud'))
+      }
+    })
+    child.on('error', err => reject(new Error(`Failed to run gcloud: ${err.message}`)))
+  })
+}
+
+export function createAutopilotCluster(projectId: string, name: string, location: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let stderr = ''
+    const child = spawn('gcloud', ['container', 'clusters', 'create-auto', name, `--project=${projectId}`, `--location=${location}`], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    child.stderr?.on('data', (d: Buffer) => { stderr += d.toString() })
+    const timer = setTimeout(() => {
+      child.kill()
+      reject(new Error('Cluster creation timed out after 10 minutes'))
+    }, 600000)
+    child.on('close', code => {
+      clearTimeout(timer)
+      if (code === 0) resolve()
+      else reject(new Error(stderr.trim() || `gcloud cluster create-auto failed (exit code ${code})`))
+    })
+    child.on('error', err => {
+      clearTimeout(timer)
+      reject(new Error(`Failed to run gcloud: ${err.message}`))
+    })
+  })
+}
+
 export function listGkeClusters(projectId: string): Promise<GkeCluster[]> {
   return new Promise((resolve, reject) => {
     let stdout = ''

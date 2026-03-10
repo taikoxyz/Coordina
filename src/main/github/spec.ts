@@ -33,7 +33,7 @@ export interface SoulInput {
 
 export interface OpenClawConfig {
   agents: { defaults: { model: { primary: string; fallbacks?: string[] } } }
-  models: { providers: { [provider: string]: { apiKey?: string; baseUrl?: string; api?: string } } }
+  models?: { providers: { [provider: string]: { apiKey?: string; baseUrl?: string; api?: string } } }
   gateway?: {
     bind?: string
     host?: string

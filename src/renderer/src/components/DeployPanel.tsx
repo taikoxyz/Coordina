@@ -35,7 +35,7 @@ export function DeployPanel({
 
   const gkeProjectId = gkeConfig?.config.projectId as string | undefined
   const gkeClusterZone = gkeConfig?.config.clusterZone as string | undefined
-  const gkeClusterName = gkeConfig?.config.clusterName as string | undefined
+  const gkeClusterName = teamSlug
   const gkeConsoleUrl = gkeProjectId && gkeClusterZone && gkeClusterName && agentSlug
     ? `https://console.cloud.google.com/kubernetes/statefulset/${gkeClusterZone}/${gkeClusterName}/${teamSlug}/agent-${agentSlug}/details?project=${gkeProjectId}`
     : gkeProjectId
