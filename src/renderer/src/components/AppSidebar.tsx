@@ -1,4 +1,5 @@
 import { ChevronRight, ChevronDown, Crown, Loader2, Plus, Send, Settings } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useNav } from '../store/nav'
 import { useTeams, useSaveTeam } from '../hooks/useTeams'
 import { useSettings } from '../hooks/useSettings'
@@ -11,6 +12,7 @@ export function AppSidebar() {
   const { selectedItem, selectItem, expandedTeams, toggleTeam, openSettings, setCreateDialogOpen, deployingTeamSlug, deployingAgentSlug } = useNav()
   const { data: teams } = useTeams()
   const saveTeam = useSaveTeam()
+  const queryClient = useQueryClient()
   const { data: settings } = useSettings()
 
   const addAgent = async (teamSlug: string) => {
@@ -33,7 +35,10 @@ export function AppSidebar() {
     }
     const updated = { ...team, agents: [...team.agents, newAgent], leadAgent: team.agents[0]?.slug || newAgent.slug }
     await saveTeam.mutateAsync(updated)
-    // Auto-expand and select the new agent
+    // Optimistically update the teams cache so the nav validation sees the new agent
+    queryClient.setQueryData<typeof teams>(['teams'], (old) =>
+      (old ?? []).map((t) => (t.slug === teamSlug ? updated : t)),
+    )
     if (!expandedTeams.includes(teamSlug)) toggleTeam(teamSlug)
     selectItem({ type: 'agent', teamSlug, agentSlug: newAgent.slug })
   }
@@ -115,7 +120,10 @@ export function AppSidebar() {
                     )}
                   >
                     <AgentAvatar slug={agent.slug} colorIndex={i} size={24} />
-                    <span className="text-xs truncate min-w-0 flex-1">{agent.name || agent.slug}</span>
+                    <div className="truncate min-w-0 flex-1">
+                      <span className="text-xs block truncate">{agent.name || agent.slug}</span>
+                      {agent.title && <span className="text-[10px] block truncate text-gray-400 leading-tight">{agent.title}</span>}
+                    </div>
                     {deployingTeamSlug === team.slug && deployingAgentSlug === agent.slug && (
                       <Loader2 className="w-3 h-3 text-blue-500 animate-spin shrink-0" />
                     )}
