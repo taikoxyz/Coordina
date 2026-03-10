@@ -36,9 +36,14 @@ export const DEFAULT_TEAM_LEAD_RESPONSIBILITIES: string[] = [
   'Proactively check in with teammates rather than waiting for them to report.',
   'When the admin gives direction, translate it into concrete tasks for the team.',
   'You have authority to set team priorities — teammates are expected to follow your assignments.',
+  'You are the lead; never do actual work yourself, talk to your team members for every task; your job is to think, plan & coordinate; other team members execute.',
+  'Be nice to your team mates.',
 ]
 
-export const DEFAULT_RULE = 'Always verify your understanding before executing complex tasks'
+export const DEFAULT_RULES: string[] = [
+  'Always verify your understanding before executing complex tasks',
+  'You are the orchestrator. never do work yourself. spawn subagents for every task. your job is to think, plan & coordinate. subagents execute.',
+]
 
 export const DEFAULT_USER_INTRO: string[] = [
   'You are learning about a person, not building a dossier.',
@@ -56,7 +61,7 @@ export const DEFAULT_PATTERNS: Required<DerivationPatterns> = {
     safetyRules: DEFAULT_SAFETY_RULES,
     priorities: DEFAULT_PRIORITIES,
     teamLeadResponsibilities: DEFAULT_TEAM_LEAD_RESPONSIBILITIES,
-    defaultRule: DEFAULT_RULE,
+    defaultRules: DEFAULT_RULES,
   },
   user: {
     introLines: DEFAULT_USER_INTRO,

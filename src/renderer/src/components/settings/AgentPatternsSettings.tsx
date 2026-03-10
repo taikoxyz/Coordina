@@ -12,7 +12,7 @@ export function AgentPatternsSettings() {
   const [memoryRules, setMemoryRules] = useState(toTextarea(DEFAULT_PATTERNS.agents.memoryRules))
   const [safetyRules, setSafetyRules] = useState(toTextarea(DEFAULT_PATTERNS.agents.safetyRules))
   const [priorities, setPriorities] = useState(toTextarea(DEFAULT_PATTERNS.agents.priorities))
-  const [defaultRule, setDefaultRule] = useState(DEFAULT_PATTERNS.agents.defaultRule)
+  const [defaultRules, setDefaultRules] = useState(toTextarea(DEFAULT_PATTERNS.agents.defaultRules))
 
   useEffect(() => {
     if (initialized.current || !storedSettings) return
@@ -23,7 +23,8 @@ export function AgentPatternsSettings() {
     setMemoryRules(toTextarea(p.memoryRules ?? DEFAULT_PATTERNS.agents.memoryRules))
     setSafetyRules(toTextarea(p.safetyRules ?? DEFAULT_PATTERNS.agents.safetyRules))
     setPriorities(toTextarea(p.priorities ?? DEFAULT_PATTERNS.agents.priorities))
-    setDefaultRule(p.defaultRule ?? DEFAULT_PATTERNS.agents.defaultRule)
+    const legacyRule = (p as Record<string, unknown>).defaultRule as string | undefined
+    setDefaultRules(toTextarea(p.defaultRules ?? (legacyRule ? [legacyRule] : DEFAULT_PATTERNS.agents.defaultRules)))
   }, [storedSettings])
 
   const handleSave = () => save((current) => cleanObj({
@@ -34,7 +35,7 @@ export function AgentPatternsSettings() {
       memoryRules: cleanTextarea(memoryRules),
       safetyRules: cleanTextarea(safetyRules),
       priorities: cleanTextarea(priorities),
-      defaultRule: cleanString(defaultRule),
+      defaultRules: cleanTextarea(defaultRules),
     }),
   }))
 
@@ -43,7 +44,7 @@ export function AgentPatternsSettings() {
     setMemoryRules(toTextarea(DEFAULT_PATTERNS.agents.memoryRules))
     setSafetyRules(toTextarea(DEFAULT_PATTERNS.agents.safetyRules))
     setPriorities(toTextarea(DEFAULT_PATTERNS.agents.priorities))
-    setDefaultRule(DEFAULT_PATTERNS.agents.defaultRule)
+    setDefaultRules(toTextarea(DEFAULT_PATTERNS.agents.defaultRules))
   }
 
   return (
@@ -61,10 +62,7 @@ export function AgentPatternsSettings() {
       <hr className="border-gray-200" />
       <SectionTextarea label="Priorities" value={priorities} onChange={setPriorities} />
       <hr className="border-gray-200" />
-      <div>
-        <h4 className="text-sm font-semibold text-gray-900 mb-1">Default Rule</h4>
-        <Input value={defaultRule} onChange={(e) => setDefaultRule(e.target.value)} />
-      </div>
+      <SectionTextarea label="Default Rules" value={defaultRules} onChange={setDefaultRules} />
       <SaveBar onSave={handleSave} isPending={saveSettings.isPending} saved={saved} onReset={handleReset} />
     </div>
   )

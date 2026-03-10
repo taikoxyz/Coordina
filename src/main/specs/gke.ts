@@ -245,6 +245,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
               },
             },
           },
+          controlUi: { enabled: false },
         },
       }
       const envVarsWithTelegram = {

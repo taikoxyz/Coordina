@@ -72,6 +72,12 @@ describe('gkeDeriver gateway injection', () => {
     expect(alphaConfig.gateway?.http?.endpoints?.responses?.enabled).toBe(true)
   })
 
+  it('disables Control UI to prevent SPA catch-all routing over API endpoints', async () => {
+    const files = await gkeDeriver.derive(teamSpec, envConfig)
+    const alphaConfig = getOpenClawConfig(files, 'alpha')
+    expect(alphaConfig.gateway?.controlUi?.enabled).toBe(false)
+  })
+
   it('sets agents.defaults.workspace to PVC-backed workspace path', async () => {
     const files = await gkeDeriver.derive(teamSpec, envConfig)
     const alphaConfig = getOpenClawConfig(files, 'alpha')
