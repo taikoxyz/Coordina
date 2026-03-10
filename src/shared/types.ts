@@ -7,6 +7,13 @@ export interface ChatMessage {
   timestamp: number
 }
 
+export interface AdditionalPort {
+  port: number
+  targetPort: number
+  name: string
+  protocol?: string
+}
+
 export interface AgentSpec {
   slug: string
   name: string
@@ -28,6 +35,7 @@ export interface AgentSpec {
   values?: string[]
   operatingRules?: string[]
   toolGuidance?: string[]
+  additionalPorts?: AdditionalPort[]
 }
 
 export interface TeamSpec {

@@ -360,13 +360,14 @@ const gkeDeriver: DeploymentSpecDeriver = {
         namespace,
         credentialSecretName,
         cpu: agent.cpu,
+        additionalPorts: agent.additionalPorts,
         podAnnotations: {
           'coordina/shared-config-hash': teamConfigHash,
           'coordina/agent-config-hash': agentConfigHash,
           'coordina/credentials-hash': credentialsHash,
         },
       }) })
-      files.push({ path: `agents/${agent.slug}/service.yaml`, content: generateAgentService({ teamSlug: spec.slug, agentSlug: agent.slug, namespace }) })
+      files.push({ path: `agents/${agent.slug}/service.yaml`, content: generateAgentService({ teamSlug: spec.slug, agentSlug: agent.slug, namespace, additionalPorts: agent.additionalPorts }) })
     }
 
     if (ingressDomain) {
