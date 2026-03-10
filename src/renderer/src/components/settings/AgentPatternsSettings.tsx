@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Input, Label, Button } from '../ui'
+import { Input, Button } from '../ui'
 import {
   ListEditor, SaveBar, usePatterns,
   toKeyed, cleanArray, cleanString, cleanObj,
@@ -48,22 +48,27 @@ export function AgentPatternsSettings() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-xs text-gray-500">Rules and instructions injected into AGENTS.md for every agent.</p>
         <Button variant="ghost" size="sm" onClick={handleReset} className="text-gray-400 hover:text-gray-600">
           Reset to defaults
         </Button>
       </div>
+      <hr className="border-gray-200" />
       <div>
-        <Label>First Run</Label>
+        <h4 className="text-sm font-semibold text-gray-900 mb-1">First Run</h4>
         <Input value={firstRun} onChange={(e) => setFirstRun(e.target.value)} />
       </div>
+      <hr className="border-gray-200" />
       <ListEditor label="Memory Rules" items={memoryRules} onChange={setMemoryRules} />
+      <hr className="border-gray-200" />
       <ListEditor label="Safety Rules" items={safetyRules} onChange={setSafetyRules} />
+      <hr className="border-gray-200" />
       <ListEditor label="Priorities" items={priorities} onChange={setPriorities} />
+      <hr className="border-gray-200" />
       <div>
-        <Label>Default Rule</Label>
+        <h4 className="text-sm font-semibold text-gray-900 mb-1">Default Rule</h4>
         <Input value={defaultRule} onChange={(e) => setDefaultRule(e.target.value)} />
       </div>
       <SaveBar onSave={handleSave} isPending={saveSettings.isPending} saved={saved} />

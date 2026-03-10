@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Input, Label, Button } from '../ui'
+import { Input, Button } from '../ui'
 import {
   ListEditor, SaveBar, usePatterns,
   toKeyed, cleanArray, cleanString, cleanObj,
@@ -32,16 +32,18 @@ export function SoulPatternsSettings() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-xs text-gray-500">Core truths and continuity instructions injected into SOUL.md.</p>
         <Button variant="ghost" size="sm" onClick={handleReset} className="text-gray-400 hover:text-gray-600">
           Reset to defaults
         </Button>
       </div>
+      <hr className="border-gray-200" />
       <ListEditor label="Core Truths" items={coreTruths} onChange={setCoreTruths} />
+      <hr className="border-gray-200" />
       <div>
-        <Label>Continuity</Label>
+        <h4 className="text-sm font-semibold text-gray-900 mb-1">Continuity</h4>
         <Input value={continuity} onChange={(e) => setContinuity(e.target.value)} />
       </div>
       <SaveBar onSave={handleSave} isPending={saveSettings.isPending} saved={saved} />

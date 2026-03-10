@@ -1,6 +1,6 @@
 import { deriveSlug } from './slug'
 
-export type AgentNameTheme = 'sci-fi' | 'movies' | 'mixed'
+export type AgentNameTheme = 'sci-fi' | 'movies' | 'mythology'
 export const DEFAULT_AGENT_NAME_THEME: AgentNameTheme = 'sci-fi'
 
 export interface AgentIdentity {
@@ -59,6 +59,29 @@ export const MOVIE_AGENT_NAMES = [
   'Arthur Fleck'
 ] as const
 
+export const MYTHOLOGY_AGENT_NAMES = [
+  'Athena',
+  'Apollo',
+  'Artemis',
+  'Hermes',
+  'Cassandra',
+  'Achilles',
+  'Odysseus',
+  'Penelope',
+  'Circe',
+  'Perseus',
+  'Ariadne',
+  'Orpheus',
+  'Icarus',
+  'Selene',
+  'Calypso',
+  'Thor',
+  'Loki',
+  'Freya',
+  'Odin',
+  'Skadi',
+] as const
+
 const NAME_VARIANTS = ['Prime', 'Nova', 'Echo', 'Vector', 'Comet', 'Cipher', 'Atlas', 'Drift'] as const
 
 const normalize = (value: string): string => value.trim().toLowerCase()
@@ -66,7 +89,7 @@ const normalize = (value: string): string => value.trim().toLowerCase()
 const namePoolForTheme = (theme: AgentNameTheme): readonly string[] => {
   if (theme === 'sci-fi') return SCI_FI_AGENT_NAMES
   if (theme === 'movies') return MOVIE_AGENT_NAMES
-  return [...SCI_FI_AGENT_NAMES, ...MOVIE_AGENT_NAMES]
+  return MYTHOLOGY_AGENT_NAMES
 }
 
 const chooseUniqueName = (pool: readonly string[], usedNames: Set<string>): string => {
