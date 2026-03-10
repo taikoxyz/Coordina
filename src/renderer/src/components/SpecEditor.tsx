@@ -552,7 +552,6 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
                 <option value="">info (default)</option>
                 <option value="error">error</option>
                 <option value="warn">warn</option>
-                <option value="info">info</option>
                 <option value="debug">debug</option>
                 <option value="trace">trace</option>
               </select>
