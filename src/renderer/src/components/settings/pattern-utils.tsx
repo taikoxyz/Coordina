@@ -106,17 +106,26 @@ export function SaveBar({
   onSave,
   isPending,
   saved,
+  onReset,
 }: {
   onSave: () => void
   isPending: boolean
   saved: boolean
+  onReset?: () => void
 }) {
   return (
     <div className="space-y-2 pt-4">
-      <Button variant="primary" size="lg" onClick={onSave} disabled={isPending}>
-        {isPending ? 'Saving...' : saved ? 'Saved' : 'Save changes'}
-      </Button>
-      <p className="text-xs text-gray-400">Re-derive your team for changes to take effect.</p>
+      <div className="flex items-center gap-3">
+        <Button variant="primary" size="lg" onClick={onSave} disabled={isPending}>
+          {isPending ? 'Saving...' : saved ? 'Saved' : 'Save changes'}
+        </Button>
+        {onReset && (
+          <Button variant="ghost" size="sm" onClick={onReset} className="text-gray-400 hover:text-gray-600">
+            Reset to defaults
+          </Button>
+        )}
+      </div>
+      <p className="text-xs text-gray-400">Re-deploy your team for changes to take effect.</p>
     </div>
   )
 }

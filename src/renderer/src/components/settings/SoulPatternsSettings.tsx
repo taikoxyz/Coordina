@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Input, Label, Button } from '../ui'
+import { Input, Label } from '../ui'
 import {
   SectionTextarea, SaveBar, usePatterns,
   toTextarea, cleanTextarea, cleanString, cleanObj,
@@ -32,18 +32,13 @@ export function SoulPatternsSettings() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-500">Core truths and continuity instructions injected into SOUL.md.</p>
-        <Button variant="ghost" size="sm" onClick={handleReset} className="text-gray-400 hover:text-gray-600">
-          Reset to defaults
-        </Button>
-      </div>
+      <p className="text-xs text-gray-500">Core truths and continuity instructions injected into SOUL.md.</p>
       <SectionTextarea label="Core Truths" value={coreTruths} onChange={setCoreTruths} />
       <div>
         <Label>Continuity</Label>
         <Input value={continuity} onChange={(e) => setContinuity(e.target.value)} />
       </div>
-      <SaveBar onSave={handleSave} isPending={saveSettings.isPending} saved={saved} />
+      <SaveBar onSave={handleSave} isPending={saveSettings.isPending} saved={saved} onReset={handleReset} />
     </div>
   )
 }

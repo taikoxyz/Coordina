@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { Button } from '../ui'
 import {
   SectionTextarea, SaveBar, usePatterns,
   toTextarea, cleanTextarea, cleanObj,
@@ -34,14 +33,9 @@ export function LeadPatternsSettings() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-500">Responsibilities injected into AGENTS.md for agents marked as team lead.</p>
-        <Button variant="ghost" size="sm" onClick={handleReset} className="text-gray-400 hover:text-gray-600">
-          Reset to defaults
-        </Button>
-      </div>
+      <p className="text-xs text-gray-500">Responsibilities injected into AGENTS.md for agents marked as team lead.</p>
       <SectionTextarea label="Responsibilities" value={responsibilities} onChange={setResponsibilities} />
-      <SaveBar onSave={handleSave} isPending={saveSettings.isPending} saved={saved} />
+      <SaveBar onSave={handleSave} isPending={saveSettings.isPending} saved={saved} onReset={handleReset} />
     </div>
   )
 }

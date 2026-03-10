@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { Button } from '../ui'
 import {
   SectionTextarea, SaveBar, usePatterns,
   toTextarea, cleanTextarea, cleanObj,
@@ -31,14 +30,9 @@ export function UserPatternsSettings() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-500">Intro text injected into USER.md for every agent.</p>
-        <Button variant="ghost" size="sm" onClick={handleReset} className="text-gray-400 hover:text-gray-600">
-          Reset to defaults
-        </Button>
-      </div>
+      <p className="text-xs text-gray-500">Intro text injected into USER.md for every agent.</p>
       <SectionTextarea label="Intro Lines" value={introLines} onChange={setIntroLines} />
-      <SaveBar onSave={handleSave} isPending={saveSettings.isPending} saved={saved} />
+      <SaveBar onSave={handleSave} isPending={saveSettings.isPending} saved={saved} onReset={handleReset} />
     </div>
   )
 }
