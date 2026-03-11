@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTeam, useSaveTeam, useDeleteTeam } from '../hooks/useTeams'
 import { useNav } from '../store/nav'
 import { SpecEditor } from './SpecEditor'
@@ -9,13 +9,20 @@ export function TeamSpecPanel({ slug, isEditing, onEditingChange }: { slug: stri
   const saveTeam = useSaveTeam()
   const deleteTeam = useDeleteTeam()
   const [localSpec, setLocalSpec] = useState<TeamSpec | null>(null)
+  const prevSlugRef = useRef(slug)
 
   useEffect(() => {
     if (savedSpec) {
       setLocalSpec(savedSpec)
-      onEditingChange(false)
     }
   }, [savedSpec])
+
+  useEffect(() => {
+    if (prevSlugRef.current !== slug) {
+      prevSlugRef.current = slug
+      onEditingChange(false)
+    }
+  }, [slug])
 
   if (!localSpec) {
     return (
