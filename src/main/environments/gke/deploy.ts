@@ -202,6 +202,9 @@ export async function* deployTeam(
     yield { resource: `ConfigMap/${teamSlug}-${agentSlug}-config`, status: 'deleted', message: 'Agent removed from team spec' }
     await tryDelete(() => coreApi.deleteNamespacedSecret({ name: `${teamSlug}-${agentSlug}-credentials`, namespace }))
     yield { resource: `Secret/${teamSlug}-${agentSlug}-credentials`, status: 'deleted', message: 'Agent removed from team spec' }
+    // Delete the agent's PVC when removed from team spec (avoids orphaned PVC accumulation)
+    await tryDelete(() => coreApi.deleteNamespacedPersistentVolumeClaim({ name: `${teamSlug}-agent-${agentSlug}`, namespace }))
+    yield { resource: `PVC/${teamSlug}-agent-${agentSlug}`, status: 'deleted', message: 'Agent removed from team spec' }
   }
 
   const existingPvcNames = new Set<string>()
