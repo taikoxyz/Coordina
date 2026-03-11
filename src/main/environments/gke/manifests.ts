@@ -1,147 +1,191 @@
-import yaml from 'js-yaml'
+import yaml from "js-yaml";
 
 export function generateNamespace(name: string): string {
-  return yaml.dump({ apiVersion: 'v1', kind: 'Namespace', metadata: { name } })
+  return yaml.dump({ apiVersion: "v1", kind: "Namespace", metadata: { name } });
 }
 
 export interface ConfigMapInput {
-  name: string
-  namespace: string
-  labels?: Record<string, string>
-  data: Record<string, string>
+  name: string;
+  namespace: string;
+  labels?: Record<string, string>;
+  data: Record<string, string>;
 }
 
 function indentBlock(content: string, spaces: number): string {
-  const indent = ' '.repeat(spaces)
-  const normalized = content.replace(/\n$/, '')
-  return normalized.split('\n').map(line => (line ? indent + line : '')).join('\n')
+  const indent = " ".repeat(spaces);
+  const normalized = content.replace(/\n$/, "");
+  return normalized
+    .split("\n")
+    .map((line) => (line ? indent + line : ""))
+    .join("\n");
 }
 
 export function generateConfigMap(input: ConfigMapInput): string {
-  const { name, namespace, labels, data } = input
-  const metadata: Record<string, unknown> = { name, namespace }
+  const { name, namespace, labels, data } = input;
+  const metadata: Record<string, unknown> = { name, namespace };
   if (labels && Object.keys(labels).length > 0) {
-    metadata.labels = labels
+    metadata.labels = labels;
   }
   const dataEntries = Object.entries(data)
     .map(([key, value]) => `  ${key}: |\n${indentBlock(value, 4)}`)
-    .join('\n')
+    .join("\n");
   const labelsBlock = metadata.labels
-    ? `  labels:\n${Object.entries(metadata.labels as Record<string, string>).map(([k, v]) => `    ${k}: ${v}`).join('\n')}\n`
-    : ''
-  return `apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: ${name}\n  namespace: ${namespace}\n${labelsBlock}data:\n${dataEntries}\n`
+    ? `  labels:\n${Object.entries(metadata.labels as Record<string, string>)
+        .map(([k, v]) => `    ${k}: ${v}`)
+        .join("\n")}\n`
+    : "";
+  return `apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: ${name}\n  namespace: ${namespace}\n${labelsBlock}data:\n${dataEntries}\n`;
 }
 
 export function generateTeamConfigMap(input: {
-  teamSlug: string
-  namespace: string
-  teamMd: string
-  bootstrapMd: string
-  projectsMd?: string
+  teamSlug: string;
+  namespace: string;
+  teamMd: string;
+  bootstrapMd: string;
+  projectsMd?: string;
 }): string {
-  const { teamSlug, namespace, teamMd, bootstrapMd, projectsMd } = input
-  const data: Record<string, string> = { 'TEAM.md': teamMd, 'BOOTSTRAP.md': bootstrapMd }
-  if (projectsMd) data['PROJECTS.md'] = projectsMd
+  const { teamSlug, namespace, teamMd, bootstrapMd, projectsMd } = input;
+  const data: Record<string, string> = {
+    "TEAM.md": teamMd,
+    "BOOTSTRAP.md": bootstrapMd,
+  };
+  if (projectsMd) data["PROJECTS.md"] = projectsMd;
   return generateConfigMap({
     name: `${teamSlug}-shared-config`,
     namespace,
-    labels: { 'coordina.team': teamSlug },
+    labels: { "coordina.team": teamSlug },
     data,
-  })
+  });
 }
 
 export function generateAgentConfigMap(input: {
-  teamSlug: string
-  agentSlug: string
-  namespace: string
-  identityMd: string
-  soulMd: string
-  skillsMd: string
-  agentsMd: string
-  userMd: string
-  toolsMd: string
-  openclawJson: string
-  envMd?: string
+  teamSlug: string;
+  agentSlug: string;
+  namespace: string;
+  identityMd: string;
+  soulMd: string;
+  skillsMd: string;
+  agentsMd: string;
+  userMd: string;
+  toolsMd: string;
+  openclawJson: string;
+  envMd?: string;
 }): string {
-  const { teamSlug, agentSlug, namespace, identityMd, soulMd, skillsMd, agentsMd, userMd, toolsMd, openclawJson, envMd } = input
+  const {
+    teamSlug,
+    agentSlug,
+    namespace,
+    identityMd,
+    soulMd,
+    skillsMd,
+    agentsMd,
+    userMd,
+    toolsMd,
+    openclawJson,
+    envMd,
+  } = input;
   return generateConfigMap({
     name: `${teamSlug}-${agentSlug}-config`,
     namespace,
-    labels: { 'coordina.team': teamSlug, 'coordina.agent': agentSlug },
-    data: { 'IDENTITY.md': identityMd, 'SOUL.md': soulMd, 'SKILLS.md': skillsMd, 'AGENTS.md': agentsMd, 'USER.md': userMd, 'TOOLS.md': toolsMd, 'openclaw.json': openclawJson, ...(envMd ? { 'ENV.md': envMd } : {}) },
-  })
+    labels: { "coordina.team": teamSlug, "coordina.agent": agentSlug },
+    data: {
+      "IDENTITY.md": identityMd,
+      "SOUL.md": soulMd,
+      "SKILLS.md": skillsMd,
+      "AGENTS.md": agentsMd,
+      "USER.md": userMd,
+      "TOOLS.md": toolsMd,
+      "openclaw.json": openclawJson,
+      ...(envMd ? { "ENV.md": envMd } : {}),
+    },
+  });
 }
 
 export interface AgentManifestInput {
-  teamSlug: string
-  agentSlug: string
-  image?: string
-  namespace?: string
-  credentialSecretName?: string
-  cpu?: number
-  podAnnotations?: Record<string, string>
+  teamSlug: string;
+  agentSlug: string;
+  image?: string;
+  namespace?: string;
+  credentialSecretName?: string;
+  cpu?: number;
+  podAnnotations?: Record<string, string>;
 }
 
 export function generateStorageClass(input: { teamSlug: string }): string {
-  const { teamSlug } = input
+  const { teamSlug } = input;
   const manifest = {
-    apiVersion: 'storage.k8s.io/v1',
-    kind: 'StorageClass',
+    apiVersion: "storage.k8s.io/v1",
+    kind: "StorageClass",
     metadata: {
       name: `coordina-${teamSlug}`,
-      labels: { 'coordina.team': teamSlug },
+      labels: { "coordina.team": teamSlug },
     },
-    provisioner: 'pd.csi.storage.gke.io',
-    parameters: { type: 'pd-balanced' },
-    reclaimPolicy: 'Retain',
-    volumeBindingMode: 'WaitForFirstConsumer',
+    provisioner: "pd.csi.storage.gke.io",
+    parameters: { type: "pd-balanced" },
+    reclaimPolicy: "Retain",
+    volumeBindingMode: "WaitForFirstConsumer",
     allowVolumeExpansion: true,
-  }
-  return yaml.dump(manifest)
+  };
+  return yaml.dump(manifest);
 }
 
-export function generateAgentPvc(input: { teamSlug: string; agentSlug: string; namespace: string; diskGi?: number }): string {
-  const { teamSlug, agentSlug, namespace, diskGi = 10 } = input
-  const name = `${teamSlug}-agent-${agentSlug}`
+export function generateAgentPvc(input: {
+  teamSlug: string;
+  agentSlug: string;
+  namespace: string;
+  diskGi?: number;
+}): string {
+  const { teamSlug, agentSlug, namespace, diskGi = 10 } = input;
+  const name = `${teamSlug}-agent-${agentSlug}`;
   const manifest = {
-    apiVersion: 'v1',
-    kind: 'PersistentVolumeClaim',
-    metadata: { name, namespace, labels: { 'coordina.team': teamSlug, 'coordina.agent': agentSlug } },
+    apiVersion: "v1",
+    kind: "PersistentVolumeClaim",
+    metadata: {
+      name,
+      namespace,
+      labels: { "coordina.team": teamSlug, "coordina.agent": agentSlug },
+    },
     spec: {
-      accessModes: ['ReadWriteOnce'],
+      accessModes: ["ReadWriteOnce"],
       storageClassName: `coordina-${teamSlug}`,
       resources: { requests: { storage: `${diskGi}Gi` } },
     },
-  }
-  return yaml.dump(manifest)
+  };
+  return yaml.dump(manifest);
 }
 
 export function generateAgentStatefulSet(input: AgentManifestInput): string {
   const {
     teamSlug,
     agentSlug,
-    image = 'alpine/openclaw:latest',
-    namespace = 'default',
+    image = "alpine/openclaw:latest",
+    namespace = "default",
     credentialSecretName,
     cpu,
     podAnnotations,
-  } = input
-  const resourceName = `agent-${agentSlug}`
-  const stateDir = '/agent-data/openclaw/state'
-  const workspaceDir = '/agent-data/openclaw/workspace'
-  const toolsDir = '/agent-data/openclaw/tools'
+  } = input;
+  const resourceName = `agent-${agentSlug}`;
+  const stateDir = "/agent-data/openclaw/state";
+  const workspaceDir = "/agent-data/openclaw/workspace";
+  const toolsDir = "/agent-data/openclaw/tools";
 
   const volumes: unknown[] = [
-    { name: 'agent-data', persistentVolumeClaim: { claimName: `${teamSlug}-agent-${agentSlug}` } },
-    { name: 'shared-config', configMap: { name: `${teamSlug}-shared-config` } },
-    { name: 'agent-config', configMap: { name: `${teamSlug}-${agentSlug}-config` } },
-  ]
+    {
+      name: "agent-data",
+      persistentVolumeClaim: { claimName: `${teamSlug}-agent-${agentSlug}` },
+    },
+    { name: "shared-config", configMap: { name: `${teamSlug}-shared-config` } },
+    {
+      name: "agent-config",
+      configMap: { name: `${teamSlug}-${agentSlug}-config` },
+    },
+  ];
 
   const containerVolumeMounts: unknown[] = [
-    { name: 'agent-data', mountPath: '/agent-data' },
-    { name: 'shared-config', mountPath: '/config/shared', readOnly: true },
-    { name: 'agent-config', mountPath: '/config/agent', readOnly: true },
-  ]
+    { name: "agent-data", mountPath: "/agent-data" },
+    { name: "shared-config", mountPath: "/config/shared", readOnly: true },
+    { name: "agent-config", mountPath: "/config/agent", readOnly: true },
+  ];
 
   const initSeedCmd = [
     `mkdir -p ${stateDir} ${workspaceDir} ${toolsDir}/bin ${toolsDir}/cargo/bin`,
@@ -157,17 +201,17 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
     `cp /config/agent/TOOLS.md ${workspaceDir}/TOOLS.md`,
     `test -f /config/agent/ENV.md && cp /config/agent/ENV.md ${workspaceDir}/ENV.md || true`,
     `cp /config/agent/openclaw.json ${stateDir}/openclaw.json`,
-    'chown -R 1000:1000 /agent-data/openclaw',
-    'chmod -R u+rwX,g+rwX /agent-data/openclaw',
-  ].join(' && ')
+    "chown -R 1000:1000 /agent-data/openclaw",
+    "chmod -R u+rwX,g+rwX /agent-data/openclaw",
+  ].join(" && ");
 
   const manifest = {
-    apiVersion: 'apps/v1',
-    kind: 'StatefulSet',
+    apiVersion: "apps/v1",
+    kind: "StatefulSet",
     metadata: {
       name: resourceName,
       namespace,
-      labels: { 'coordina.team': teamSlug, 'coordina.agent': agentSlug },
+      labels: { "coordina.team": teamSlug, "coordina.agent": agentSlug },
     },
     spec: {
       selector: { matchLabels: { app: resourceName } },
@@ -175,104 +219,162 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
       replicas: 1,
       template: {
         metadata: {
-          labels: { app: resourceName, 'coordina.team': teamSlug },
+          labels: { app: resourceName, "coordina.team": teamSlug },
           ...(podAnnotations ? { annotations: podAnnotations } : {}),
         },
         spec: {
           securityContext: {
             fsGroup: 1000,
-            fsGroupChangePolicy: 'OnRootMismatch',
+            fsGroupChangePolicy: "OnRootMismatch",
           },
           volumes,
-          initContainers: [{
-            name: 'bootstrap-init',
-            image: 'busybox:1.36',
-            command: ['sh', '-c', initSeedCmd],
-            volumeMounts: [
-              { name: 'agent-data', mountPath: '/agent-data' },
-              { name: 'shared-config', mountPath: '/config/shared', readOnly: true },
-              { name: 'agent-config', mountPath: '/config/agent', readOnly: true },
-            ],
-          }],
-          containers: [{
-            name: 'openclaw',
-            image,
-            securityContext: { runAsUser: 0 },
-            ports: [{ containerPort: 18789, name: 'gateway' }],
-            env: [
-              { name: 'OPENCLAW_WORKSPACE_DIR', value: workspaceDir },
-              { name: 'OPENCLAW_STATE_DIR', value: stateDir },
-              { name: 'NPM_CONFIG_PREFIX', value: toolsDir },
-              { name: 'PYTHONUSERBASE', value: toolsDir },
-              { name: 'PIP_USER', value: 'true' },
-              { name: 'GOPATH', value: toolsDir },
-              { name: 'CARGO_HOME', value: `${toolsDir}/cargo` },
-              { name: 'PATH', value: `${toolsDir}/bin:${toolsDir}/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin` },
-              { name: 'K8S_POD_NAME', valueFrom: { fieldRef: { fieldPath: 'metadata.name' } } },
-              { name: 'K8S_NAMESPACE', valueFrom: { fieldRef: { fieldPath: 'metadata.namespace' } } },
-              { name: 'K8S_NODE_NAME', valueFrom: { fieldRef: { fieldPath: 'spec.nodeName' } } },
-              { name: 'K8S_POD_IP', valueFrom: { fieldRef: { fieldPath: 'status.podIP' } } },
-              { name: 'K8S_CPU_REQUEST', valueFrom: { resourceFieldRef: { resource: 'requests.cpu' } } },
-              { name: 'K8S_CPU_LIMIT', valueFrom: { resourceFieldRef: { resource: 'limits.cpu' } } },
-            ],
-            ...(credentialSecretName ? { envFrom: [{ secretRef: { name: credentialSecretName } }] } : {}),
-            volumeMounts: containerVolumeMounts,
-            resources: { requests: { cpu: `${cpu ?? 1}` }, limits: { cpu: `${cpu ?? 1}` } },
-            readinessProbe: {
-              exec: { command: ['node', '-e', "const s=require('net').createConnection(18789,'127.0.0.1',()=>{s.destroy();process.exit(0)});s.on('error',()=>process.exit(1))"] },
-              initialDelaySeconds: 15,
-              periodSeconds: 10,
-              failureThreshold: 3,
+          initContainers: [
+            {
+              name: "bootstrap-init",
+              image: "busybox:1.36",
+              command: ["sh", "-c", initSeedCmd],
+              volumeMounts: [
+                { name: "agent-data", mountPath: "/agent-data" },
+                {
+                  name: "shared-config",
+                  mountPath: "/config/shared",
+                  readOnly: true,
+                },
+                {
+                  name: "agent-config",
+                  mountPath: "/config/agent",
+                  readOnly: true,
+                },
+              ],
             },
-            livenessProbe: {
-              exec: { command: ['node', '-e', "const s=require('net').createConnection(18789,'127.0.0.1',()=>{s.destroy();process.exit(0)});s.on('error',()=>process.exit(1))"] },
-              initialDelaySeconds: 30,
-              periodSeconds: 20,
-              failureThreshold: 3,
+          ],
+          containers: [
+            {
+              name: "openclaw",
+              image,
+              securityContext: { runAsUser: 0 },
+              ports: [{ containerPort: 18789, name: "gateway" }],
+              env: [
+                { name: "OPENCLAW_WORKSPACE_DIR", value: workspaceDir },
+                { name: "OPENCLAW_STATE_DIR", value: stateDir },
+                { name: "NPM_CONFIG_PREFIX", value: toolsDir },
+                { name: "PYTHONUSERBASE", value: toolsDir },
+                { name: "PIP_USER", value: "true" },
+                { name: "GOPATH", value: toolsDir },
+                { name: "CARGO_HOME", value: `${toolsDir}/cargo` },
+                {
+                  name: "PATH",
+                  value: `${toolsDir}/bin:${toolsDir}/cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin`,
+                },
+                {
+                  name: "K8S_POD_NAME",
+                  valueFrom: { fieldRef: { fieldPath: "metadata.name" } },
+                },
+                {
+                  name: "K8S_NAMESPACE",
+                  valueFrom: { fieldRef: { fieldPath: "metadata.namespace" } },
+                },
+                {
+                  name: "K8S_NODE_NAME",
+                  valueFrom: { fieldRef: { fieldPath: "spec.nodeName" } },
+                },
+                {
+                  name: "K8S_POD_IP",
+                  valueFrom: { fieldRef: { fieldPath: "status.podIP" } },
+                },
+                {
+                  name: "K8S_CPU_REQUEST",
+                  valueFrom: { resourceFieldRef: { resource: "requests.cpu" } },
+                },
+                {
+                  name: "K8S_CPU_LIMIT",
+                  valueFrom: { resourceFieldRef: { resource: "limits.cpu" } },
+                },
+              ],
+              ...(credentialSecretName
+                ? { envFrom: [{ secretRef: { name: credentialSecretName } }] }
+                : {}),
+              volumeMounts: containerVolumeMounts,
+              resources: {
+                requests: { cpu: `${cpu ?? 1}`, memory: "2.5Gi" },
+                limits: { cpu: `${cpu ?? 1}`, memory: "2.5Gi" },
+              },
+              readinessProbe: {
+                exec: {
+                  command: [
+                    "node",
+                    "-e",
+                    "const s=require('net').createConnection(18789,'127.0.0.1',()=>{s.destroy();process.exit(0)});s.on('error',()=>process.exit(1))",
+                  ],
+                },
+                initialDelaySeconds: 15,
+                periodSeconds: 10,
+                failureThreshold: 3,
+              },
+              livenessProbe: {
+                exec: {
+                  command: [
+                    "node",
+                    "-e",
+                    "const s=require('net').createConnection(18789,'127.0.0.1',()=>{s.destroy();process.exit(0)});s.on('error',()=>process.exit(1))",
+                  ],
+                },
+                initialDelaySeconds: 30,
+                periodSeconds: 20,
+                failureThreshold: 3,
+              },
             },
-          }],
+          ],
         },
       },
     },
-  }
+  };
 
-  return yaml.dump(manifest)
+  return yaml.dump(manifest);
 }
 
-export function generateAgentService(input: { teamSlug: string; agentSlug: string; namespace?: string }): string {
-  const { agentSlug, namespace = 'default' } = input
-  const resourceName = `agent-${agentSlug}`
+export function generateAgentService(input: {
+  teamSlug: string;
+  agentSlug: string;
+  namespace?: string;
+}): string {
+  const { agentSlug, namespace = "default" } = input;
+  const resourceName = `agent-${agentSlug}`;
   const manifest = {
-    apiVersion: 'v1',
-    kind: 'Service',
+    apiVersion: "v1",
+    kind: "Service",
     metadata: {
       name: resourceName,
       namespace,
       annotations: {
         // Required by GCE Ingress for ClusterIP backends.
-        'cloud.google.com/neg': '{"ingress": true}',
+        "cloud.google.com/neg": '{"ingress": true}',
       },
     },
     spec: {
       selector: { app: resourceName },
-      ports: [{ port: 18789, targetPort: 18789, name: 'gateway' }],
-      type: 'ClusterIP',
+      ports: [{ port: 18789, targetPort: 18789, name: "gateway" }],
+      type: "ClusterIP",
     },
-  }
-  return yaml.dump(manifest)
+  };
+  return yaml.dump(manifest);
 }
 
 export interface IapBackendConfigInput {
-  teamSlug: string
-  namespace?: string
-  oauthSecretName?: string
+  teamSlug: string;
+  namespace?: string;
+  oauthSecretName?: string;
 }
 
 export function generateIapBackendConfig(input: IapBackendConfigInput): string {
-  const { teamSlug, namespace = 'default', oauthSecretName = 'iap-oauth-secret' } = input
+  const {
+    teamSlug,
+    namespace = "default",
+    oauthSecretName = "iap-oauth-secret",
+  } = input;
   const manifest = {
-    apiVersion: 'cloud.google.com/v1',
-    kind: 'BackendConfig',
+    apiVersion: "cloud.google.com/v1",
+    kind: "BackendConfig",
     metadata: { name: `${teamSlug}-backend-config`, namespace },
     spec: {
       iap: {
@@ -280,180 +382,245 @@ export function generateIapBackendConfig(input: IapBackendConfigInput): string {
         oauthclientCredentials: { secretName: oauthSecretName },
       },
     },
-  }
-  return yaml.dump(manifest)
+  };
+  return yaml.dump(manifest);
 }
 
 export function generateIngress(input: {
-  teamSlug: string
-  agents: string[]
-  domain: string
-  namespace?: string
+  teamSlug: string;
+  agents: string[];
+  domain: string;
+  namespace?: string;
 }): string {
-  const { teamSlug, agents, domain, namespace = 'default' } = input
-  const paths = agents.map(slug => ({
+  const { teamSlug, agents, domain, namespace = "default" } = input;
+  const paths = agents.map((slug) => ({
     path: `/agents/${slug}`,
-    pathType: 'Prefix',
+    pathType: "Prefix",
     backend: { service: { name: `agent-${slug}`, port: { number: 18789 } } },
-  }))
+  }));
 
   const manifest = {
-    apiVersion: 'networking.k8s.io/v1',
-    kind: 'Ingress',
+    apiVersion: "networking.k8s.io/v1",
+    kind: "Ingress",
     metadata: {
       name: `${teamSlug}-ingress`,
       namespace,
-      annotations: { 'kubernetes.io/ingress.class': 'gce' },
+      annotations: { "kubernetes.io/ingress.class": "gce" },
     },
     spec: {
-      rules: [{
-        host: `${teamSlug}.${domain}`,
-        http: { paths },
-      }],
+      rules: [
+        {
+          host: `${teamSlug}.${domain}`,
+          http: { paths },
+        },
+      ],
     },
-  }
-  return yaml.dump(manifest)
+  };
+  return yaml.dump(manifest);
 }
 
 export interface MissionControlSecretInput {
-  namespace: string
-  adminPassword: string
-  sessionSecret: string
-  apiKey: string
-  leadAgentSlug: string
+  namespace: string;
+  adminPassword: string;
+  sessionSecret: string;
+  apiKey: string;
+  leadAgentSlug: string;
 }
 
-export function generateMissionControlSecret(input: MissionControlSecretInput): string {
-  const { namespace, adminPassword, sessionSecret, apiKey, leadAgentSlug } = input
+export function generateMissionControlSecret(
+  input: MissionControlSecretInput,
+): string {
+  const { namespace, adminPassword, sessionSecret, apiKey, leadAgentSlug } =
+    input;
   const manifest = {
-    apiVersion: 'v1',
-    kind: 'Secret',
-    type: 'Opaque',
-    metadata: { name: 'mission-control-env', namespace, labels: { 'coordina.component': 'mission-control' } },
+    apiVersion: "v1",
+    kind: "Secret",
+    type: "Opaque",
+    metadata: {
+      name: "mission-control-env",
+      namespace,
+      labels: { "coordina.component": "mission-control" },
+    },
     stringData: {
       MC_ADMIN_PASSWORD: adminPassword,
       MC_SESSION_SECRET: sessionSecret,
       API_KEY: apiKey,
       OPENCLAW_GATEWAY_HOST: `agent-${leadAgentSlug}.${namespace}.svc.cluster.local`,
-      OPENCLAW_GATEWAY_PORT: '18789',
-      OPENCLAW_GATEWAY_TOKEN: '',
-      MC_CLAUDE_HOME: '',
+      OPENCLAW_GATEWAY_PORT: "18789",
+      OPENCLAW_GATEWAY_TOKEN: "",
+      MC_CLAUDE_HOME: "",
     },
-  }
-  return yaml.dump(manifest)
+  };
+  return yaml.dump(manifest);
 }
 
-export function generateMissionControlPvc(input: { namespace: string }): string {
-  const { namespace } = input
+export function generateMissionControlPvc(input: {
+  namespace: string;
+}): string {
+  const { namespace } = input;
   const manifest = {
-    apiVersion: 'v1',
-    kind: 'PersistentVolumeClaim',
-    metadata: { name: 'mission-control-data', namespace, labels: { 'coordina.component': 'mission-control' } },
+    apiVersion: "v1",
+    kind: "PersistentVolumeClaim",
+    metadata: {
+      name: "mission-control-data",
+      namespace,
+      labels: { "coordina.component": "mission-control" },
+    },
     spec: {
-      accessModes: ['ReadWriteOnce'],
-      resources: { requests: { storage: '5Gi' } },
-      storageClassName: 'standard-rwo',
+      accessModes: ["ReadWriteOnce"],
+      resources: { requests: { storage: "5Gi" } },
+      storageClassName: "standard-rwo",
     },
-  }
-  return yaml.dump(manifest)
+  };
+  return yaml.dump(manifest);
 }
 
-export function generateMcImagePullSecret(input: { namespace: string; githubToken: string }): string {
-  const { namespace, githubToken } = input
-  const auth = Buffer.from(`token:${githubToken}`).toString('base64')
-  const dockerconfig = JSON.stringify({ auths: { 'ghcr.io': { username: 'token', password: githubToken, auth } } })
+export function generateMcImagePullSecret(input: {
+  namespace: string;
+  githubToken: string;
+}): string {
+  const { namespace, githubToken } = input;
+  const auth = Buffer.from(`token:${githubToken}`).toString("base64");
+  const dockerconfig = JSON.stringify({
+    auths: { "ghcr.io": { username: "token", password: githubToken, auth } },
+  });
   const manifest = {
-    apiVersion: 'v1',
-    kind: 'Secret',
-    type: 'kubernetes.io/dockerconfigjson',
-    metadata: { name: 'mission-control-pull-secret', namespace, labels: { 'coordina.component': 'mission-control' } },
-    stringData: { '.dockerconfigjson': dockerconfig },
-  }
-  return yaml.dump(manifest)
+    apiVersion: "v1",
+    kind: "Secret",
+    type: "kubernetes.io/dockerconfigjson",
+    metadata: {
+      name: "mission-control-pull-secret",
+      namespace,
+      labels: { "coordina.component": "mission-control" },
+    },
+    stringData: { ".dockerconfigjson": dockerconfig },
+  };
+  return yaml.dump(manifest);
 }
 
-export function generateMissionControlDeployment(input: { namespace: string; image: string; imagePullSecret?: string }): string {
-  const { namespace, image, imagePullSecret } = input
+export function generateMissionControlDeployment(input: {
+  namespace: string;
+  image: string;
+  imagePullSecret?: string;
+}): string {
+  const { namespace, image, imagePullSecret } = input;
   const manifest = {
-    apiVersion: 'apps/v1',
-    kind: 'Deployment',
-    metadata: { name: 'mission-control', namespace, labels: { app: 'mission-control', 'coordina.component': 'mission-control' } },
+    apiVersion: "apps/v1",
+    kind: "Deployment",
+    metadata: {
+      name: "mission-control",
+      namespace,
+      labels: {
+        app: "mission-control",
+        "coordina.component": "mission-control",
+      },
+    },
     spec: {
       replicas: 1,
-      selector: { matchLabels: { app: 'mission-control' } },
+      selector: { matchLabels: { app: "mission-control" } },
       template: {
-        metadata: { labels: { app: 'mission-control' } },
+        metadata: { labels: { app: "mission-control" } },
         spec: {
-          ...(imagePullSecret ? { imagePullSecrets: [{ name: imagePullSecret }] } : {}),
-          containers: [{
-            name: 'mission-control',
-            image,
-            ports: [{ containerPort: 3000 }],
-            envFrom: [{ secretRef: { name: 'mission-control-env' } }],
-            volumeMounts: [{ name: 'data', mountPath: '/app/.data' }],
-            readinessProbe: {
-              httpGet: { path: '/api/health', port: 3000 },
-              initialDelaySeconds: 15,
-              periodSeconds: 10,
+          ...(imagePullSecret
+            ? { imagePullSecrets: [{ name: imagePullSecret }] }
+            : {}),
+          containers: [
+            {
+              name: "mission-control",
+              image,
+              ports: [{ containerPort: 3000 }],
+              envFrom: [{ secretRef: { name: "mission-control-env" } }],
+              volumeMounts: [{ name: "data", mountPath: "/app/.data" }],
+              readinessProbe: {
+                httpGet: { path: "/api/health", port: 3000 },
+                initialDelaySeconds: 15,
+                periodSeconds: 10,
+              },
             },
-          }],
-          volumes: [{ name: 'data', persistentVolumeClaim: { claimName: 'mission-control-data' } }],
+          ],
+          volumes: [
+            {
+              name: "data",
+              persistentVolumeClaim: { claimName: "mission-control-data" },
+            },
+          ],
         },
       },
     },
-  }
-  return yaml.dump(manifest)
+  };
+  return yaml.dump(manifest);
 }
 
-export function generateMissionControlService(input: { namespace: string }): string {
-  const { namespace } = input
+export function generateMissionControlService(input: {
+  namespace: string;
+}): string {
+  const { namespace } = input;
   const manifest = {
-    apiVersion: 'v1',
-    kind: 'Service',
-    metadata: { name: 'mission-control', namespace, labels: { 'coordina.component': 'mission-control' } },
-    spec: {
-      selector: { app: 'mission-control' },
-      ports: [{ name: 'http', port: 3000, targetPort: 3000 }],
-      type: 'ClusterIP',
+    apiVersion: "v1",
+    kind: "Service",
+    metadata: {
+      name: "mission-control",
+      namespace,
+      labels: { "coordina.component": "mission-control" },
     },
-  }
-  return yaml.dump(manifest)
+    spec: {
+      selector: { app: "mission-control" },
+      ports: [{ name: "http", port: 3000, targetPort: 3000 }],
+      type: "ClusterIP",
+    },
+  };
+  return yaml.dump(manifest);
 }
-
 
 export function generateMissionControlHeartbeatCronJob(input: {
-  namespace: string
-  agentIds: number[]
+  namespace: string;
+  agentIds: number[];
 }): string {
-  const { namespace, agentIds } = input
+  const { namespace, agentIds } = input;
   const heartbeatCmds = agentIds
-    .map(id => `curl -s -X POST "http://mission-control:3000/api/agents/${id}/heartbeat" -H "x-api-key: $API_KEY"`)
-    .join('\n')
+    .map(
+      (id) =>
+        `curl -s -X POST "http://mission-control:3000/api/agents/${id}/heartbeat" -H "x-api-key: $API_KEY"`,
+    )
+    .join("\n");
   const manifest = {
-    apiVersion: 'batch/v1',
-    kind: 'CronJob',
-    metadata: { name: 'agent-heartbeat-relay', namespace, labels: { 'coordina.component': 'mission-control' } },
+    apiVersion: "batch/v1",
+    kind: "CronJob",
+    metadata: {
+      name: "agent-heartbeat-relay",
+      namespace,
+      labels: { "coordina.component": "mission-control" },
+    },
     spec: {
-      schedule: '*/1 * * * *',
+      schedule: "*/1 * * * *",
       jobTemplate: {
         spec: {
           template: {
             spec: {
-              restartPolicy: 'OnFailure',
-              containers: [{
-                name: 'heartbeat',
-                image: 'curlimages/curl:latest',
-                command: ['/bin/sh', '-c', heartbeatCmds],
-                env: [{
-                  name: 'API_KEY',
-                  valueFrom: { secretKeyRef: { name: 'mission-control-env', key: 'API_KEY' } },
-                }],
-              }],
+              restartPolicy: "OnFailure",
+              containers: [
+                {
+                  name: "heartbeat",
+                  image: "curlimages/curl:latest",
+                  command: ["/bin/sh", "-c", heartbeatCmds],
+                  env: [
+                    {
+                      name: "API_KEY",
+                      valueFrom: {
+                        secretKeyRef: {
+                          name: "mission-control-env",
+                          key: "API_KEY",
+                        },
+                      },
+                    },
+                  ],
+                },
+              ],
             },
           },
         },
       },
     },
-  }
-  return yaml.dump(manifest)
+  };
+  return yaml.dump(manifest);
 }
