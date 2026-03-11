@@ -66,13 +66,13 @@ awk '/MemAvailable/ {print $2}' /proc/meminfo
 
 <!-- Coordina injects a summary of this agent's assigned tasks: -->
 <!-- Example:
-  - T-123-001 | in-progress | high | Design AGENTS.md schema | last: 2026-03-10T20:00:00Z
-  - T-123-005 | blocked | normal | Review sync PR | last: 2026-03-10T16:00:00Z
+  - T-123-001 | in_progress | high | Design AGENTS.md schema | last: 2026-03-10T20:00:00Z
+  - T-123-005 | on_hold | normal | Review sync PR | last: 2026-03-10T16:00:00Z
 -->
 
 **Check for each task listed above:**
-- If `last_updated` is > 24 hours ago and status is `in-progress`: Update the task or escalate if blocked.
-- If status is `blocked` for > 4 hours: Escalate to team lead with reason.
+- If `last_updated` is > 24 hours ago and status is `in_progress`: Update the task or escalate if on_hold.
+- If status is `on_hold` for > 4 hours: Escalate to team lead with reason.
 - If you have no active tasks: Check if any `unclaimed` tasks are listed below.
 
 ### 2b. Unclaimed Tasks Needing Attention
@@ -88,7 +88,7 @@ awk '/MemAvailable/ {print $2}' /proc/meminfo
 
 <!-- Coordina injects tasks across the team that are stale (>24h no update): -->
 <!-- Example:
-  - T-123-002 | bob-li | in-progress | last: 2026-03-09T12:00:00Z (32h stale)
+  - T-123-002 | bob-li | in_progress | last: 2026-03-09T12:00:00Z (32h stale)
 -->
 
 **Action**: If a teammate's task is stale and you depend on it, send a check-in message via their gateway. If still no response after next heartbeat, escalate to team lead.
@@ -133,7 +133,7 @@ If ANY of the following are true, send a message to the team lead:
 | Gateway down for 2+ consecutive heartbeats | Escalate: `ESCALATION: My gateway has been down since <timestamp>` |
 | Disk usage > 95% | Escalate: `ESCALATION: Disk critically full at <percent>%` |
 | Memory < 128 MB available | Escalate: `ESCALATION: Memory critically low (<X> MB available)` |
-| Own task blocked > 4 hours | Escalate: `ESCALATION: Task <id> blocked for <hours>h — <reason>` |
+| Own task on_hold > 4 hours | Escalate: `ESCALATION: Task <id> on_hold for <hours>h — <reason>` |
 | Dependency task stale > 24h, no response to check-in | Escalate: `ESCALATION: <agent> unresponsive, task <id> stale <hours>h` |
 | Critical-priority task unclaimed > 1 hour | Escalate: `ESCALATION: Critical task <id> unclaimed for <time>` |
 
