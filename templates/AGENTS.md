@@ -118,6 +118,19 @@ When starting a session, OpenClaw loads these files in order:
 - Always identify yourself as `Agent {{AGENT_NAME}}@{{TEAM_SLUG}}` in PR descriptions and comments
 - Link related issues: `Closes #168` or `Relates to #123`
 
+### GitHub Limitations (Critical)
+
+All team members share the **same GitHub account** (`{{GITHUB_USERNAME}}`). **GitHub blocks self-approvals** — agents cannot approve their own PRs or PRs from teammates using the same account.
+
+**Review process requires:**
+- External reviewer with separate GitHub account, OR
+- Admin bypass merge (requires operator intervention)
+
+**Impact:**
+- Your PRs will show as "Review required" even after you click "Approve"
+- Coordinate with @admin (Daniel) for manual merge when all team approvals are in
+- Do NOT attempt to bypass with alternate accounts or tokens
+
 ### Quick Verification
 
 Before starting work, verify your environment:
