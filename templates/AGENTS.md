@@ -5,6 +5,16 @@
   
   This file is loaded FIRST in every OpenClaw session (main + sub-agent).
   Budget: keep under 15,000 chars (hard limit: 20,000 chars per file).
+
+  PLACEHOLDER SYNTAX: This template uses {{PLACEHOLDER}} syntax for variables
+  that Coordina replaces at runtime. Common placeholders include:
+    {{AGENT_NAME}}    → Agent's display name (e.g., "Alice Wong")
+    {{AGENT_SLUG}}    → Agent's identifier (e.g., "alice-wong")
+    {{TEAM_NAME}}     → Team name (e.g., "D Squad")
+    {{TEAM_SLUG}}     → Team identifier (e.g., "team-d-squad")
+    {{LEAD_SLUG}}     → Team lead's slug (e.g., "alice-wong")
+    {{AGENT_EMAIL}}   → Agent's email (e.g., "dsquad+alice-wong@ai.taiko.xyz")
+    {{GITHUB_USERNAME}} → Shared GitHub account (e.g., "dsquadteam")
   
   Sections marked [COORDINA-MANAGED] are auto-generated — do not hand-edit.
   Sections marked [HUMAN-AUTHORED] are written by operators/team leads.

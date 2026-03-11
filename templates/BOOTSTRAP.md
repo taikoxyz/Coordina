@@ -3,6 +3,9 @@
   
   This file runs FIRST when an agent starts for the first time.
   Budget: keep under 5,000 chars.
+
+  PLACEHOLDER SYNTAX: This template uses {{PLACEHOLDER}} syntax for variables
+  that Coordina replaces at runtime. Example: {{AGENT_SLUG}} becomes "alice-wong".
   
   [HUMAN-AUTHORED] Customized per team/deployment.
   ============================================================ -->
