@@ -24,10 +24,7 @@ import {
   generateTeamMd,
   generateIdentityMd,
   generateSoulMd,
-  generateSkillsMd,
-  generateAgentsMd,
   generateUserMd,
-  generateToolsMd,
   generateOpenClawJson,
   generateProjectsMd,
   generateEnvMd,
@@ -45,7 +42,6 @@ import { getSecret } from '../keychain'
 import { saveTeam } from '../store/teams'
 import { resolveGatewayMode } from '../gateway/mode'
 import { listProjects } from '../store/projects'
-import { getSettings } from '../store/settings'
 
 function deriveAgentToken(seed: string, agentSlug: string): string {
   return createHmac('sha256', seed).update(agentSlug).digest('hex').slice(0, 48)
@@ -101,7 +97,6 @@ const gkeDeriver: DeploymentSpecDeriver = {
     const telegramAdminId = spec.telegramAdminId?.trim()
     const workspaceDir = '/agent-data/openclaw/workspace'
     const files: SpecFile[] = []
-    const { derivationPatterns } = await getSettings()
 
     if (!spec.signingKey) {
       spec = { ...spec, signingKey: randomBytes(32).toString('hex') }
@@ -133,6 +128,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
       }),
     })
     const bootstrapMd = spec.startupInstructions || DEFAULT_BOOTSTRAP_INSTRUCTIONS
+    const bootstrapHash = createHash('sha256').update(bootstrapMd).digest('hex').slice(0, 12)
     const projects = await listProjects(spec.slug)
     const projectsMd = generateProjectsMd(projects)
     const teamConfig = generateTeamConfigMap({ teamSlug: spec.slug, namespace, teamMd, bootstrapMd, projectsMd })
@@ -277,47 +273,12 @@ const gkeDeriver: DeploymentSpecDeriver = {
         teamName: spec.name,
         leadAgent: spec.leadAgent,
       })
-      const soulMd = generateSoulMd({ userInput: agent.persona, tone: agent.tone, boundaries: agent.boundaries, values: agent.values }, derivationPatterns?.soul)
-      const skillsMd = generateSkillsMd(agent.skills)
-      const agentsMd = generateAgentsMd({
-        agentName: agent.name,
-        role: agent.role,
-        teamName: spec.name,
-        leadAgent: spec.leadAgent,
-        isLead: agent.slug === spec.leadAgent,
-        hasTelegram: hasTelegramRouting,
-        hasGateways,
-        operatingRules: agent.operatingRules,
-        agentEmail: hasEmail ? effectiveEmail : undefined,
-        teamEmail: hasEmail ? spec.teamEmail : undefined,
-        teamMd,
-      }, derivationPatterns?.agents)
+      const soulMd = generateSoulMd({ userInput: agent.persona, tone: agent.tone, boundaries: agent.boundaries, values: agent.values })
       const userMd = generateUserMd({
         teamName: spec.name,
         adminName: spec.adminName,
         adminEmail: spec.adminEmail,
         telegramAdminId,
-      }, derivationPatterns?.user)
-      const toolsMd = generateToolsMd({
-        hasGateways,
-        isLead: agent.slug === spec.leadAgent,
-        agentName: agent.name,
-        agentSlug: agent.slug,
-        teamSlug: spec.slug,
-        primaryModel: openclawConfig.agents?.defaults?.model?.primary,
-        toolGuidance: agent.toolGuidance,
-        agentEmail: hasEmail ? effectiveEmail : undefined,
-        teamEmail: hasEmail ? spec.teamEmail : undefined,
-        hasEmail,
-        hasGitHub,
-        githubUsername,
-        peers: spec.agents
-          .filter(a => a.slug !== agent.slug)
-          .map(a => ({
-            slug: a.slug,
-            gatewayUrl: `http://agent-${a.slug}.${namespace}.svc.cluster.local:18789`,
-          })),
-        namespace,
       })
       const effectiveImage = agent.image || spec.defaultImage || 'alpine/openclaw:latest'
       const envMd = generateEnvMd({
@@ -340,10 +301,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
         namespace,
         identityMd,
         soulMd,
-        skillsMd,
-        agentsMd,
         userMd,
-        toolsMd,
         openclawJson,
         envMd,
       })
@@ -351,10 +309,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
 
       files.push({ path: `agents/${agent.slug}/IDENTITY.md`, content: identityMd })
       files.push({ path: `agents/${agent.slug}/SOUL.md`, content: soulMd })
-      files.push({ path: `agents/${agent.slug}/SKILLS.md`, content: skillsMd })
-      files.push({ path: `agents/${agent.slug}/AGENTS.md`, content: agentsMd })
       files.push({ path: `agents/${agent.slug}/USER.md`, content: userMd })
-      files.push({ path: `agents/${agent.slug}/TOOLS.md`, content: toolsMd })
       files.push({ path: `agents/${agent.slug}/openclaw.json`, content: openclawJson })
       files.push({ path: `agents/${agent.slug}/ENV.md`, content: envMd })
       files.push({ path: `agents/${agent.slug}/configmap.yaml`, content: agentConfigMap })
@@ -372,6 +327,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
           'coordina/agent-config-hash': agentConfigHash,
           'coordina/credentials-hash': credentialsHash,
         },
+        bootstrapHash,
       }) })
       files.push({ path: `agents/${agent.slug}/service.yaml`, content: generateAgentService({ teamSlug: spec.slug, agentSlug: agent.slug, namespace, additionalPorts: agent.additionalPorts }) })
     }

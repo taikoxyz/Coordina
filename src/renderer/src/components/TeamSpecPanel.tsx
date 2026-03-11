@@ -1,22 +1,28 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTeam, useSaveTeam, useDeleteTeam } from '../hooks/useTeams'
 import { useNav } from '../store/nav'
 import { SpecEditor } from './SpecEditor'
 import type { TeamSpec } from '../../../shared/types'
 
-export function TeamSpecPanel({ slug }: { slug: string }) {
+export function TeamSpecPanel({ slug, isEditing, onEditingChange }: { slug: string; isEditing: boolean; onEditingChange: (editing: boolean) => void }) {
   const { data: savedSpec } = useTeam(slug)
   const saveTeam = useSaveTeam()
   const deleteTeam = useDeleteTeam()
   const [localSpec, setLocalSpec] = useState<TeamSpec | null>(null)
-  const [isEditing, setIsEditing] = useState(false)
+  const prevSlugRef = useRef(slug)
 
   useEffect(() => {
     if (savedSpec) {
       setLocalSpec(savedSpec)
-      setIsEditing(false)
     }
   }, [savedSpec])
+
+  useEffect(() => {
+    if (prevSlugRef.current !== slug) {
+      prevSlugRef.current = slug
+      onEditingChange(false)
+    }
+  }, [slug])
 
   if (!localSpec) {
     return (
@@ -31,14 +37,14 @@ export function TeamSpecPanel({ slug }: { slug: string }) {
       spec={localSpec}
       onSpecChange={setLocalSpec}
       isEditing={isEditing}
-      onEdit={() => setIsEditing(true)}
+      onEdit={() => onEditingChange(true)}
       onCancel={() => {
         setLocalSpec(savedSpec ?? null)
-        setIsEditing(false)
+        onEditingChange(false)
       }}
       onSave={async () => {
         if (localSpec) await saveTeam.mutateAsync(localSpec)
-        setIsEditing(false)
+        onEditingChange(false)
       }}
       onDelete={async () => {
         await deleteTeam.mutateAsync(slug)

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Settings2 } from 'lucide-react'
 import { useNav } from '../store/nav'
 import type { ContentTab } from '../store/nav'
@@ -56,6 +57,7 @@ const agentTabs: { id: ContentTab; label: string }[] = [
 
 export function MainContent() {
   const { selectedItem, contentTab, setContentTab } = useNav()
+  const [isTeamSpecEditing, setIsTeamSpecEditing] = useState(false)
 
   if (!selectedItem) {
     return (
@@ -76,12 +78,20 @@ export function MainContent() {
   const tabs = selectedItem.type === 'team' ? teamTabs : agentTabs
   const activeTab = tabs.some((t) => t.id === contentTab) ? contentTab : 'deploy'
 
+  if (selectedItem.type === 'team' && isTeamSpecEditing) {
+    return (
+      <div className="flex h-full flex-col bg-white">
+        <TeamSpecPanel slug={selectedItem.slug} isEditing={isTeamSpecEditing} onEditingChange={setIsTeamSpecEditing} />
+      </div>
+    )
+  }
+
   return (
     <div className="flex h-full">
       {/* Middle panel: spec editor */}
       <div className="w-[380px] shrink-0 border-r border-gray-200 overflow-hidden flex flex-col bg-white">
         {selectedItem.type === 'team' ? (
-          <TeamSpecPanel slug={selectedItem.slug} />
+          <TeamSpecPanel slug={selectedItem.slug} isEditing={isTeamSpecEditing} onEditingChange={setIsTeamSpecEditing} />
         ) : (
           <AgentSpecPanel teamSlug={selectedItem.teamSlug} agentSlug={selectedItem.agentSlug} />
         )}

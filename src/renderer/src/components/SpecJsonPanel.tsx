@@ -96,7 +96,7 @@ export function SpecJsonPanel({
   }
 
   return (
-    <div className="flex-1 overflow-hidden flex flex-col">
+    <div className="h-full overflow-hidden flex flex-col">
       <div className="flex items-center justify-end gap-2 px-6 pt-4 pb-2 shrink-0">
         {editing ? (
           <>
@@ -139,16 +139,26 @@ export function SpecJsonPanel({
         </div>
       )}
 
-      <div className="flex-1 overflow-auto px-6 pb-6">
+      <div className="flex-1 overflow-auto px-6 pb-6 min-h-0">
         {editing ? (
-          <textarea
-            value={editText}
-            onChange={(e) => setEditText(e.target.value)}
-            spellCheck={false}
-            className="w-full h-full text-xs font-mono text-gray-700 bg-gray-50 border border-gray-200 rounded-md p-4 resize-none focus:outline-none focus:ring-2 focus:ring-gray-300 max-w-3xl"
-          />
+          <div className="relative w-full h-full rounded-md border border-gray-200 bg-gray-50 focus-within:ring-2 focus-within:ring-gray-300 overflow-hidden">
+            <pre
+              aria-hidden
+              className="absolute inset-0 text-xs font-mono whitespace-pre-wrap break-words p-4 pointer-events-none select-none overflow-hidden"
+            >
+              {highlightContent(editText, 'spec.json')}
+              {/* trailing newline keeps caret visible on last line */}
+              {'\n'}
+            </pre>
+            <textarea
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              spellCheck={false}
+              className="relative w-full h-full text-xs font-mono bg-transparent text-transparent caret-gray-700 p-4 resize-none focus:outline-none"
+            />
+          </div>
         ) : (
-          <pre className="text-xs font-mono text-gray-700 whitespace-pre-wrap break-words max-w-3xl">
+          <pre className="text-xs font-mono text-gray-700 whitespace-pre-wrap break-words">
             {highlightContent(json, 'spec.json')}
           </pre>
         )}

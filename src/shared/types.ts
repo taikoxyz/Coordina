@@ -41,8 +41,6 @@ export interface AgentSpec {
   tone?: string
   boundaries?: string[]
   values?: string[]
-  operatingRules?: string[]
-  toolGuidance?: string[]
   additionalPorts?: AdditionalPort[]
 }
 
@@ -86,26 +84,7 @@ export interface EnvironmentRecord {
   config: Record<string, unknown>;
 }
 
-export interface DerivationPatterns {
-  soul?: {
-    coreTruths?: string[];
-    continuity?: string;
-  };
-  agents?: {
-    firstRun?: string;
-    memoryRules?: string[];
-    safetyRules?: string[];
-    priorities?: string[];
-    teamLeadResponsibilities?: string[];
-    defaultRules?: string[];
-  };
-  user?: {
-    introLines?: string[];
-  };
-}
-
 export interface AppSettings {
-  derivationPatterns?: DerivationPatterns;
   agentNameTheme?: AgentNameTheme;
 }
 

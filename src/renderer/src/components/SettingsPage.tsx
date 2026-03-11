@@ -5,30 +5,18 @@ import { useTeams } from '../hooks/useTeams'
 import { GeneralSettings } from './settings/GeneralSettings'
 import { OpenRouterSettings, OpenRouterStatusBadge } from './settings/OpenRouterSettings'
 import { GkeSettings, GkeHelpPanel, GkeStatusBadge } from './settings/GkeSettings'
-import { SoulPatternsSettings } from './settings/SoulPatternsSettings'
-import { AgentPatternsSettings } from './settings/AgentPatternsSettings'
-import { LeadPatternsSettings } from './settings/LeadPatternsSettings'
-import { UserPatternsSettings } from './settings/UserPatternsSettings'
 import { cn } from '../lib/utils'
 
 const sections: Array<{ id: SettingsSection; label: string; group?: string }> = [
   { id: 'general', label: 'Naming', group: 'General' },
   { id: 'openrouter', label: 'OpenRouter', group: 'General' },
   { id: 'google-cloud', label: 'Google Cloud', group: 'General' },
-  { id: 'patterns-soul', label: 'Soul', group: 'Agent Patterns' },
-  { id: 'patterns-agents', label: 'Behavior', group: 'Agent Patterns' },
-  { id: 'patterns-lead', label: 'Team Lead', group: 'Agent Patterns' },
-  { id: 'patterns-user', label: 'User', group: 'Agent Patterns' },
 ]
 
 const sectionContent: Record<SettingsSection, () => ReturnType<typeof GeneralSettings>> = {
   'general': GeneralSettings,
   'openrouter': OpenRouterSettings,
   'google-cloud': GkeSettings,
-  'patterns-soul': SoulPatternsSettings,
-  'patterns-agents': AgentPatternsSettings,
-  'patterns-lead': LeadPatternsSettings,
-  'patterns-user': UserPatternsSettings,
 }
 
 const sectionStatusBadge: Partial<Record<SettingsSection, () => ReturnType<typeof GeneralSettings>>> = {
@@ -53,10 +41,6 @@ const sectionTitles: Record<SettingsSection, string> = {
   'general': 'Naming',
   'openrouter': 'OpenRouter',
   'google-cloud': 'Google Cloud',
-  'patterns-soul': 'Soul Patterns',
-  'patterns-agents': 'Agent Behavior Patterns',
-  'patterns-lead': 'Team Lead Patterns',
-  'patterns-user': 'User Patterns',
 }
 
 export function SettingsPage() {

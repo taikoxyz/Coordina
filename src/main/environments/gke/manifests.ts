@@ -57,19 +57,16 @@ export function generateAgentConfigMap(input: {
   namespace: string
   identityMd: string
   soulMd: string
-  skillsMd: string
-  agentsMd: string
   userMd: string
-  toolsMd: string
   openclawJson: string
   envMd?: string
 }): string {
-  const { teamSlug, agentSlug, namespace, identityMd, soulMd, skillsMd, agentsMd, userMd, toolsMd, openclawJson, envMd } = input
+  const { teamSlug, agentSlug, namespace, identityMd, soulMd, userMd, openclawJson, envMd } = input
   return generateConfigMap({
     name: `${teamSlug}-${agentSlug}-config`,
     namespace,
     labels: { 'coordina.team': teamSlug, 'coordina.agent': agentSlug },
-    data: { 'IDENTITY.md': identityMd, 'SOUL.md': soulMd, 'SKILLS.md': skillsMd, 'AGENTS.md': agentsMd, 'USER.md': userMd, 'TOOLS.md': toolsMd, 'openclaw.json': openclawJson, ...(envMd ? { 'ENV.md': envMd } : {}) },
+    data: { 'IDENTITY.md': identityMd, 'SOUL.md': soulMd, 'USER.md': userMd, 'openclaw.json': openclawJson, ...(envMd ? { 'ENV.md': envMd } : {}) },
   })
 }
 
@@ -90,6 +87,7 @@ export interface AgentManifestInput {
   memoryGi?: number
   podAnnotations?: Record<string, string>
   additionalPorts?: AdditionalPort[]
+  bootstrapHash?: string
 }
 
 export function generateStorageClass(input: { teamSlug: string }): string {
@@ -154,18 +152,20 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
     { name: 'agent-config', mountPath: '/config/agent', readOnly: true },
   ]
 
+  const bootstrapHash = input.bootstrapHash ?? ''
+  const bootstrapMarker = `${stateDir}/.bootstrap-done`
   const initSeedCmd = [
     `mkdir -p ${stateDir} ${workspaceDir} ${toolsDir}/bin ${toolsDir}/cargo/bin`,
-    `test -f ${workspaceDir}/BOOTSTRAP.md || cp /config/shared/BOOTSTRAP.md ${workspaceDir}/BOOTSTRAP.md`,
+    bootstrapHash
+      ? `(test -f ${bootstrapMarker} && grep -qF '${bootstrapHash}' ${bootstrapMarker}) || rm -f ${bootstrapMarker}`
+      : `true`,
+    `cp /config/shared/BOOTSTRAP.md ${workspaceDir}/BOOTSTRAP.md`,
     `cp /config/shared/TEAM.md ${workspaceDir}/TEAM.md`,
     `test -f /config/shared/PROJECTS.md && cp /config/shared/PROJECTS.md ${workspaceDir}/PROJECTS.md || true`,
     `cp /config/agent/IDENTITY.md ${workspaceDir}/IDENTITY.md`,
     `test -f ${workspaceDir}/MEMORY.md || touch ${workspaceDir}/MEMORY.md`,
     `test -f ${workspaceDir}/SOUL.md || cp /config/agent/SOUL.md ${workspaceDir}/SOUL.md`,
-    `test -f ${workspaceDir}/SKILLS.md || cp /config/agent/SKILLS.md ${workspaceDir}/SKILLS.md`,
-    `cp /config/agent/AGENTS.md ${workspaceDir}/AGENTS.md`,
     `cp /config/agent/USER.md ${workspaceDir}/USER.md`,
-    `cp /config/agent/TOOLS.md ${workspaceDir}/TOOLS.md`,
     `test -f /config/agent/ENV.md && cp /config/agent/ENV.md ${workspaceDir}/ENV.md || true`,
     `cp /config/agent/openclaw.json ${stateDir}/openclaw.json`,
     'chown -R 1000:1000 /agent-data/openclaw',

@@ -308,7 +308,7 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
   return (
     <>
       <div className="shrink-0 border-b border-gray-200">
-        <div className="max-w-2xl mx-auto px-6 h-11 flex items-center gap-2">
+        <div className="px-6 h-11 flex items-center gap-2">
           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400">
             Edit team
           </div>
@@ -337,7 +337,7 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
         </div>
       </div>
       <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="max-w-2xl mx-auto space-y-5 py-4 px-6">
+        <div className="max-w-4xl mx-auto space-y-5 py-4 px-6">
         <div>
           <h3 className="text-sm font-semibold text-gray-900 mb-3">Telegram</h3>
           <div className="grid grid-cols-2 gap-3">
