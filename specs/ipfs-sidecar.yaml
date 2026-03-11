@@ -1,0 +1,121 @@
+# IPFS Sidecar Specification
+
+## Overview
+This document specifies the IPFS sidecar container configuration for Coordina agent pods. The sidecar provides persistent IPFS node functionality co-located with the agent container.
+
+## NOT for pods/exec
+This spec is designed for sidecar injection into existing agent pods, NOT for standalone IPFS pods with `kubectl exec` access. This ensures minimal attack surface.
+
+## Configuration
+
+### Container Image
+- **Image**: `ipfs/kubo:v0.28.0`
+- **Registry**: Docker Hub (official)
+
+### Ports
+| Port | Protocol | Description |
+|------|----------|-------------|
+| 5001 | TCP | IPFS API (REST) |
+| 8080 | TCP | IPFS Gateway (read-only HTTP) |
+| 4001 | TCP | Swarm (P2P) |
+
+### Resource Limits
+```yaml
+resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+```
+
+### Storage
+- **PVC Size**: 10Gi (default, configurable)
+- **Mount Path**: `/data/ipfs`
+- **Storage Class**: `standard` (GKE default)
+
+### Environment Variables
+```yaml
+env:
+  - name: IPFS_PATH
+    value: "/data/ipfs"
+  - name: LIBP2P_FORCE_PNET
+    value: "1"  # Enable private networking
+```
+
+### Initialization
+The sidecar uses an init container to initialize IPFS with server profile:
+```yaml
+initContainers:
+  - name: ipfs-init
+    image: ipfs/kubo:v0.28.0
+    command: ["/bin/sh", "-c"]
+    args:
+      - ipfs init --profile=server
+    volumeMounts:
+      - name: ipfs-data
+        mountPath: /data/ipfs
+```
+
+### Exposed Volumes
+```yaml
+volumeMounts:
+  - name: ipfs-data
+    mountPath: /data/ipfs
+```
+
+## Security Considerations
+- **No pods/exec**: The sidecar does NOT enable kubectl exec into the IPFS container
+- **Read-only API**: Port 5001 (API) is internal only, not exposed via Service
+- **Private network**: LIBP2P_FORCE_PNET enables IPFS private swarm
+- **Resource limits**: Hard limits prevent resource exhaustion
+
+## Integration with Agent Pods
+
+### Statefuset Patch Example
+```yaml
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: ipfs-init
+          image: ipfs/kubo:v0.28.0
+          command: ["/bin/sh", "-c"]
+          args:
+            - ipfs init --profile=server
+          volumeMounts:
+            - name: ipfs-data
+              mountPath: /data/ipfs
+      containers:
+        - name: ipfs
+          image: ipfs/kubo:v0.28.0
+          ports:
+            - containerPort: 5001
+              name: api
+            - containerPort: 8080
+              name: gateway
+            - containerPort: 4001
+              name: swarm
+          env:
+            - name: IPFS_PATH
+              value: "/data/ipfs"
+          volumeMounts:
+            - name: ipfs-data
+              mountPath: /data/ipfs
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+      volumes:
+        - name: ipfs-data
+          persistentVolumeClaim:
+            claimName: ipfs-data-${TEAM_SLUG}
+```
+
+## Related
+- Issue: #171 (Layer 2 Infrastructure Optimization)
+- Spec: `specs/project-api.yaml` (Project API reference)
