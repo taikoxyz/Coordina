@@ -14,6 +14,13 @@ export interface AdditionalPort {
   protocol?: string
 }
 
+export interface AdditionalPort {
+  port: number
+  targetPort: number
+  name: string
+  protocol?: string
+}
+
 export interface AgentSpec {
   slug: string
   name: string
@@ -155,6 +162,20 @@ export interface DeployReadinessResult {
 export interface MissionControlConfig {
   enabled: boolean;
   image: string;
+}
+
+export interface Task {
+  id: string
+  title: string
+  assignedTo?: string
+  status: 'unclaimed' | 'in_progress' | 'review' | 'done'
+  priority: 'low' | 'medium' | 'high' | 'critical'
+  dueDate?: string
+  blockers?: string[]
+  projectId?: string
+  description?: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface Task {

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: project-api
+  namespace: default
+  labels:
+    app: project-api
+    agent: bob-li
+spec:
+  selector:
+    agent: bob-li
+  ports:
+    - name: http
+      port: 19876
+      targetPort: 19876
+      protocol: TCP
+  type: ClusterIP
