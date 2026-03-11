@@ -94,7 +94,7 @@ Configure messaging channels and access control.
       botToken: "${TELEGRAM_BOT_TOKEN}",
       dmPolicy: "pairing",   // pairing | allowlist | open | disabled
       allowFrom: ["tg:123456", "tg:789012"],
-      groupPolicy: "mention", // mention | allowlist | open
+      groupPolicy: "allowlist", // allowlist | open
     },
   },
 }

@@ -32,12 +32,7 @@ Read and update the following identity files:
 ## Phase 3: Team Connectivity
 
 ### Inter-Agent Communication
-- [ ] Verify AGENTS.md contains team directory with all 5 members:
-  - alice-wong (Team Lead)
-  - bob-li (AI/ML Engineer)
-  - ripley (Web Developer)
-  - aeryn (Engagement Specialist)
-  - deckard (You — Market Intelligence)
+- [ ] Verify AGENTS.md contains team directory with all members (check IDENTITY.md for your role)
 - [ ] Note the shared `gateway_token` for HTTP API calls
 - [ ] Test peer connectivity:
   ```bash
@@ -49,7 +44,7 @@ Read and update the following identity files:
 
 ### Email Configuration
 - [ ] Verify email credentials are available via env vars
-- [ ] Your email: `dsquad+deckard@ai.taiko.xyz`
+- [ ] Your email: See `IDENTITY.md` → Email field
 - [ ] Test IMAP/SMTP access if needed
 
 ### GitHub Access
@@ -60,7 +55,7 @@ Read and update the following identity files:
 
 ## Phase 4: OpenClaw Configuration Research
 
-Review the openclaw.json research in `memory/openclaw-config-reference.md`:
+Review the openclaw.json research in `docs/openclaw-config-reference.md`:
 
 - [ ] Understand JSON5 format (comments + trailing commas supported)
 - [ ] Review common configuration patterns
@@ -102,7 +97,7 @@ Verify available skills are documented in AGENTS.md:
 ### Communication Protocols
 - [ ] Agent-to-agent: Use gateway HTTP API (curl to `http://<gateway>/v1/responses`)
 - [ ] Admin communication: Telegram (group: -1003813455940)
-- [ ] Email: Check `dsquad+deckard@ai.taiko.xyz` regularly
+- [ ] Email: Check your agent email (see IDENTITY.md) regularly
 - [ ] Never use Telegram for agent-to-agent communication
 
 ### Task Assignment System
@@ -135,5 +130,5 @@ Once all phases are complete:
 ---
 
 *Bootstrap completed: [DATE]*
-*Agent: Deckard*
+*Agent: [YOUR_SLUG from IDENTITY.md]*
 *Team: D Squad*
