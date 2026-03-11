@@ -36,6 +36,10 @@ export function AgentCard({
   const [tokenMasked, setTokenMasked] = useState<string | null>(null)
   const [tokenBusy, setTokenBusy] = useState(false)
   const [tokenError, setTokenError] = useState<string | null>(null)
+  const [orKey, setOrKey] = useState('')
+  const [orKeyMasked, setOrKeyMasked] = useState<string | null>(null)
+  const [orKeyBusy, setOrKeyBusy] = useState(false)
+  const [orKeyError, setOrKeyError] = useState<string | null>(null)
   const set = (key: keyof AgentSpec) => (value: unknown) =>
     onChange({ ...agent, [key]: value })
 
@@ -76,6 +80,15 @@ export function AgentCard({
       .catch((e) => {
         if (active) setTokenError((e as Error).message)
       })
+    window.api
+      .invoke('teams:getAgentOpenRouterKeyMasked', {
+        teamSlug,
+        agentSlug: agent.slug,
+      })
+      .then((value) => {
+        if (active) setOrKeyMasked((value as string | null) ?? null)
+      })
+      .catch(() => { /* non-fatal */ })
     return () => {
       active = false
     }
@@ -133,6 +146,46 @@ export function AgentCard({
       setTokenError((e as Error).message)
     } finally {
       setTokenBusy(false)
+    }
+  }
+
+  const saveOrKey = async () => {
+    setOrKeyBusy(true)
+    setOrKeyError(null)
+    try {
+      await window.api.invoke('teams:setAgentOpenRouterKey', {
+        teamSlug,
+        agentSlug: agent.slug,
+        key: orKey,
+      })
+      const masked = (await window.api.invoke(
+        'teams:getAgentOpenRouterKeyMasked',
+        { teamSlug, agentSlug: agent.slug },
+      )) as string | null
+      setOrKeyMasked(masked)
+      setOrKey('')
+    } catch (e) {
+      setOrKeyError((e as Error).message)
+    } finally {
+      setOrKeyBusy(false)
+    }
+  }
+
+  const clearOrKey = async () => {
+    setOrKeyBusy(true)
+    setOrKeyError(null)
+    try {
+      await window.api.invoke('teams:setAgentOpenRouterKey', {
+        teamSlug,
+        agentSlug: agent.slug,
+        key: '',
+      })
+      setOrKeyMasked(null)
+      setOrKey('')
+    } catch (e) {
+      setOrKeyError((e as Error).message)
+    } finally {
+      setOrKeyBusy(false)
     }
   }
 
@@ -240,6 +293,46 @@ export function AgentCard({
                 >
                   + Add model
                 </Button>
+              </div>
+              <div className="mt-3">
+                <Label>API Key override <Tooltip content="Overrides the team-level OpenRouter key for this agent only. Useful for per-agent billing tracking."><span className="text-gray-300 cursor-help">ⓘ</span></Tooltip></Label>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      mono
+                      type="password"
+                      value={orKey}
+                      onChange={(e) => setOrKey(e.target.value)}
+                      placeholder={orKeyMasked ? 'Update key' : 'sk-or-...'}
+                    />
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={saveOrKey}
+                      disabled={orKeyBusy || !teamSlug || !agent.slug}
+                      className="shrink-0"
+                    >
+                      Save
+                    </Button>
+                  </div>
+                  {orKeyMasked && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={clearOrKey}
+                      disabled={orKeyBusy}
+                      className="shrink-0"
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+                {orKeyMasked && (
+                  <p className="text-xs text-gray-400 font-mono mt-0.5">{orKeyMasked}</p>
+                )}
+                {orKeyError && (
+                  <p className="text-xs text-red-600 mt-0.5">{orKeyError}</p>
+                )}
               </div>
             </div>
 

@@ -28,6 +28,7 @@ export function registerTeamHandlers(): void {
     const spec = await getTeam(slug)
     for (const agent of spec?.agents ?? []) {
       await deleteSecret(telegramAccount(slug, agent.slug), 'agent-telegram-token')
+      await deleteSecret(telegramAccount(slug, agent.slug), 'agent-openrouter-key')
     }
     await deleteSecret(`team:${slug}`, 'team-github-token')
     await deleteSecret(`team:${slug}`, 'team-openrouter-key')
@@ -60,6 +61,22 @@ export function registerTeamHandlers(): void {
         )
       }
     }
+    return { ok: true, cleared: false }
+  })
+
+  ipcMain.handle('teams:getAgentOpenRouterKeyMasked', async (_e, data: { teamSlug: string; agentSlug: string }) => {
+    const key = await getSecret(telegramAccount(data.teamSlug, data.agentSlug), 'agent-openrouter-key')
+    if (!key) return null
+    return key.length > 10 ? `${key.slice(0, 4)}••••${key.slice(-4)}` : '••••••••'
+  })
+
+  ipcMain.handle('teams:setAgentOpenRouterKey', async (_e, data: { teamSlug: string; agentSlug: string; key?: string }) => {
+    const key = data.key?.trim()
+    if (!key) {
+      await deleteSecret(telegramAccount(data.teamSlug, data.agentSlug), 'agent-openrouter-key')
+      return { ok: true, cleared: true }
+    }
+    await setSecret(telegramAccount(data.teamSlug, data.agentSlug), 'agent-openrouter-key', key)
     return { ok: true, cleared: false }
   })
 

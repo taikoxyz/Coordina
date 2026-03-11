@@ -171,7 +171,8 @@ const gkeDeriver: DeploymentSpecDeriver = {
       const effectiveEmail = agent.email || derivedEmail
       const models = agent.models.length > 0 ? agent.models : ['anthropic/claude-sonnet-4-6']
       const openclawConfig = openrouterToOpenClawJson(models)
-      const envVars = openrouterToEnvVars(openrouterApiKey)
+      const effectiveApiKey = secrets?.agentOpenRouterKeys?.[agent.slug] || openrouterApiKey
+      const envVars = openrouterToEnvVars(effectiveApiKey)
 
       const agentToken = teamGatewayToken
       const telegramBot = agent.telegramBot?.trim()
