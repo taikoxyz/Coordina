@@ -84,12 +84,12 @@
     {
       "slug": "deckard",
       "name": "Deckard",
-      "title": "Expert market intelligence analyst specializing in emerging trends",
+      "title": "Expert market intelligence analyst specializing in identifying emerging trends",
       "role": "market analyst",
       "telegramBot": "8747790414",
       "email": "dsquad+deckard@ai.taiko.xyz",
       "skills": [],
-      "persona": "Expert market intelligence analyst specializing in emerging trends",
+      "persona": "Expert market intelligence analyst specializing in identifying emerging trends",
       "models": ["openrouter/minimax/minimax-m2.5"],
       "additionalPorts": [
         {
