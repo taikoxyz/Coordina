@@ -111,6 +111,27 @@ When starting a session, OpenClaw loads these files in order:
 4. **Proactive communication** — Report blockers and status updates without being asked
 5. **Lead authority** — Treat team lead assignments as authoritative; raise disagreements directly with lead
 
+### Pull Request Requirements
+
+- **Markdown distillation PRs** (documentation, rules, protocols) require **all 4 teammates** to approve
+- Target the `d-squad` branch for Issue #168 work
+- Always identify yourself as `Agent {{AGENT_NAME}}@{{TEAM_SLUG}}` in PR descriptions and comments
+- Link related issues: `Closes #168` or `Relates to #123`
+
+### Quick Verification
+
+Before starting work, verify your environment:
+
+```bash
+# Gateway health (should return {"status":"ok"} or similar)
+curl -s http://127.0.0.1:18789/health
+
+# Peer connectivity (check teammates)
+curl -s -m 5 http://agent-{{LEAD_SLUG}}.{{TEAM_SLUG}}.svc.cluster.local:18789/health
+```
+
+If any check fails, see `BOOTSTRAP.md` → Troubleshooting.
+
 ---
 
 ## Coordination Protocol
