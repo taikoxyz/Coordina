@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: project-api
+  namespace: default
+  labels:
+    app: project-api
+    agent: bob-li
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      agent: bob-li
+  template:
+    metadata:
+      labels:
+        agent: bob-li
+        app: project-api
+    spec:
+      containers:
+        - name: project-api
+          image: node:22-alpine
+          command: ["node", "/app/server.js"]
+          ports:
+            - containerPort: 19876
+              name: http
+          env:
+            - name: PORT
+              value: "19876"
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1000m"
+              memory: "512Mi"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 19876
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 19876
+            initialDelaySeconds: 15
+            periodSeconds: 20
