@@ -24,10 +24,7 @@ import {
   generateTeamMd,
   generateIdentityMd,
   generateSoulMd,
-  generateSkillsMd,
-  generateAgentsMd,
   generateUserMd,
-  generateToolsMd,
   generateOpenClawJson,
   generateProjectsMd,
   generateEnvMd,
@@ -277,48 +274,11 @@ const gkeDeriver: DeploymentSpecDeriver = {
         leadAgent: spec.leadAgent,
       })
       const soulMd = generateSoulMd({ userInput: agent.persona, tone: agent.tone, boundaries: agent.boundaries, values: agent.values })
-      const skillsMd = generateSkillsMd(agent.skills)
-      const agentsMd = generateAgentsMd({
-        agentName: agent.name,
-        role: agent.role,
-        teamName: spec.name,
-        leadAgent: spec.leadAgent,
-        isLead: agent.slug === spec.leadAgent,
-        hasTelegram: hasTelegramRouting,
-        hasGateways,
-        operatingRules: agent.operatingRules,
-        agentEmail: hasEmail ? effectiveEmail : undefined,
-        teamEmail: hasEmail ? spec.teamEmail : undefined,
-        teamMd,
-        bootstrapInstructions: bootstrapMd,
-        bootstrapHash,
-      })
       const userMd = generateUserMd({
         teamName: spec.name,
         adminName: spec.adminName,
         adminEmail: spec.adminEmail,
         telegramAdminId,
-      })
-      const toolsMd = generateToolsMd({
-        hasGateways,
-        isLead: agent.slug === spec.leadAgent,
-        agentName: agent.name,
-        agentSlug: agent.slug,
-        teamSlug: spec.slug,
-        primaryModel: openclawConfig.agents?.defaults?.model?.primary,
-        toolGuidance: agent.toolGuidance,
-        agentEmail: hasEmail ? effectiveEmail : undefined,
-        teamEmail: hasEmail ? spec.teamEmail : undefined,
-        hasEmail,
-        hasGitHub,
-        githubUsername,
-        peers: spec.agents
-          .filter(a => a.slug !== agent.slug)
-          .map(a => ({
-            slug: a.slug,
-            gatewayUrl: `http://agent-${a.slug}.${namespace}.svc.cluster.local:18789`,
-          })),
-        namespace,
       })
       const effectiveImage = agent.image || spec.defaultImage || 'alpine/openclaw:latest'
       const envMd = generateEnvMd({
@@ -341,10 +301,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
         namespace,
         identityMd,
         soulMd,
-        skillsMd,
-        agentsMd,
         userMd,
-        toolsMd,
         openclawJson,
         envMd,
       })
@@ -352,10 +309,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
 
       files.push({ path: `agents/${agent.slug}/IDENTITY.md`, content: identityMd })
       files.push({ path: `agents/${agent.slug}/SOUL.md`, content: soulMd })
-      files.push({ path: `agents/${agent.slug}/SKILLS.md`, content: skillsMd })
-      files.push({ path: `agents/${agent.slug}/AGENTS.md`, content: agentsMd })
       files.push({ path: `agents/${agent.slug}/USER.md`, content: userMd })
-      files.push({ path: `agents/${agent.slug}/TOOLS.md`, content: toolsMd })
       files.push({ path: `agents/${agent.slug}/openclaw.json`, content: openclawJson })
       files.push({ path: `agents/${agent.slug}/ENV.md`, content: envMd })
       files.push({ path: `agents/${agent.slug}/configmap.yaml`, content: agentConfigMap })

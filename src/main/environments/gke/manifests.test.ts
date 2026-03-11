@@ -42,7 +42,6 @@ describe('generateAgentStatefulSet', () => {
     expect(manifest).toContain('/agent-data/openclaw/workspace/BOOTSTRAP.md')
     expect(manifest).toContain('/agent-data/openclaw/workspace/IDENTITY.md')
     expect(manifest).toContain('/agent-data/openclaw/workspace/SOUL.md')
-    expect(manifest).toContain('/agent-data/openclaw/workspace/SKILLS.md')
     expect(manifest).toContain('TEAM.md')
   })
 
@@ -173,20 +172,17 @@ describe('generateAgentConfigMap', () => {
       namespace: 'team-alpha',
       identityMd: '# Identity',
       soulMd: '# Soul',
-      skillsMd: '# Skills',
-      agentsMd: '# Agents',
       userMd: '# User',
-      toolsMd: '# Tools',
       openclawJson: '{ "agents": { "defaults": { "model": { "primary": "anthropic/claude-sonnet-4-6" } } }, "models": { "providers": { "anthropic": {} } } }',
     })
     expect(yaml).toContain('name: alpha-alice-config')
     expect(yaml).toContain('IDENTITY.md: |')
     expect(yaml).not.toContain('MEMORY.md')
     expect(yaml).toContain('SOUL.md: |')
-    expect(yaml).toContain('SKILLS.md: |')
-    expect(yaml).toContain('AGENTS.md: |')
+    expect(yaml).not.toContain('SKILLS.md')
+    expect(yaml).not.toContain('AGENTS.md')
     expect(yaml).toContain('USER.md: |')
-    expect(yaml).toContain('TOOLS.md: |')
+    expect(yaml).not.toContain('TOOLS.md')
   })
 
   it('includes ENV.md when provided', () => {
@@ -196,10 +192,7 @@ describe('generateAgentConfigMap', () => {
       namespace: 'team-alpha',
       identityMd: '# Identity',
       soulMd: '# Soul',
-      skillsMd: '# Skills',
-      agentsMd: '# Agents',
       userMd: '# User',
-      toolsMd: '# Tools',
       openclawJson: '{}',
       envMd: '# Deployment Environment\n\n## Cluster\n- GCP Project: my-proj',
     })
@@ -214,10 +207,7 @@ describe('generateAgentConfigMap', () => {
       namespace: 'team-alpha',
       identityMd: '# Identity',
       soulMd: '# Soul',
-      skillsMd: '# Skills',
-      agentsMd: '# Agents',
       userMd: '# User',
-      toolsMd: '# Tools',
       openclawJson: '{}',
     })
     expect(yaml).not.toContain('ENV.md:')

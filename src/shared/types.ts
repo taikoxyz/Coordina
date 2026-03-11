@@ -41,8 +41,6 @@ export interface AgentSpec {
   tone?: string
   boundaries?: string[]
   values?: string[]
-  operatingRules?: string[]
-  toolGuidance?: string[]
   additionalPorts?: AdditionalPort[]
 }
 
