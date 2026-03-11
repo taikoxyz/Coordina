@@ -101,37 +101,25 @@ export function registerDeployHandlers(): void {
       );
     }
 
-    const deployReadiness = await getDeployReadiness(teamSlug, spec, agentSlug);
-    if (!deployReadiness.ok) {
-      throw new Error(
-        deployReadiness.reason ??
-          "Deploy is blocked by incomplete Telegram setup",
-      );
-    }
-
-    const telegramTokens = Object.fromEntries(
-      await Promise.all(
-        spec.agents.map(async (agent) => {
-          const token = await getSecret(
-            telegramAccount(spec.slug, agent.slug),
-            "agent-telegram-token",
-          );
-          return [agent.slug, token ?? undefined] as const;
-        }),
-      ),
-    );
+    const [telegramTokens, agentOpenRouterKeys] = await Promise.all([
+      Promise.all(spec.agents.map(async (agent) => {
+        const token = await getSecret(telegramAccount(spec.slug, agent.slug), 'agent-telegram-token')
+        return [agent.slug, token ?? undefined] as const
+      })).then(Object.fromEntries),
+      Promise.all(spec.agents.map(async (agent) => {
+        const key = await getSecret(telegramAccount(spec.slug, agent.slug), 'agent-openrouter-key')
+        return [agent.slug, key ?? undefined] as const
+      })).then(Object.fromEntries),
+    ])
 
     const emailPassword = spec.teamEmail
       ? ((await getSecret(`team:${teamSlug}`, "team-email-password")) ??
         undefined)
       : undefined;
 
-    const deriver = getDeriver(env.type);
-    const specFiles = await deriver.derive(spec, env.config, {
-      agentTelegramTokens: telegramTokens,
-      teamEmailPassword: emailPassword,
-    });
-    const deployValidation = validateDerivedSpecFiles(specFiles);
+    const deriver = getDeriver(env.type)
+    const specFiles = await deriver.derive(spec, env.config, { agentTelegramTokens: telegramTokens, agentOpenRouterKeys, teamEmailPassword: emailPassword })
+    const deployValidation = validateDerivedSpecFiles(specFiles)
     if (!deployValidation.valid) {
       throw new Error(
         formatValidationFailure(
