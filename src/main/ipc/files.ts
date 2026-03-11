@@ -1,10 +1,20 @@
 import { ipcMain } from "electron";
+import path from "node:path";
 import { getTeamDeployment } from "../store/deployments";
 import { getEnvironment } from "../store/environments";
 import { execInPod } from "../environments/gke/deploy";
 import type { GkeDeployConfig } from "../environments/gke/deploy";
 
 const WORKSPACE_DIR = "/agent-data/openclaw/workspace";
+
+/** Resolve filePath within WORKSPACE_DIR, rejecting path traversal attempts. */
+function safePath(filePath: string): string {
+  const resolved = path.posix.resolve(WORKSPACE_DIR, filePath);
+  if (!resolved.startsWith(WORKSPACE_DIR + "/") && resolved !== WORKSPACE_DIR) {
+    throw new Error("Path escapes workspace directory");
+  }
+  return resolved;
+}
 
 async function getGkeConfig(teamSlug: string): Promise<GkeDeployConfig | null> {
   const deployment = await getTeamDeployment(teamSlug);
@@ -88,7 +98,12 @@ export function registerFileHandlers(): void {
         };
       }
 
-      const fullPath = `${WORKSPACE_DIR}/${filePath}`;
+      let fullPath: string;
+      try {
+        fullPath = safePath(filePath);
+      } catch {
+        return { content: null, error: "Invalid file path" };
+      }
       try {
         const content = await execInPod(
           teamSlug,

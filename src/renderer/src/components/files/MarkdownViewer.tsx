@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import DOMPurify from 'dompurify'
 import { highlightContent } from '../../lib/highlight'
 
 interface Props {
@@ -79,7 +80,7 @@ export function MarkdownViewer({ content, filePath }: Props) {
             <style>{mdStyles}</style>
             <div
               className="md-doc max-w-none"
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderMarkdown(content)) }}
             />
           </>
         )}
