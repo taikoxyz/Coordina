@@ -1,0 +1,178 @@
+// OpenClaw Configuration for D Squad Agents
+// Place this file at ~/.openclaw/openclaw.json
+// JSON5 format: supports comments and trailing commas
+{
+  // ============================================================================
+  // AGENT DEFAULTS
+  // ============================================================================
+  agents: {
+    defaults: {
+      // Workspace directory for this agent
+      workspace: "/agent-data/openclaw/workspace",
+      
+      // Primary model for reasoning and complex tasks
+      model: "openrouter/anthropic/claude-sonnet-4.6",
+      
+      // Model catalog for quick reference
+      models: {
+        "anthropic/claude-sonnet-4.6": { alias: "Sonnet" },
+        "openai/gpt-4o": { alias: "GPT-4o" },
+        "moonshotai/kimi-k2.5": { alias: "Kimi" },
+      },
+      
+      // Sandbox configuration for safe execution
+      sandbox: {
+        mode: "non-main",  // off | non-main | all
+        scope: "agent",    // session | agent | shared
+      },
+      
+      // Heartbeat for periodic health checks
+      heartbeat: {
+        every: "30m",
+        target: "last",
+      },
+      
+      // Image processing limits
+      imageMaxDimensionPx: 1200,
+    },
+  },
+
+  // ============================================================================
+  // CHANNELS (Telegram for admin communication)
+  // ============================================================================
+  channels: {
+    telegram: {
+      enabled: true,
+      botToken: "${TELEGRAM_BOT_TOKEN}",
+      dmPolicy: "pairing",  // pairing | allowlist | open | disabled
+      groupPolicy: "allowlist",
+      // Group chat ID for D Squad
+      allowFrom: ["tg:8379033654"],  // Admin user ID
+    },
+  },
+
+  // ============================================================================
+  // SESSION CONFIGURATION
+  // ============================================================================
+  session: {
+    // DM session scoping - per-channel-peer for group chat isolation
+    dmScope: "per-channel-peer",
+    
+    // Automatic session reset behavior
+    reset: {
+      mode: "idle",        // daily | idle | never
+      idleMinutes: 120,    // Reset after 2 hours of inactivity
+    },
+    
+    // Thread bindings for Discord (if enabled)
+    threadBindings: {
+      enabled: true,
+      idleHours: 24,
+      maxAgeHours: 0,
+    },
+  },
+
+  // ============================================================================
+  // GATEWAY (Inter-agent communication)
+  // ============================================================================
+  gateway: {
+    port: 18789,
+    bind: "0.0.0.0",  // Required for K8s cluster communication
+    
+    // Authentication token - MUST match AGENTS.md gateway_token
+    auth: {
+      token: "${D_SQUAD_GATEWAY_TOKEN}",
+    },
+    
+    // Config reload behavior
+    reload: {
+      mode: "hybrid",  // hybrid | hot | restart | off
+      debounceMs: 300,
+    },
+  },
+
+  // ============================================================================
+  // CRON (Scheduled jobs)
+  // ============================================================================
+  cron: {
+    enabled: true,
+    maxConcurrentRuns: 2,
+    sessionRetention: "24h",
+    runLog: {
+      maxBytes: "2mb",
+      keepLines: 2000,
+    },
+  },
+
+  // ============================================================================
+  // HOOKS (Webhook endpoints)
+  // ============================================================================
+  hooks: {
+    enabled: true,
+    path: "/hooks",
+    defaultSessionKey: "hook:ingress",
+    allowRequestSessionKey: false,
+    allowedSessionKeyPrefixes: ["hook:"],
+    mappings: [
+      // Example: Gmail webhook handler
+      {
+        match: { path: "gmail" },
+        action: "agent",
+        agentId: "main",
+        deliver: true,
+      },
+    ],
+  },
+
+  // ============================================================================
+  // ENVIRONMENT VARIABLES
+  // ============================================================================
+  env: {
+    // OpenRouter API key for model access
+    OPENROUTER_API_KEY: "${OPENROUTER_API_KEY}",
+    
+    // GitHub token for repository operations
+    GITHUB_TOKEN: "${GITHUB_TOKEN}",
+    
+    // Email credentials (Gmail)
+    EMAIL_ADDRESS: "${EMAIL_ADDRESS}",
+    EMAIL_PASSWORD: "${EMAIL_PASSWORD}",
+    
+    // D Squad shared gateway token
+    D_SQUAD_GATEWAY_TOKEN: "${D_SQUAD_GATEWAY_TOKEN}",
+  },
+
+  // ============================================================================
+  // MODEL PROVIDERS
+  // ============================================================================
+  models: {
+    providers: {
+      openrouter: {
+        apiKey: {
+          source: "env",
+          provider: "default",
+          id: "OPENROUTER_API_KEY",
+        },
+      },
+    },
+  },
+
+  // ============================================================================
+  // SUB-AGENT CONTEXT NOTES
+  // ============================================================================
+  // CRITICAL: Sub-agents and cron jobs only receive these context files:
+  //   - AGENTS.md (team directory, tools, protocols)
+  //   - TOOLS.md (inter-agent communication, GitHub, email)
+  //   - SOUL.md (personality, tone, language rules)
+  //   - IDENTITY.md (agent slug, name, role, email)
+  //   - USER.md (operator preferences)
+  //
+  // Sub-agents do NOT receive:
+  //   - MEMORY.md (operational memory, daily logs)
+  //   - HEARTBEAT.md (scheduled tasks)
+  //   - BOOTSTRAP.md (first-run setup)
+  //
+  // Best Practice: Include critical operational facts in AGENTS.md for sub-agent
+  // visibility. Use MEMORY.md only for agent-specific continuity.
+  // ============================================================================
+}

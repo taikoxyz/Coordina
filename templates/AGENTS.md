@@ -118,6 +118,19 @@ When starting a session, OpenClaw loads these files in order:
 - Always identify yourself as `Agent {{AGENT_NAME}}@{{TEAM_SLUG}}` in PR descriptions and comments
 - Link related issues: `Closes #168` or `Relates to #123`
 
+### GitHub Limitations (Critical)
+
+All team members share the **same GitHub account** (`{{GITHUB_USERNAME}}`). **GitHub blocks self-approvals** — agents cannot approve their own PRs or PRs from teammates using the same account.
+
+**Review process requires:**
+- External reviewer with separate GitHub account, OR
+- Admin bypass merge (requires operator intervention)
+
+**Impact:**
+- Your PRs will show as "Review required" even after you click "Approve"
+- Coordinate with @admin (Daniel) for manual merge when all team approvals are in
+- Do NOT attempt to bypass with alternate accounts or tokens
+
 ### Quick Verification
 
 Before starting work, verify your environment:
@@ -160,7 +173,7 @@ Tasks use the following schema:
 |-------|------|----------------------|
 | `task_id` | string | Unique ID, e.g. `T-123-001` (issue#-sequence) |
 | `assignee` | string | Agent slug or `unassigned` |
-| `status` | enum | `unclaimed` · `in-progress` · `blocked` · `done` |
+| `status` | enum | `unclaimed` · `in_progress` · `on_hold` · `completed` |
 | `priority` | enum | `critical` · `high` · `normal` · `low` |
 | `description` | string | Brief task description (< 120 chars) |
 | `dependencies` | string | Comma-separated task_ids, or `none` |
@@ -172,24 +185,24 @@ Tasks use the following schema:
 
 | task_id | assignee | status | priority | description | dependencies | last_updated |
 |---------|----------|--------|----------|-------------|--------------|--------------|
-| T-123-001 | ripley | in-progress | high | Design AGENTS.md coordination schema | none | 2026-03-10T20:00:00Z |
+| T-123-001 | ripley | in_progress | high | Design AGENTS.md coordination schema | none | 2026-03-10T20:00:00Z |
 | T-123-002 | bob-li | unclaimed | normal | Implement Coordina sync engine | T-123-001 | 2026-03-10T18:00:00Z |
 | T-123-003 | unassigned | unclaimed | normal | Write integration tests for handoff | T-123-002 | 2026-03-10T18:00:00Z |
 
 #### Claiming a Task
 
-To claim a task: update your row's `assignee` to your slug, set `status` to `in-progress`, and update `last_updated`. Coordina will propagate the change to all teammates.
+To claim a task: update your row's `assignee` to your slug, set `status` to `in_progress`, and update `last_updated`. Coordina will propagate the change to all teammates.
 
 ```
 <!-- Update in your local AGENTS.md — Coordina syncs it -->
-| T-123-002 | bob-li | in-progress | normal | Implement sync engine | T-123-001 | 2026-03-10T21:00:00Z |
+| T-123-002 | bob-li | in_progress | normal | Implement sync engine | T-123-001 | 2026-03-10T21:00:00Z |
 ```
 
 ### Handoff Protocol
 
 When passing work to another agent:
 
-1. **Update Task Registry** — Set your task to `done`; create or update the next task with the recipient's slug.
+1. **Update Task Registry** — Set your task to `completed`; create or update the next task with the recipient's slug.
 2. **Write Context Summary** — Include in your message:
    - What was accomplished
    - Key files changed (paths)
@@ -208,13 +221,13 @@ When passing work to another agent:
 ### Blocker Escalation
 
 Escalate to team lead when:
-- A dependency has been `blocked` for > 4 hours with no update.
+- A dependency has been `on_hold` for > 4 hours with no update.
 - A teammate is unreachable (gateway returns errors for > 2 consecutive checks).
 - You need a decision that's outside your authority (e.g., architecture changes, external API access).
 - A task marked `critical` has no assignee for > 1 hour.
 
 **How to escalate:**
-1. Update the task status to `blocked` with a reason in the description.
+1. Update the task status to `on_hold` with a reason in the description.
 2. Send a gateway message to the team lead with prefix: `ESCALATION:`.
 3. If lead is unreachable, post in the Telegram group chat.
 

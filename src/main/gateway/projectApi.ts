@@ -13,7 +13,11 @@ export function createProjectRouter() {
 
   router.get('/api/teams/:teamSlug/projects', async (req, res) => {
     const projects = await listProjects(req.params.teamSlug)
-    res.json(projects.filter((p) => p.status === 'active'))
+    const statusFilter = req.query.status as string | undefined
+    const filtered = statusFilter
+      ? projects.filter((p) => p.status === statusFilter)
+      : projects
+    res.json(filtered)
   })
 
   router.post('/api/teams/:teamSlug/projects', async (req, res) => {
