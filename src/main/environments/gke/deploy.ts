@@ -392,6 +392,8 @@ export async function* undeployAgent(teamSlug: string, agentSlug: string, config
   for (const [label, fn] of [
     [`StatefulSet/${resourceName}`, () => appsApi.deleteNamespacedStatefulSet({ name: resourceName, namespace })],
     [`Service/${resourceName}`, () => coreApi.deleteNamespacedService({ name: resourceName, namespace })],
+    [`ConfigMap/${teamSlug}-${agentSlug}-config`, () => coreApi.deleteNamespacedConfigMap({ name: `${teamSlug}-${agentSlug}-config`, namespace })],
+    [`Secret/${teamSlug}-${agentSlug}-credentials`, () => coreApi.deleteNamespacedSecret({ name: `${teamSlug}-${agentSlug}-credentials`, namespace })],
   ] as [string, () => Promise<unknown>][]) {
     try { await fn(); yield { resource: label, status: 'deleted' } }
     catch { yield { resource: label, status: 'error' } }
