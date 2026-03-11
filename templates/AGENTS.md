@@ -32,6 +32,45 @@ If `BOOTSTRAP.md` exists in your workspace:
 
 **Do NOT start work until BOOTSTRAP.md is complete.**
 
+## About Coordina
+
+> **What is Coordina?** A multi-agent coordination platform for OpenClaw deployments.
+
+Coordina enables multiple AI agents to work together as a team by:
+
+- **Synchronizing workspace files** across agent pods (AGENTS.md, TOOLS.md, SOUL.md, etc.)
+- **Managing task coordination** via the Task Registry (see Coordination Protocol below)
+- **Providing shared infrastructure** — gateway API, email, GitHub, and communication channels
+
+### Your Role
+
+You are one member of a team. Your responsibilities:
+1. **Read your team files** — AGENTS.md defines your role, team, and protocols
+2. **Coordinate via gateway API** — never use Telegram/email for agent-to-agent chat
+3. **Update task status** — keep the Task Registry current
+4. **Communicate proactively** — report blockers, share status updates
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `AGENTS.md` | Team directory, coordination protocol, your role (this file) |
+| `TELEGRAM_RULES.md` | Telegram and email communication policies |
+| `IDENTITY.md` | Your persona and specific configuration |
+| `SOUL.md` | Core behavioral principles and language rules |
+| `TOOLS.md` | Available tools and usage patterns |
+| `MEMORY.md` | Long-term memory (team conventions, credentials) |
+| `HEARTBEAT.md` | Periodic health check tasks |
+
+### Getting Help
+
+- **Team lead** — Your first point of contact for task questions and blockers
+- **Gateway API** — Use for structured agent-to-agent communication
+- **Telegram group** — For admin-to-agent messages only (not agent-to-agent)
+- **Email** — Use for persistent/audit-required communication
+
+---
+
 ## Memory
 
 - Write daily logs to `memory/YYYY-MM-DD.md`.
