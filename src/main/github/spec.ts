@@ -1,4 +1,4 @@
-import type { Project, DerivationPatterns } from '../../shared/types'
+import type { Project } from '../../shared/types'
 import {
   DEFAULT_CORE_TRUTHS,
   DEFAULT_CONTINUITY,
@@ -72,6 +72,8 @@ export interface AgentsInput {
   agentEmail?: string
   teamEmail?: string
   teamMd?: string
+  bootstrapInstructions?: string
+  bootstrapHash?: string
 }
 
 export interface UserInput {
@@ -128,22 +130,20 @@ export function generateIdentityMd(agent: AgentIdentity): string {
 }
 
 
-export function generateSoulMd(soul: SoulInput, patterns?: DerivationPatterns['soul']): string {
+export function generateSoulMd(soul: SoulInput): string {
   const description = soul.enhanced ?? soul.userInput
-  const truths = patterns?.coreTruths ?? DEFAULT_CORE_TRUTHS
   const sections: string[] = [
     '# Soul',
     '',
     '## Core Truths',
-    truths.map(t => `- ${t}`).join('\n'),
+    DEFAULT_CORE_TRUTHS.map(t => `- ${t}`).join('\n'),
     '',
     description,
   ]
   if (soul.tone) sections.push('', `## Tone`, soul.tone)
   if (soul.values && soul.values.length > 0) sections.push('', `## Values`, soul.values.map(v => `- ${v}`).join('\n'))
   if (soul.boundaries && soul.boundaries.length > 0) sections.push('', `## Boundaries`, soul.boundaries.map(b => `- ${b}`).join('\n'))
-  const continuityText = patterns?.continuity ?? DEFAULT_CONTINUITY
-  sections.push('', '## Continuity', continuityText)
+  sections.push('', '## Continuity', DEFAULT_CONTINUITY)
   return sections.join('\n') + '\n'
 }
 
@@ -209,19 +209,36 @@ export function generateTeamMd(team: {
   return lines.join('\n')
 }
 
-export function generateAgentsMd(input: AgentsInput, patterns?: DerivationPatterns['agents']): string {
+export function generateAgentsMd(input: AgentsInput): string {
   const lines: string[] = [
     '# Agents',
     '',
     '## First Run',
-    patterns?.firstRun ?? DEFAULT_FIRST_RUN,
+    DEFAULT_FIRST_RUN,
+  ]
+  if (input.bootstrapInstructions) {
+    const markerPath = '$OPENCLAW_STATE_DIR/.bootstrap-done'
+    const hashValue = input.bootstrapHash ?? 'done'
+    lines.push(
+      '',
+      '### Bootstrap Instructions',
+      '',
+      `IMPORTANT: On startup, check if the marker file \`${markerPath}\` exists.`,
+      `If it does NOT exist, you MUST execute the following bootstrap instructions IMMEDIATELY before doing anything else.`,
+      `After completing ALL bootstrap steps successfully, create the marker: \`echo '${hashValue}' > ${markerPath}\``,
+      `If \`${markerPath}\` already exists, skip bootstrap entirely.`,
+      '',
+      input.bootstrapInstructions,
+    )
+  }
+  lines.push(
     '',
     '## Memory',
-    ...(patterns?.memoryRules ?? DEFAULT_MEMORY_RULES).map(r => `- ${r}`),
+    ...DEFAULT_MEMORY_RULES.map(r => `- ${r}`),
     '',
     '## Safety',
-    ...(patterns?.safetyRules ?? DEFAULT_SAFETY_RULES).map(r => `- ${r}`),
-  ]
+    ...DEFAULT_SAFETY_RULES.map(r => `- ${r}`),
+  )
 
   lines.push(
     '',
@@ -234,14 +251,14 @@ export function generateAgentsMd(input: AgentsInput, patterns?: DerivationPatter
       'You are the team lead.',
       '',
       '### Team Lead Responsibilities',
-      ...(patterns?.teamLeadResponsibilities ?? DEFAULT_TEAM_LEAD_RESPONSIBILITIES).map(r => `- ${r}`),
+      ...DEFAULT_TEAM_LEAD_RESPONSIBILITIES.map(r => `- ${r}`),
     )
   }
 
   lines.push(
     '',
     '### Priorities',
-    ...(patterns?.priorities ?? DEFAULT_PRIORITIES).map((p, i) => `${i + 1}. ${p}`),
+    ...DEFAULT_PRIORITIES.map((p, i) => `${i + 1}. ${p}`),
   )
 
   if (!input.isLead && input.leadAgent) {
@@ -282,7 +299,7 @@ export function generateAgentsMd(input: AgentsInput, patterns?: DerivationPatter
   const ruleLines: string[] = [
     '',
     '### Rules',
-    ...(patterns?.defaultRules ?? DEFAULT_RULES).map(r => `- ${r}`),
+    ...DEFAULT_RULES.map(r => `- ${r}`),
   ]
   if (input.operatingRules && input.operatingRules.length > 0) {
     for (const rule of input.operatingRules) ruleLines.push(`- ${rule}`)
@@ -307,9 +324,8 @@ export function generateAgentsMd(input: AgentsInput, patterns?: DerivationPatter
   return lines.join('\n')
 }
 
-export function generateUserMd(input: UserInput, patterns?: DerivationPatterns['user']): string {
-  const intro = patterns?.introLines ?? DEFAULT_USER_INTRO
-  const lines: string[] = ['# User', '', ...intro]
+export function generateUserMd(input: UserInput): string {
+  const lines: string[] = ['# User', '', ...DEFAULT_USER_INTRO]
 
   const hasAdmin = input.adminName || input.adminEmail || input.telegramAdminId
   if (hasAdmin) {

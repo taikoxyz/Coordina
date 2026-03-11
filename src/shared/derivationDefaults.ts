@@ -1,5 +1,3 @@
-import type { DerivationPatterns } from './types'
-
 export const DEFAULT_CORE_TRUTHS: string[] = [
   'Be genuinely helpful, not performatively helpful.',
   'Have real opinions and share them when relevant.',
@@ -50,20 +48,3 @@ export const DEFAULT_USER_INTRO: string[] = [
   'Update this file as you learn more about your operator\'s preferences.',
 ]
 
-export const DEFAULT_PATTERNS: Required<DerivationPatterns> = {
-  soul: {
-    coreTruths: DEFAULT_CORE_TRUTHS,
-    continuity: DEFAULT_CONTINUITY,
-  },
-  agents: {
-    firstRun: DEFAULT_FIRST_RUN,
-    memoryRules: DEFAULT_MEMORY_RULES,
-    safetyRules: DEFAULT_SAFETY_RULES,
-    priorities: DEFAULT_PRIORITIES,
-    teamLeadResponsibilities: DEFAULT_TEAM_LEAD_RESPONSIBILITIES,
-    defaultRules: DEFAULT_RULES,
-  },
-  user: {
-    introLines: DEFAULT_USER_INTRO,
-  },
-}

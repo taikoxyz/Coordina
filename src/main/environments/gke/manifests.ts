@@ -90,6 +90,7 @@ export interface AgentManifestInput {
   memoryGi?: number
   podAnnotations?: Record<string, string>
   additionalPorts?: AdditionalPort[]
+  bootstrapHash?: string
 }
 
 export function generateStorageClass(input: { teamSlug: string }): string {
@@ -154,9 +155,14 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
     { name: 'agent-config', mountPath: '/config/agent', readOnly: true },
   ]
 
+  const bootstrapHash = input.bootstrapHash ?? ''
+  const bootstrapMarker = `${stateDir}/.bootstrap-done`
   const initSeedCmd = [
     `mkdir -p ${stateDir} ${workspaceDir} ${toolsDir}/bin ${toolsDir}/cargo/bin`,
-    `test -f ${workspaceDir}/BOOTSTRAP.md || cp /config/shared/BOOTSTRAP.md ${workspaceDir}/BOOTSTRAP.md`,
+    bootstrapHash
+      ? `(test -f ${bootstrapMarker} && grep -qF '${bootstrapHash}' ${bootstrapMarker}) || rm -f ${bootstrapMarker}`
+      : `true`,
+    `cp /config/shared/BOOTSTRAP.md ${workspaceDir}/BOOTSTRAP.md`,
     `cp /config/shared/TEAM.md ${workspaceDir}/TEAM.md`,
     `test -f /config/shared/PROJECTS.md && cp /config/shared/PROJECTS.md ${workspaceDir}/PROJECTS.md || true`,
     `cp /config/agent/IDENTITY.md ${workspaceDir}/IDENTITY.md`,

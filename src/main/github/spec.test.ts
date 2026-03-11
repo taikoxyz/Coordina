@@ -90,24 +90,6 @@ describe('generateSoulMd', () => {
     expect(md).toContain('## Continuity')
   })
 
-  it('uses custom core truths when patterns provided', () => {
-    const md = generateSoulMd({ userInput: 'x' }, { coreTruths: ['Be bold', 'Ship fast'] })
-    expect(md).toContain('- Be bold')
-    expect(md).toContain('- Ship fast')
-    expect(md).not.toContain('Be genuinely helpful')
-  })
-
-  it('uses custom continuity when patterns provided', () => {
-    const md = generateSoulMd({ userInput: 'x' }, { continuity: 'Write everything down.' })
-    expect(md).toContain('Write everything down.')
-    expect(md).not.toContain('Files are your memory')
-  })
-
-  it('falls back to defaults when patterns has undefined fields', () => {
-    const md = generateSoulMd({ userInput: 'x' }, { coreTruths: ['Custom truth'] })
-    expect(md).toContain('- Custom truth')
-    expect(md).toContain('Files are your memory')
-  })
 })
 
 describe('generateOpenClawJson', () => {
@@ -216,52 +198,6 @@ describe('generateAgentsMd', () => {
     expect(md).toContain('### Priorities')
   })
 
-  it('uses custom safety rules when patterns provided', () => {
-    const md = generateAgentsMd(base, { safetyRules: ['Never delete files', 'Always backup'] })
-    expect(md).toContain('- Never delete files')
-    expect(md).toContain('- Always backup')
-    expect(md).not.toContain('Never exfiltrate data')
-  })
-
-  it('uses custom priorities when patterns provided', () => {
-    const md = generateAgentsMd(base, { priorities: ['Ship first', 'Ask later'] })
-    expect(md).toContain('1. Ship first')
-    expect(md).toContain('2. Ask later')
-    expect(md).not.toContain('Complete assigned tasks')
-  })
-
-  it('uses custom first run when patterns provided', () => {
-    const md = generateAgentsMd(base, { firstRun: 'Read README.md first.' })
-    expect(md).toContain('Read README.md first.')
-    expect(md).not.toContain('BOOTSTRAP.md')
-  })
-
-  it('uses custom memory rules when patterns provided', () => {
-    const md = generateAgentsMd(base, { memoryRules: ['Log to journal.md'] })
-    expect(md).toContain('- Log to journal.md')
-    expect(md).not.toContain('YYYY-MM-DD')
-  })
-
-  it('uses custom default rule when patterns provided', () => {
-    const md = generateAgentsMd(base, { defaultRules: ['Think twice before acting'] })
-    expect(md).toContain('- Think twice before acting')
-    expect(md).not.toContain('Always verify your understanding')
-  })
-
-  it('uses custom team lead responsibilities when patterns provided', () => {
-    const md = generateAgentsMd(base, { teamLeadResponsibilities: ['Lead by example', 'Review all PRs'] })
-    expect(md).toContain('- Lead by example')
-    expect(md).toContain('- Review all PRs')
-    expect(md).not.toContain('Coordinate work across the team')
-  })
-
-  it('falls back to defaults for unset pattern fields', () => {
-    const md = generateAgentsMd(base, { safetyRules: ['Custom safety'] })
-    expect(md).toContain('- Custom safety')
-    expect(md).toContain('BOOTSTRAP.md')
-    expect(md).toContain('YYYY-MM-DD')
-    expect(md).toContain('Complete assigned tasks')
-  })
 })
 
 describe('generateUserMd', () => {
@@ -296,17 +232,6 @@ describe('generateUserMd', () => {
     expect(md).not.toContain('## Team Lead')
   })
 
-  it('uses custom intro lines when patterns provided', () => {
-    const md = generateUserMd({ teamName: 'Team Phoenix' }, { introLines: ['Welcome aboard.', 'Read the docs.'] })
-    expect(md).toContain('Welcome aboard.')
-    expect(md).toContain('Read the docs.')
-    expect(md).not.toContain('learning about a person')
-  })
-
-  it('falls back to default intro when patterns undefined', () => {
-    const md = generateUserMd({ teamName: 'Team Phoenix' }, {})
-    expect(md).toContain('learning about a person')
-  })
 })
 
 describe('generateToolsMd', () => {
