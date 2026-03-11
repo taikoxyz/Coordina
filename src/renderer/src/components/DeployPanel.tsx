@@ -47,7 +47,7 @@ export function DeployPanel({
   const isAnyDeploying = !!deployingTeamSlug;
   const isThisDeploying = deployingTeamSlug === teamSlug;
   const { data: deployReadiness } = useQuery<DeployReadinessResult>({
-    queryKey: ["deploy:readiness", teamSlug, agentSlug, spec],
+    queryKey: ["deploy:readiness", teamSlug, agentSlug, spec?.slug],
     queryFn: () =>
       window.api.invoke("deploy:getReadiness", {
         teamSlug,
@@ -85,7 +85,7 @@ export function DeployPanel({
         if (loaded.length > 0) setLogEntries(loaded);
       })
       .catch(() => {});
-  }, [spec]);
+  }, [spec?.slug]);
 
   useEffect(() => {
     return window.api.on?.("deploy:status", (data: unknown) => {
@@ -109,7 +109,7 @@ export function DeployPanel({
         .invoke("deploy:saveLogs", { teamSlug: spec.slug, entries: logEntries })
         .catch(() => {});
     }
-  }, [deployState, logEntries, spec]);
+  }, [deployState, logEntries, spec?.slug]);
 
   const handleDeploy = useCallback(
     async (deployAgentSlug?: string) => {

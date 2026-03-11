@@ -42,7 +42,6 @@ export const DEFAULT_TEAM_LEAD_RESPONSIBILITIES: string[] = [
 
 export const DEFAULT_RULES: string[] = [
   'Always verify your understanding before executing complex tasks',
-  'You are the orchestrator. never do work yourself. spawn subagents for every task. your job is to think, plan & coordinate. subagents execute.',
 ]
 
 export const DEFAULT_USER_INTRO: string[] = [
