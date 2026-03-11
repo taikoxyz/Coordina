@@ -1,7 +1,7 @@
-import { ChevronRight, ChevronDown, Crown, Loader2, Plus, Send, Settings } from 'lucide-react'
+import { ChevronRight, ChevronDown, Crown, Loader2, Plus, Send, Settings, Upload } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNav } from '../store/nav'
-import { useTeams, useSaveTeam } from '../hooks/useTeams'
+import { useTeams, useSaveTeam, useImportTeam } from '../hooks/useTeams'
 import { useSettings } from '../hooks/useSettings'
 import { cn } from '../lib/utils'
 import { AgentAvatar } from './AgentAvatar'
@@ -12,8 +12,18 @@ export function AppSidebar() {
   const { selectedItem, selectItem, expandedTeams, toggleTeam, openSettings, setCreateDialogOpen, deployingTeamSlug, deployingAgentSlug } = useNav()
   const { data: teams } = useTeams()
   const saveTeam = useSaveTeam()
+  const importTeam = useImportTeam()
   const queryClient = useQueryClient()
   const { data: settings } = useSettings()
+
+  const handleImportTeam = async () => {
+    const result = await importTeam.mutateAsync()
+    if (result.ok && result.slug) {
+      selectItem({ type: 'team', slug: result.slug })
+    } else if (result.reason && result.reason !== 'cancelled') {
+      alert(result.reason)
+    }
+  }
 
   const addAgent = async (teamSlug: string) => {
     const team = (teams ?? []).find((t) => t.slug === teamSlug)
@@ -145,12 +155,22 @@ export function AppSidebar() {
       </div>
 
       <div className="shrink-0 border-t border-gray-100 px-3 py-2 flex items-center justify-between">
-        <button
-          onClick={() => setCreateDialogOpen('teams')}
-          className="flex items-center gap-2 text-sm text-gray-500 transition-colors hover:text-gray-700"
-        >
-          Add team
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setCreateDialogOpen('teams')}
+            className="flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-gray-700"
+          >
+            Add team
+          </button>
+          <button
+            onClick={() => void handleImportTeam()}
+            className="flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-gray-700"
+            title="Import team from JSON file"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            Import
+          </button>
+        </div>
         <button
           onClick={() => openSettings()}
           className={cn(

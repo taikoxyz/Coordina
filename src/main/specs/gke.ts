@@ -389,7 +389,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
       if (githubToken) {
         files.push({ path: 'mission-control/pull-secret.yaml', content: generateMcImagePullSecret({ namespace, githubToken }) })
       }
-      files.push({ path: 'mission-control/secret.yaml', content: generateMissionControlSecret({ namespace, adminPassword: deriveMcAdminPassword(seed), sessionSecret: deriveMcSessionSecret(seed), apiKey: deriveMcApiKey(seed), leadAgentSlug: leadSlug }) })
+      files.push({ path: 'mission-control/secret.yaml', content: generateMissionControlSecret({ namespace, adminPassword: deriveMcAdminPassword(seed), sessionSecret: deriveMcSessionSecret(seed), apiKey: deriveMcApiKey(seed), leadAgentSlug: leadSlug, gatewayToken: teamGatewayToken }) })
       files.push({ path: 'mission-control/pvc.yaml', content: generateMissionControlPvc({ namespace }) })
       files.push({ path: 'mission-control/deployment.yaml', content: generateMissionControlDeployment({ namespace, image: mcImage, imagePullSecret: mcPullSecretName }) })
       files.push({ path: 'mission-control/service.yaml', content: generateMissionControlService({ namespace }) })

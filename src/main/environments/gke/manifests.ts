@@ -111,7 +111,7 @@ export function generateStorageClass(input: { teamSlug: string }): string {
 }
 
 export function generateAgentPvc(input: { teamSlug: string; agentSlug: string; namespace: string; diskGi?: number }): string {
-  const { teamSlug, agentSlug, namespace, diskGi = DEFAULT_DISK_GI } = input
+  const { teamSlug, agentSlug, namespace, diskGi = 10 } = input
   const name = `${teamSlug}-agent-${agentSlug}`
   const manifest = {
     apiVersion: 'v1',
@@ -191,6 +191,7 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
         },
         spec: {
           securityContext: {
+            runAsNonRoot: true,
             fsGroup: 1000,
             fsGroupChangePolicy: 'OnRootMismatch',
           },
@@ -198,6 +199,7 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
           initContainers: [{
             name: 'bootstrap-init',
             image: 'busybox:1.36',
+            imagePullPolicy: 'IfNotPresent',
             command: ['sh', '-c', initSeedCmd],
             volumeMounts: [
               { name: 'agent-data', mountPath: '/agent-data' },
@@ -208,7 +210,11 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
           containers: [{
             name: 'openclaw',
             image,
-            securityContext: { runAsUser: 0 },
+            securityContext: {
+              runAsUser: 1000,
+              runAsGroup: 1000,
+              allowPrivilegeEscalation: false,
+            },
             ports: [
               { containerPort: 18789, name: 'gateway' },
               ...(input.additionalPorts ?? []).map(p => ({ containerPort: p.targetPort, name: p.name, protocol: p.protocol ?? 'TCP' })),
@@ -233,7 +239,10 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
             ],
             ...(credentialSecretName ? { envFrom: [{ secretRef: { name: credentialSecretName } }] } : {}),
             volumeMounts: containerVolumeMounts,
-            resources: { requests: { cpu: `${cpu ?? DEFAULT_CPU}`, memory: `${memoryGi ?? DEFAULT_MEMORY_GI}Gi` }, limits: { cpu: `${cpu ?? DEFAULT_CPU}`, memory: `${memoryGi ?? DEFAULT_MEMORY_GI}Gi` } },
+            resources: {
+              requests: { cpu: `${cpu ?? 1}`, memory: `${memoryGi ?? 2.5}Gi` },
+              limits: { cpu: `${cpu ?? 1}`, memory: `${memoryGi ?? 2.5}Gi` },
+            },
             readinessProbe: {
               exec: { command: ['node', '-e', "const s=require('net').createConnection(18789,'127.0.0.1',()=>{s.destroy();process.exit(0)});s.on('error',()=>process.exit(1))"] },
               initialDelaySeconds: 15,
@@ -340,10 +349,11 @@ export interface MissionControlSecretInput {
   sessionSecret: string
   apiKey: string
   leadAgentSlug: string
+  gatewayToken: string
 }
 
 export function generateMissionControlSecret(input: MissionControlSecretInput): string {
-  const { namespace, adminPassword, sessionSecret, apiKey, leadAgentSlug } = input
+  const { namespace, adminPassword, sessionSecret, apiKey, leadAgentSlug, gatewayToken } = input
   const manifest = {
     apiVersion: 'v1',
     kind: 'Secret',
@@ -355,7 +365,7 @@ export function generateMissionControlSecret(input: MissionControlSecretInput): 
       API_KEY: apiKey,
       OPENCLAW_GATEWAY_HOST: `agent-${leadAgentSlug}.${namespace}.svc.cluster.local`,
       OPENCLAW_GATEWAY_PORT: '18789',
-      OPENCLAW_GATEWAY_TOKEN: '',
+      OPENCLAW_GATEWAY_TOKEN: gatewayToken,
       MC_CLAUDE_HOME: '',
     },
   }
@@ -404,12 +414,20 @@ export function generateMissionControlDeployment(input: { namespace: string; ima
         metadata: { labels: { app: 'mission-control' } },
         spec: {
           ...(imagePullSecret ? { imagePullSecrets: [{ name: imagePullSecret }] } : {}),
+          securityContext: {
+            runAsNonRoot: true,
+            fsGroup: 1000,
+          },
           containers: [{
             name: 'mission-control',
             image,
+            securityContext: {
+              allowPrivilegeEscalation: false,
+            },
             ports: [{ containerPort: 3000 }],
             envFrom: [{ secretRef: { name: 'mission-control-env' } }],
             volumeMounts: [{ name: 'data', mountPath: '/app/.data' }],
+            resources: { requests: { cpu: '250m', memory: '256Mi' }, limits: { cpu: '1000m', memory: '512Mi' } },
             readinessProbe: {
               httpGet: { path: '/api/health', port: 3000 },
               initialDelaySeconds: 15,
@@ -504,7 +522,8 @@ export function generateMissionControlHeartbeatCronJob(input: {
               restartPolicy: 'OnFailure',
               containers: [{
                 name: 'heartbeat',
-                image: 'curlimages/curl:latest',
+                image: 'curlimages/curl:8.11.1',
+                imagePullPolicy: 'IfNotPresent',
                 command: ['/bin/sh', '-c', heartbeatCmds],
                 env: [{
                   name: 'API_KEY',

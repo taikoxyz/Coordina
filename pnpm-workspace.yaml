@@ -1,0 +1,11 @@
+packages:
+  - "."
+
+ignoredBuiltDependencies:
+  - electron
+  - electron-winstaller
+  - esbuild
+  - keytar
+  - msw
+  - protobufjs
+  - sharp
