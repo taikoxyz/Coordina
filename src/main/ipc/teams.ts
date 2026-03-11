@@ -1,6 +1,7 @@
 // IPC handlers for team spec CRUD replacing SQLite with file-based storage
 // FEATURE: Team management IPC layer using ~/.coordina/teams/{slug}.json files
-import { ipcMain } from 'electron'
+import { ipcMain, dialog, BrowserWindow } from 'electron'
+import fs from 'fs/promises'
 import { listTeams, getTeam, saveTeam, deleteTeam } from '../store/teams'
 import { deleteTeamDeployment } from '../store/deployments'
 import { runPipeline } from '../watcher'
@@ -137,6 +138,39 @@ export function registerTeamHandlers(): void {
     if (!token) throw new Error('No Telegram token saved for this agent')
     await syncBotProfilePhoto(token, data.agentSlug, agentIndex)
     return { ok: true }
+  })
+
+  ipcMain.handle('teams:import', async (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender) ?? undefined
+    const result = await dialog.showOpenDialog({
+      ...(win ? { parentWindow: win } : {}),
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+      properties: ['openFile'],
+    })
+    if (result.canceled || !result.filePaths.length) return { ok: false, reason: 'cancelled' }
+
+    let raw: unknown
+    try {
+      const content = await fs.readFile(result.filePaths[0], 'utf-8')
+      raw = JSON.parse(content)
+    } catch {
+      return { ok: false, reason: 'File is not valid JSON' }
+    }
+
+    if (!raw || typeof raw !== 'object' || !('slug' in raw) || !('name' in raw) || !('agents' in raw)) {
+      return { ok: false, reason: 'File does not contain a valid team spec (missing slug, name, or agents)' }
+    }
+
+    const spec = raw as TeamSpec
+    const normalized = normalizeTeamSpec(spec)
+    const existing = await getTeam(normalized.slug)
+    if (existing) {
+      return { ok: false, reason: `Team with slug "${normalized.slug}" already exists` }
+    }
+
+    validateTelegramPair(normalized)
+    await saveTeam(normalized)
+    return { ok: true, slug: normalized.slug }
   })
 
   ipcMain.handle('teams:derive', async (_e, slug: string) => {
