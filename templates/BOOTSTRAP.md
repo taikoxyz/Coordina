@@ -155,7 +155,7 @@ npx playwright --version && \
 bat --version && \
 rg --version && \
 ipfs --version && \
-swaks --version | head -1 && \
+echo "swaks: $(swaks --help | head -1)" && \
 echo "=== All tools verified ==="
 ```
 
