@@ -30,6 +30,17 @@ export const useSaveTeam = () => {
   })
 }
 
+export const useImportTeam = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      window.api.invoke('teams:import') as Promise<{ ok: boolean; slug?: string; reason?: string }>,
+    onSuccess: (data) => {
+      if (data.ok) qc.invalidateQueries({ queryKey: ['teams'] })
+    },
+  })
+}
+
 export const useDeleteTeam = () => {
   const qc = useQueryClient()
   return useMutation({
