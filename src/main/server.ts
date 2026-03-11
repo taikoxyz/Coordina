@@ -10,7 +10,7 @@ export function createServer() {
   // so local proxy routes must allow cross-origin requests.
   app.use((req, res, next) => {
     const origin = req.headers.origin
-    if (origin && (origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1') || origin.startsWith('file://'))) {
+    if (origin && (origin === 'http://localhost' || origin.startsWith('http://localhost:') || origin === 'http://127.0.0.1' || origin.startsWith('http://127.0.0.1:') || origin.startsWith('file://'))) {
       res.setHeader('Access-Control-Allow-Origin', origin)
     }
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
