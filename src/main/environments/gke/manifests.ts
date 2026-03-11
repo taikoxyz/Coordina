@@ -201,6 +201,11 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
             image: 'busybox:1.36',
             imagePullPolicy: 'IfNotPresent',
             command: ['sh', '-c', initSeedCmd],
+            securityContext: {
+              runAsUser: 1000,
+              runAsGroup: 1000,
+              allowPrivilegeEscalation: false,
+            },
             volumeMounts: [
               { name: 'agent-data', mountPath: '/agent-data' },
               { name: 'shared-config', mountPath: '/config/shared', readOnly: true },
