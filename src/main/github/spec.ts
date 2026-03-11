@@ -107,6 +107,7 @@ export interface EnvMdInput {
   image: string
   diskGi: number
   cpu: number
+  memoryGi: number
   gatewayMode: string
   namespace: string
 }
@@ -558,6 +559,7 @@ export function generateEnvMd(input: EnvMdInput): string {
     `- Pod name: agent-${input.agentSlug}-0`,
     `- Image: ${input.image}`,
     `- CPU: ${input.cpu} vCPU`,
+    `- Memory: ${input.memoryGi}Gi`,
     `- Disk: ${input.diskGi}Gi at /agent-data`,
     '- Gateway port: 18789',
     `- Gateway mode: ${input.gatewayMode}`,
@@ -570,6 +572,8 @@ export function generateEnvMd(input: EnvMdInput): string {
     '- `K8S_POD_IP` - Pod cluster IP address',
     '- `K8S_CPU_REQUEST` - CPU request',
     '- `K8S_CPU_LIMIT` - CPU limit',
+    '- `K8S_MEMORY_REQUEST` - Memory request',
+    '- `K8S_MEMORY_LIMIT` - Memory limit',
     '',
   ]
   return lines.join('\n')

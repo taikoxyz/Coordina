@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AlertCircle, Check, ExternalLink, Loader2, Pencil } from 'lucide-react'
 import type { TeamSpec } from '../../../shared/types'
+import { DEFAULT_CPU, DEFAULT_MEMORY_GI, DEFAULT_DISK_GI } from '../../../shared/podDefaults'
 import { Button, DialogShell, Input, Label, ReadField, Textarea } from './ui'
 
 export interface SpecEditorProps {
@@ -253,8 +254,9 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
           <div>
             <h4 className="text-sm font-semibold text-gray-900 mb-1">Resources</h4>
             <ReadField label="Container image" value={spec.defaultImage} defaultValue="alpine/openclaw:latest" />
-            <ReadField label="CPU (cores)" value={spec.defaultCpu} defaultValue={1} />
-            <ReadField label="Disk (Gi)" value={spec.defaultDiskGi} defaultValue={10} />
+            <ReadField label="CPU (cores)" value={spec.defaultCpu} defaultValue={DEFAULT_CPU} />
+            <ReadField label="Memory (Gi)" value={spec.defaultMemoryGi} defaultValue={DEFAULT_MEMORY_GI} />
+            <ReadField label="Disk (Gi)" value={spec.defaultDiskGi} defaultValue={DEFAULT_DISK_GI} />
           </div>
 
           <hr className="border-gray-200" />
@@ -513,7 +515,7 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
                 placeholder="ghcr.io/org/openclaw:latest"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label>CPU (cores)</Label>
                 <Input
@@ -522,7 +524,17 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
                   step={0.5}
                   value={spec.defaultCpu ?? ''}
                   onChange={(e) => set('defaultCpu')(e.target.value ? parseFloat(e.target.value) : undefined)}
-                  placeholder="1"
+                  placeholder={`${DEFAULT_CPU}`}
+                />
+              </div>
+              <div>
+                <Label>Memory (Gi)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={spec.defaultMemoryGi ?? ''}
+                  onChange={(e) => set('defaultMemoryGi')(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                  placeholder={`${DEFAULT_MEMORY_GI}`}
                 />
               </div>
               <div>
@@ -532,7 +544,7 @@ export function SpecEditor({ spec, onSpecChange, isEditing, onEdit, onCancel, on
                   min={1}
                   value={spec.defaultDiskGi ?? ''}
                   onChange={(e) => set('defaultDiskGi')(e.target.value ? parseInt(e.target.value, 10) : undefined)}
-                  placeholder="10"
+                  placeholder={`${DEFAULT_DISK_GI}`}
                 />
               </div>
             </div>

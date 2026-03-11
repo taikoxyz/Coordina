@@ -1,4 +1,5 @@
 import yaml from 'js-yaml'
+import { DEFAULT_CPU, DEFAULT_MEMORY_GI, DEFAULT_DISK_GI } from '../../../shared/podDefaults'
 
 export function generateNamespace(name: string): string {
   return yaml.dump({ apiVersion: 'v1', kind: 'Namespace', metadata: { name } })
@@ -79,6 +80,7 @@ export interface AgentManifestInput {
   namespace?: string
   credentialSecretName?: string
   cpu?: number
+  memoryGi?: number
   podAnnotations?: Record<string, string>
 }
 
@@ -101,7 +103,7 @@ export function generateStorageClass(input: { teamSlug: string }): string {
 }
 
 export function generateAgentPvc(input: { teamSlug: string; agentSlug: string; namespace: string; diskGi?: number }): string {
-  const { teamSlug, agentSlug, namespace, diskGi = 10 } = input
+  const { teamSlug, agentSlug, namespace, diskGi = DEFAULT_DISK_GI } = input
   const name = `${teamSlug}-agent-${agentSlug}`
   const manifest = {
     apiVersion: 'v1',
@@ -124,6 +126,7 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
     namespace = 'default',
     credentialSecretName,
     cpu,
+    memoryGi,
     podAnnotations,
   } = input
   const resourceName = `agent-${agentSlug}`
@@ -214,10 +217,12 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
               { name: 'K8S_POD_IP', valueFrom: { fieldRef: { fieldPath: 'status.podIP' } } },
               { name: 'K8S_CPU_REQUEST', valueFrom: { resourceFieldRef: { resource: 'requests.cpu' } } },
               { name: 'K8S_CPU_LIMIT', valueFrom: { resourceFieldRef: { resource: 'limits.cpu' } } },
+              { name: 'K8S_MEMORY_REQUEST', valueFrom: { resourceFieldRef: { resource: 'requests.memory' } } },
+              { name: 'K8S_MEMORY_LIMIT', valueFrom: { resourceFieldRef: { resource: 'limits.memory' } } },
             ],
             ...(credentialSecretName ? { envFrom: [{ secretRef: { name: credentialSecretName } }] } : {}),
             volumeMounts: containerVolumeMounts,
-            resources: { requests: { cpu: `${cpu ?? 1}` }, limits: { cpu: `${cpu ?? 1}` } },
+            resources: { requests: { cpu: `${cpu ?? DEFAULT_CPU}`, memory: `${memoryGi ?? DEFAULT_MEMORY_GI}Gi` }, limits: { cpu: `${cpu ?? DEFAULT_CPU}`, memory: `${memoryGi ?? DEFAULT_MEMORY_GI}Gi` } },
             readinessProbe: {
               exec: { command: ['node', '-e', "const s=require('net').createConnection(18789,'127.0.0.1',()=>{s.destroy();process.exit(0)});s.on('error',()=>process.exit(1))"] },
               initialDelaySeconds: 15,

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { deriveAgentEmail } from '../../../../shared/email'
 import type { AgentSpec } from '../../../../shared/types'
+import { DEFAULT_CPU, DEFAULT_MEMORY_GI, DEFAULT_DISK_GI } from '../../../../shared/podDefaults'
 import { PERSONA_CATALOG, getPersonasByDivision } from '../../../../shared/personaCatalog'
 import { useModels } from '../../hooks/useModels'
 import { Button, Input, Label, ReadField, Select, Textarea } from '../ui'
@@ -15,6 +16,7 @@ interface Props {
   isLead?: boolean
   defaultImage?: string
   defaultCpu?: number
+  defaultMemoryGi?: number
   defaultDiskGi?: number
 }
 
@@ -27,6 +29,7 @@ export function AgentCard({
   isLead,
   defaultImage,
   defaultCpu,
+  defaultMemoryGi,
   defaultDiskGi,
 }: Props) {
   const { data: models } = useModels('openrouter')
@@ -433,7 +436,7 @@ export function AgentCard({
                     placeholder="—"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div>
                     <Label>CPU (cores)</Label>
                     <Input
@@ -446,7 +449,22 @@ export function AgentCard({
                           e.target.value ? parseFloat(e.target.value) : undefined,
                         )
                       }
-                      placeholder={`${defaultCpu ?? 1}`}
+                      placeholder={`${defaultCpu ?? DEFAULT_CPU}`}
+                    />
+                  </div>
+                  <div>
+                    <Label>Memory (Gi)</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={agent.memoryGi ?? ''}
+                      onChange={(e) =>
+                        set('memoryGi')(
+                          e.target.value ? parseInt(e.target.value) : undefined,
+                        )
+                      }
+                      placeholder={`${defaultMemoryGi ?? DEFAULT_MEMORY_GI}`}
                     />
                   </div>
                   <div>
@@ -461,7 +479,7 @@ export function AgentCard({
                           e.target.value ? parseInt(e.target.value) : undefined,
                         )
                       }
-                      placeholder={`${defaultDiskGi ?? 10}`}
+                      placeholder={`${defaultDiskGi ?? DEFAULT_DISK_GI}`}
                     />
                   </div>
                 </div>
@@ -527,8 +545,9 @@ export function AgentCard({
             <div>
               <h4 className="text-sm font-semibold text-gray-900 mb-1">Resources</h4>
               <ReadField label="Container image" value={agent.image} defaultValue={defaultImage ?? 'alpine/openclaw:latest'} />
-              <ReadField label="CPU (cores)" value={agent.cpu} defaultValue={defaultCpu ?? 1} />
-              <ReadField label="Disk (Gi)" value={agent.diskGi} defaultValue={defaultDiskGi ?? 10} />
+              <ReadField label="CPU (cores)" value={agent.cpu} defaultValue={defaultCpu ?? DEFAULT_CPU} />
+              <ReadField label="Memory (Gi)" value={agent.memoryGi} defaultValue={defaultMemoryGi ?? DEFAULT_MEMORY_GI} />
+              <ReadField label="Disk (Gi)" value={agent.diskGi} defaultValue={defaultDiskGi ?? DEFAULT_DISK_GI} />
             </div>
           </>
         )}

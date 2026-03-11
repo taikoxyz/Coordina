@@ -33,6 +33,7 @@ function normalizeAgent(agent: AgentSpec): AgentSpec {
       : (agent as unknown as { model?: string }).model ? [(agent as unknown as { model?: string }).model!.trim()].filter(Boolean) : [],
     image: normalizeOptional(agent.image),
     cpu: normalizePositiveNumber(agent.cpu),
+    memoryGi: normalizePositiveInt(agent.memoryGi),
     diskGi: normalizePositiveInt(agent.diskGi),
   }
 }
@@ -49,6 +50,7 @@ export function normalizeTeamSpec(spec: TeamSpec): TeamSpec {
     teamEmail: normalizeOptional(spec.teamEmail),
     defaultImage: normalizeOptional(spec.defaultImage),
     defaultCpu: normalizePositiveNumber(spec.defaultCpu),
+    defaultMemoryGi: normalizePositiveInt(spec.defaultMemoryGi),
     defaultDiskGi: normalizePositiveInt(spec.defaultDiskGi),
     leadAgent: normalizedLead && normalizedAgents.some(a => a.slug === normalizedLead) ? normalizedLead : undefined,
     startupInstructions: normalizeOptional(spec.startupInstructions),

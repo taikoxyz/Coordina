@@ -22,6 +22,7 @@ export interface AgentSpec {
   models: string[]
   image?: string
   cpu?: number
+  memoryGi?: number
   diskGi?: number
   tone?: string
   boundaries?: string[]
@@ -37,6 +38,7 @@ export interface TeamSpec {
   telegramAdminId?: string
   defaultImage?: string
   defaultCpu?: number
+  defaultMemoryGi?: number
   defaultDiskGi?: number
   leadAgent?: string
   startupInstructions?: string
