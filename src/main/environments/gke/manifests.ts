@@ -109,7 +109,7 @@ export function generateStorageClass(input: { teamSlug: string }): string {
 }
 
 export function generateAgentPvc(input: { teamSlug: string; agentSlug: string; namespace: string; diskGi?: number }): string {
-  const { teamSlug, agentSlug, namespace, diskGi = 20 } = input
+  const { teamSlug, agentSlug, namespace, diskGi = 2 } = input
   const name = `${teamSlug}-agent-${agentSlug}`
   const manifest = {
     apiVersion: 'v1',
