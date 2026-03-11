@@ -14,7 +14,15 @@
       "email": "dsquad@ai.taiko.xyz",
       "skills": [],
       "persona": "Autonomous workflow pipeline manager and quality orchestrator",
-      "models": ["openrouter/minimax/minimax-m2.5"]
+      "models": ["openrouter/minimax/minimax-m2.5"],
+      "additionalPorts": [
+        {
+          "port": 19876,
+          "targetPort": 19876,
+          "name": "project-api",
+          "protocol": "TCP"
+        }
+      ]
     },
     {
       "slug": "bob-li",
@@ -44,7 +52,15 @@
       "email": "dsquad+ripley@ai.taiko.xyz",
       "skills": [],
       "persona": "Premium web experience developer using Laravel, Livewire, and FluxUI",
-      "models": ["openrouter/minimax/minimax-m2.5"]
+      "models": ["openrouter/minimax/minimax-m2.5"],
+      "additionalPorts": [
+        {
+          "port": 19876,
+          "targetPort": 19876,
+          "name": "project-api",
+          "protocol": "TCP"
+        }
+      ]
     },
     {
       "slug": "aeryn",
@@ -55,18 +71,34 @@
       "email": "dsquad+aeryn@ai.taiko.xyz",
       "skills": [],
       "persona": "Real-time engagement specialist for Twitter and professional platforms",
-      "models": ["openrouter/minimax/minimax-m2.5"]
+      "models": ["openrouter/minimax/minimax-m2.5"],
+      "additionalPorts": [
+        {
+          "port": 19876,
+          "targetPort": 19876,
+          "name": "project-api",
+          "protocol": "TCP"
+        }
+      ]
     },
     {
       "slug": "deckard",
       "name": "Deckard",
-      "title": "Expert market intelligence analyst specializing in identifying emerging trends",
+      "title": "Expert market intelligence analyst specializing in emerging trends",
       "role": "market analyst",
       "telegramBot": "8747790414",
       "email": "dsquad+deckard@ai.taiko.xyz",
       "skills": [],
-      "persona": "Expert market intelligence analyst specializing in identifying emerging trends",
-      "models": ["openrouter/minimax/minimax-m2.5"]
+      "persona": "Expert market intelligence analyst specializing in emerging trends",
+      "models": ["openrouter/minimax/minimax-m2.5"],
+      "additionalPorts": [
+        {
+          "port": 19876,
+          "targetPort": 19876,
+          "name": "project-api",
+          "protocol": "TCP"
+        }
+      ]
     }
   ]
 }
