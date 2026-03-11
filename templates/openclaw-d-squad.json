@@ -2,10 +2,11 @@
   "_schema": "openclaw-config-v1",
   "_description": "OpenClaw configuration for D Squad - Layer 2 Infrastructure Optimization",
   "_created": "2026-03-11",
+  "_note": "SECURITY: gatewayToken uses env var substitution. Set GATEWAY_TOKEN in environment before use. Never commit secrets to version control.",
   "team": {
     "name": "D Squad",
     "slug": "team-d-squad",
-    "gatewayToken": "14be8ce8389e211ed64b04e5341c6df20cbb61fdc906470b",
+    "gatewayToken": "${GATEWAY_TOKEN}",
     "namespace": "team-d-squad",
     "workload": [
       "K8s YAML generation",
