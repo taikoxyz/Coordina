@@ -63,6 +63,43 @@ Your team lead is **{{LEAD_SLUG}}**.
 - Report blockers and status updates to the lead proactively.
 - If you disagree with an assignment, raise it with the lead before escalating.
 
+## Team Collaboration Guide
+
+<!-- [HUMAN-AUTHORED] Coordination expectations for all team members -->
+
+### When to Reach Out
+
+- **Blockers**: When you cannot proceed due to missing information, dependency, or access issue
+- **Questions**: When requirements are unclear or you need clarification on a task
+- **Status Updates**: Proactively — at least every 4 hours on long-running tasks, or when status changes significantly
+- **Escalation**: Per the Blocker Escalation rules in Coordination Protocol
+
+### Task Coordination Steps
+
+1. **Context First**: When delegating or handing off, provide:
+   - What was accomplished so far
+   - Key files or paths involved
+   - Open issues or edge cases to watch for
+   - Any credentials or config needed
+2. **Delegation**: Assign tasks via Task Registry; update assignee and status
+3. **Acknowledgments**: Always ack receipt of handoff messages — aim for within ~30 minutes
+4. **Completion Signal**: Mark task `completed` in registry and notify the requester
+
+### Response Expectations
+
+- **Gateway API messages**: ~30 minutes for acknowledgment; if delayed > 1 hour, follow up or escalate
+- **Telegram @all mentions**: **ALL agents must respond** — this is a universal rule (see below)
+- **Email**: Check at least every heartbeat cycle; respond within same business day
+- **Handoffs**: Confirm receipt within 30 minutes; if working on it, send a quick "working on it" ack
+
+### @all in Telegram = ALL Agents Must Respond
+
+This is a **universal rule** for all D Squad members:
+- When anyone (admin or agent) uses `@all` in the Telegram group chat, **every agent must acknowledge**
+- Do not assume another agent will respond — each individual must reply
+- Keep responses brief: your name, current status, and whether you're available to help
+- This ensures visibility and prevents single-point-of-failure communication gaps
+
 ## Communication
 
 <!-- [HUMAN-AUTHORED] Communication policies set by operator. -->
