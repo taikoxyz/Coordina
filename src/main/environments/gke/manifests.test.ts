@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { generateAgentStatefulSet, generateAgentService, generateIapBackendConfig, generateIngress, generateConfigMap, generateTeamConfigMap, generateAgentConfigMap, generateStorageClass, generateAgentPvc } from './manifests'
+import { generateAgentStatefulSet, generateAgentService, generateIapBackendConfig, generateIngress, generateConfigMap, generateTeamConfigMap, generateAgentConfigMap, generateStorageClass, generateAgentPvc, generateNetworkPolicy } from './manifests'
 
 describe('generateAgentStatefulSet', () => {
   it('generates StatefulSet manifest with deterministic PVC name', () => {
@@ -252,5 +252,35 @@ describe('generateAgentPvc', () => {
   it('uses custom disk size when provided', () => {
     const manifest = generateAgentPvc({ teamSlug: 'eng-alpha', agentSlug: 'alice', namespace: 'eng-alpha', diskGi: 50 })
     expect(manifest).toContain('storage: 50Gi')
+  })
+})
+
+describe('generateNetworkPolicy', () => {
+  it('generates NetworkPolicy allowing ingress on port 19876 between team pods', () => {
+    const manifest = generateNetworkPolicy({ teamSlug: 'team-d-squad', namespace: 'team-d-squad' })
+    expect(manifest).toContain('kind: NetworkPolicy')
+    expect(manifest).toContain('name: team-d-squad-allow-agent-communication')
+    expect(manifest).toContain('namespace: team-d-squad')
+    expect(manifest).toContain('coordina.team: team-d-squad')
+    expect(manifest).toContain('policyTypes:')
+    expect(manifest).toContain('- Ingress')
+    expect(manifest).toContain('podSelector:')
+    expect(manifest).toContain('matchLabels:')
+    expect(manifest).toContain('coordina.team: team-d-squad')
+    expect(manifest).toContain('ingress:')
+    expect(manifest).toContain('- from:')
+    expect(manifest).toContain('ports:')
+    expect(manifest).toContain('protocol: TCP')
+    expect(manifest).toContain('port: 19876')
+  })
+
+  it('uses custom port when provided', () => {
+    const manifest = generateNetworkPolicy({ teamSlug: 'test-team', namespace: 'test-team', port: 3000 })
+    expect(manifest).toContain('port: 3000')
+  })
+
+  it('uses default namespace when not provided', () => {
+    const manifest = generateNetworkPolicy({ teamSlug: 'my-team' })
+    expect(manifest).toContain('namespace: default')
   })
 })

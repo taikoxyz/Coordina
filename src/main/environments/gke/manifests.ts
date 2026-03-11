@@ -440,6 +440,49 @@ export function generateMissionControlService(input: { namespace: string }): str
 }
 
 
+export interface NetworkPolicyInput {
+  teamSlug: string
+  namespace?: string
+  port?: number
+}
+
+export function generateNetworkPolicy(input: NetworkPolicyInput): string {
+  const { teamSlug, namespace = 'default', port = 19876 } = input
+  const manifest = {
+    apiVersion: 'networking.k8s.io/v1',
+    kind: 'NetworkPolicy',
+    metadata: {
+      name: `${teamSlug}-allow-agent-communication`,
+      namespace,
+      labels: { 'coordina.team': teamSlug },
+    },
+    spec: {
+      podSelector: {
+        matchLabels: { 'coordina.team': teamSlug },
+      },
+      policyTypes: ['Ingress'],
+      ingress: [
+        {
+          from: [
+            {
+              podSelector: {
+                matchLabels: { 'coordina.team': teamSlug },
+              },
+            },
+          ],
+          ports: [
+            {
+              protocol: 'TCP',
+              port: port,
+            },
+          ],
+        },
+      ],
+    },
+  }
+  return yaml.dump(manifest)
+}
+
 export function generateMissionControlHeartbeatCronJob(input: {
   namespace: string
   agentIds: number[]
