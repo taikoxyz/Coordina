@@ -231,14 +231,54 @@ export async function* deployTeam(
     }
   }
 
-  // recreateDisks deletes existing PVCs so fresh disks are provisioned.
+  // recreateDisks deletes existing PVCs, PVs, and GCE disks so fresh disks are provisioned.
   if (options.recreateDisks) {
+    const fallback = config.diskZone ?? toZone(config.clusterZone)
     for (const name of desiredStatefulSetNames) {
       await tryDelete(() => appsApi.deleteNamespacedStatefulSet({ name, namespace }))
+      yield { resource: `StatefulSet/${name}`, status: 'deleted', message: 'Recreate disks' }
     }
     for (const f of specFiles.filter(f => f.path.endsWith('/pvc.yaml'))) {
       const doc = yaml.load(f.content) as k8s.KubernetesObject & { metadata: k8s.V1ObjectMeta }
-      if (doc?.metadata?.name) await tryDelete(() => coreApi.deleteNamespacedPersistentVolumeClaim({ name: doc.metadata.name!, namespace }))
+      const pvcName = doc?.metadata?.name
+      if (!pvcName) continue
+      const agentSlugLabel = (() => {
+        const labels = doc?.metadata?.labels as Record<string, string> | undefined
+        return labels?.['coordina.agent']
+      })()
+      const existingPvc = await coreApi.readNamespacedPersistentVolumeClaim({ name: pvcName, namespace }).catch(() => null)
+      const pvName = existingPvc?.spec?.volumeName
+      let diskInfo: { name: string; zone: string } | null = null
+      if (pvName) {
+        const pv = await coreApi.readPersistentVolume({ name: pvName }).catch(() => null)
+        const volumeHandle = pv?.spec?.csi?.volumeHandle
+        if (volumeHandle) {
+          const parts = volumeHandle.split('/')
+          diskInfo = { name: parts[parts.length - 1], zone: parts[3] ?? fallback }
+        }
+      }
+      await tryDelete(() => coreApi.deleteNamespacedPersistentVolumeClaim({ name: pvcName, namespace }))
+      yield { resource: `PVC/${pvcName}`, status: 'deleted', message: 'Recreate disks' }
+      if (pvName) {
+        await tryDelete(() => coreApi.deletePersistentVolume({ name: pvName }))
+        yield { resource: `PV/${pvName}`, status: 'deleted', message: 'Recreate disks' }
+      }
+      if (diskInfo) {
+        try {
+          deleteDisk(config.projectId, diskInfo.zone, diskInfo.name)
+          yield { resource: `Disk/${diskInfo.name}`, status: 'deleted', message: 'Recreate disks' }
+        } catch { /* disk may already be gone */ }
+      }
+      if (agentSlugLabel) {
+        const orphanedDisks = listDisksByLabels(config.projectId, { 'coordina-team': teamSlug, 'coordina-agent': agentSlugLabel })
+          .filter(d => !diskInfo || d.name !== diskInfo.name)
+        for (const d of orphanedDisks) {
+          try {
+            deleteDisk(config.projectId, d.zone, d.name)
+            yield { resource: `Disk/${d.name}`, status: 'deleted', message: 'Orphaned disk cleanup' }
+          } catch { /* disk may already be gone */ }
+        }
+      }
     }
   }
 
