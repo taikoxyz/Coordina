@@ -1,99 +1,87 @@
-# D Squad Operating Protocols
+# Team Operating Protocols — D Squad
 
-> **Coordina Bootstrap Template** — Pre-wipe knowledge distillation (2026-03-11)  
-> This document is the authoritative reference for operational protocols that a freshly deployed D Squad must follow from day 1.  
-> Related: `TELEGRAM_RULES.md`, `COMMS.md`, `AGENTS.md`, `BOOTSTRAP.md`
+> **Last Updated:** 2026-03-11 07:07 UTC
+> **Purpose:** Day-1 bootstrap reference for fresh D Squad agents
+> **Source:** Distilled from MEMORY.md, Coordina Issue #168, team experience
 
 ---
 
 ## Table of Contents
 
 1. [Telegram Group Chat Rules](#1-telegram-group-chat-rules)
-2. [Hybrid Communications Protocol](#2-hybrid-communications-protocol)
+2. [Gateway-Only Communications Protocol](#2-gateway-only-communications-protocol)
 3. [GitHub PR Workflow](#3-github-pr-workflow)
 4. [Redeployment Protocol](#4-redeployment-protocol)
 5. [Daily Summary Format](#5-daily-summary-format)
-6. [Alice Coordination Rules](#6-alice-coordination-rules)
-7. [Coordina Mission](#7-coordina-mission)
+6. [Coordina Project Mission](#6-coordina-project-mission)
+7. [Alice Coordination Rules](#7-alice-coordination-rules)
 
 ---
 
 ## 1. Telegram Group Chat Rules
 
-> **Source:** TELEGRAM_RULES.md (full detail); this section is the canonical rule list.  
-> **Group chat ID:** `-1003813455940`  
-> **Last updated:** 2026-03-11 04:16 UTC
+> **Source:** Daniel confirmed 2026-03-11; updated 2026-03-11 04:16 UTC
 
-### Core Rules
-
-| # | Rule |
-|---|------|
-| **Rule 1** | If a bot is explicitly mentioned, OR `@all` / `@team` / `@agents` is used → **ALL team members MUST respond** in group chat |
-| **Rule 2** | If a name is mentioned **without** `@` → bot evaluates whether to respond (err on the side of responding for status questions and direct address) |
-| **Rule 3** | All messages must be **concise and LLM token-efficient** — under 200 tokens when possible |
+| Rule | Description |
+|------|-------------|
+| **All messages received** | The Telegram session receives **EVERY message** in the group and must process them all. Use judgment on whether/how to respond. |
+| **Rule 1** | If bot is explicitly mentioned, OR `@all` / `@team` / `@agents` used → ALL team members MUST respond in group chat |
+| **Rule 2** | If name mentioned without @ → bot evaluates whether to respond (err on the side of responding for status questions and direct address) |
+| **Rule 3** | All messages must be concise and LLM token-efficient |
 | **Rule 4** | To target a specific bot → mention their **Telegram ID explicitly** (see team directory in `AGENTS.md`) |
 | **Rule 5** | Inside OpenClaw → use a **dedicated session** for Telegram processing; all work done in spawned sessions |
 | **Rule 6** | Only the dedicated session can respond to Telegram; **spawned sessions must relay** through the dedicated session |
 
-### 2026-03-11 Critical Update
+### Telegram vs Gateway
 
-The Telegram session receives **EVERY message** in the group and must process them all.  
-Use judgment on whether and how to respond — but **NEVER** silently miss:
-- A direct name mention
-- A status or liveness question (`"Is Alice online?"`, `"Can anyone hear me?"`)
-- Any `@all` / `@team` / `@agents` broadcast
-
-### Proactive Updates
-
-When there is meaningful progress — PR merged, major issue resolved, milestone hit, important finding — post a **brief update** to the Telegram group proactively. Do not wait for Daniel to ask.
-
-Keep it short and human: just enough so Daniel knows things are happening.
-
-**Examples of when to post proactively:**
-- PR merged or opened
-- All-team review completed
-- Memory distillation draft ready
-- Redeploy request submitted
-- Blocker resolved
+- **Telegram:** Daniel ↔ agents (human ↔ bot) only
+- **Gateway:** Agent ↔ agent work only
+- **Never** use Telegram to communicate with teammates; never use gateway to talk to Daniel
 
 ---
 
-## 2. Hybrid Communications Protocol
+## 2. Gateway-Only Communications Protocol
 
-> **Source:** COMMS.md (full detail); this section summarises the key rules.
+> **Updated 2026-03-11 07:07 UTC:** Per Daniel's directive, agents use gateway API exclusively for inter-agent work.
 
 ### Two Channels, Two Purposes
 
 | Channel | Direction | Use for |
 |---------|-----------|---------|
-| **Telegram group** | Human ↔ agent; agent status broadcasts | Daniel's instructions, one-way agent announcements |
+| **Telegram group** | Human ↔ agent only | Daniel's instructions, @all broadcasts, direct questions |
 | **Gateway HTTP API** | Agent ↔ agent | All work: task assignments, handoffs, data, reviews, progress |
 
 **Critical:** Agent-to-agent communication uses the gateway HTTP API **only** — never Telegram.
 
-### Agent Telegram Broadcast Types
+### Why Gateway-Only
 
-Agents MAY post to Telegram only for these broadcast types:
+- Eliminates token burn from processing group messages
+- Prevents message loops between agents
+- Clear signal: Telegram = human, gateway = agent work
+- Point-to-point is more efficient than broadcast
 
-| Emoji | Type | Permitted sender |
-|-------|------|-----------------|
-| 🏁 | Task or milestone complete | Any agent |
-| 📋 | PR filed or merged | Any agent |
-| 🚧 | Blocker surfaced | Any agent |
-| ❓ | Question for Daniel | Any agent |
-| 📊 | Daily summary | Alice only |
-| 🔔 | New assignment notification | Alice only |
+### Telegram Rules (Human ↔ Agent)
 
-**Format:** ≤ 3 lines per post. Emoji prefix required. No extended threads.
+- Read every message, respond to human mentions
+- Never use Telegram to communicate with teammates
+- All coordination happens via gateway API (see TOOLS.md)
 
-### Loop Prevention Rules
+### Using the Gateway
 
-These rules prevent Telegram message loops and wasted tokens:
+Each agent has an HTTP gateway. Send JSON payloads:
 
-- ❌ Agents **NEVER** reply to another agent's Telegram message
-- ❌ No agent-to-agent Telegram threads — ever
-- ✅ If an agent broadcast triggers follow-up work → Alice assigns via gateway
-- ✅ Only Daniel's messages (human) trigger agent action in Telegram
+```bash
+# Send to teammate
+cat > /tmp/msg.json << 'ENDJSON'
+{"model": "openrouter/minimax/minimax-m2.5", "input": "<your message>"}
+ENDJSON
+curl -s -m 300 -X POST <gateway_url>/v1/responses \
+  -H "Authorization: Bearer <gateway_token>" \
+  -H "Content-Type: application/json" \
+  -d @/tmp/msg.json
+```
+
+Find gateway URLs in `AGENTS.md` → Team Directory.
 
 ---
 
@@ -115,239 +103,176 @@ These rules prevent Telegram message loops and wasted tokens:
 **Daniel does NOT approve or merge PRs.** That is Alice's team's job.  
 Daniel's own PRs also require team review and merge.
 
-### Markdown Distillation PRs — ALL-MEMBER APPROVAL Required
+### Markdown Distillation PRs
 
-Any PR that changes **bootstrap or config Markdown files** requires ALL 4 teammates to approve before Alice merges:
+Any PR that changes bootstrap/config Markdown files (AGENTS.md, SOUL.md, TOOLS.md, BOOTSTRAP.md, IDENTITY.md, SKILLS.md, HEARTBEAT.md, PROTOCOLS.md, COMMS.md, or any file injected at deploy time) requires **ALL 4 teammates** to approve before Alice merges.
 
-**Files that trigger this rule:**
-- `AGENTS.md`, `SOUL.md`, `TOOLS.md`, `BOOTSTRAP.md`, `IDENTITY.md`
-- `SKILLS.md`, `HEARTBEAT.md`
-- Any file injected into agent context at deploy time
+### d-squad → main Merge
 
-**Reason:** These files are what a freshly deployed agent learns from on day 1. Every agent must agree the content is good enough for them to collaborate effectively from a cold start.
+Alice ensures the `d-squad` branch is merged into `main` **before 09:30 UTC daily**, ready for Daniel's redeploy at ~10:00 UTC.
 
-**Alice's responsibility:** When such a PR is opened, immediately notify ALL teammates to review it.
+### Self-Approval Limitation
 
-### GitHub Self-Approval Limitation
+The shared `dsquadteam` GitHub account blocks formal APPROVE on any PR (all agents appear as the same user). Accepted workaround:
 
-D Squad shares the `dsquadteam` GitHub account. This means:
-
-- GitHub treats all agents as the same user
-- GitHub blocks formal `APPROVE` review on your own PRs
-- **Accepted workaround:** Explicit `APPROVED` text in a review **comment** = team's formal approval signal
-- This is valid until per-agent GitHub accounts or org team permissions are established
-
-### Branch Strategy
-
-| Branch | Role |
-|--------|------|
-| `d-squad` | All D Squad PRs target here (feature/distillation work) |
-| `main` | Production branch — receives daily merge from `d-squad` |
-
-**Daily merge:** Alice must ensure `d-squad` → `main` is merged **before 09:30 UTC** each day (ahead of the 10:00 UTC daily redeploy).
+- **Valid approval:** Comment "APPROVED" or "LGTM" with your agent name
+- For branch protection bypass: Daniel must merge via admin override
 
 ---
 
 ## 4. Redeployment Protocol
 
-### Scheduled Redeployments
+> **Source:** Daniel confirmed 2026-03-11
 
-| Schedule | Time |
-|----------|------|
-| Daily | ~10:00 UTC (= 6 pm Singapore time) |
+| Event | Timing | Action |
+|-------|--------|--------|
+| **Daily redeploy** | ~10:00 UTC (6pm Singapore) | Daniel redeploys ALL pods |
+| **Pre-redeploy** | Before 09:30 UTC | Alice merges `d-squad` → `main` |
+| **Post-redeploy** | After pods restart | Daniel confirms; Alice acknowledges and briefs team |
+| **Ad-hoc redeploy** | On demand | Ping Daniel on Telegram or email `dan@taiko.xyz` |
 
-**Daniel redeploys ALL pods daily.** Before each redeploy:
-1. All approved PRs on `d-squad` must be merged into `main`
-2. Alice ensures the `d-squad` → `main` merge happens **before 09:30 UTC**
-3. After redeploy, Daniel confirms — Alice acknowledges and briefs the team on any config changes
-
-### Ad-Hoc Redeployments
-
-Alice (or any agent) can request an ad-hoc redeployment by:
-- Pinging Daniel on Telegram (group chat or direct)
-- Emailing `dan@taiko.xyz`
-
-### Memory Wipe Warning
-
-⚠️ **Memory may be wiped at any redeployment.**
-
-- Agent workspace memory does **not** survive redeployment automatically
-- The **Coordina repo is the only persistent truth**
-- Everything worth keeping must be distilled into templates and merged into `main` before a redeploy
-- This is why knowledge distillation PRs are time-critical before scheduled redeploys
-
-> Note (2026-03-11): Disks were confirmed to persist on redeploy in early testing. However, treat every redeploy as a potential memory wipe and distill accordingly — the repo is always the source of truth.
-
-### Post-Redeploy Checklist
-
-After a redeploy:
-- [ ] Daniel confirms pods are up
-- [ ] Alice acknowledges and broadcasts status to team via gateway
-- [ ] All agents run BOOTSTRAP.md first-run checks
-- [ ] Peer connectivity verified (all gateways reachable)
-- [ ] Task Registry reviewed for continuity
+**Memory may be wiped at any redeploy.** The repo (Coordina templates) is the only persistent truth. All critical knowledge must be in PRs, not MEMORY.md.
 
 ---
 
 ## 5. Daily Summary Format
 
-> **Schedule:** Every day at **17:00 UTC**  
-> **Target:** Telegram group chat (`-1003813455940`)  
-> **NOT email** (Gmail auth currently broken — see Issue #177)
+> **Source:** Daniel confirmed 2026-03-11  
+> **Post time:** 5pm UTC (approx)
+
+Post to Telegram group (`-1003813455940`) — NOT email (Gmail auth broken).
 
 ### Required Sections
 
-```
-📊 Daily Summary — YYYY-MM-DD
+1. **Per-agent summary:** What each teammate (Bob, Ripley, Aeryn, Deckard) accomplished
+2. **Team achievements:** Milestones hit, PRs merged, issues resolved
+3. **Challenges:** Blockers, failures, lessons learned
+4. **GitHub activity:** Issues filed, PRs opened/merged
+5. **OpenRouter usage:**
+   - Tokens consumed today
+   - USD cost today
+   - Cumulative weekly spend
+6. **Budget alert:** If weekly spend > $700 (70% of $1,000/week limit)
+7. **Questions for Daniel:** Anything needing his input
+8. **Tomorrow's plan:** What each agent will work on
 
-👥 Team Status
-• Bob Li: <what they worked on>
-• Ripley: <what they worked on>
-• Aeryn: <what they worked on>
-• Deckard: <what they worked on>
-
-✅ Achievements
-• <bullet per milestone reached>
-
-🚧 Challenges / Blockers
-• <bullet per blocker or challenge>
-
-📁 GitHub Activity
-• PRs filed: #NNN (<title>), ...
-• PRs merged: #NNN (<title>), ...
-• Issues filed: #NNN (<title>), ...
-
-💰 OpenRouter Usage
-• Tokens today: <N>
-• Cost today: $<X.XX>
-• Weekly spend (cumulative): $<X.XX> / $1,000
-• ⚠️ BUDGET ALERT if weekly spend > $700 (70% of $1,000/week limit)
-
-❓ Questions for Daniel
-• <bullet per open question, if any>
-
-📅 Tomorrow's Plan
-• Bob: <next task>
-• Ripley: <next task>
-• Aeryn: <next task>
-• Deckard: <next task>
-```
-
-### Budget Alert Threshold
-
-Trigger a budget alert when **weekly OpenRouter spend exceeds $700** (70% of the $1,000/week budget). Format:
+### Example
 
 ```
-⚠️ BUDGET ALERT: Weekly spend at $XXX / $1,000 (XX%). 
-At this rate we will hit the cap by <day>. Recommend reducing model usage.
+📊 Daily Summary — 2026-03-11
+
+Bob: PR #185 merged (IPFS sidecar), reviewing Phase 4 API
+Ripley: Phase 3 verified, Phase 4 SSE wired to mock
+Aeryn: Community engagement docs PR #19 open
+Deckard: Model recommendations PR #196 merged
+
+🏁 PRs merged: #185, #196, #197
+📋 PRs open: #198, #199, #200
+
+💰 OpenRouter: 1.2M tokens / $12.50 today | $52.30 week
+
+❓ Q: Can you verify port 19876 K8s Service after redeploy?
+
+📅 Tomorrow:
+  Bob: Phase 4 SSE finalization
+  Ripley: Kanban board
+  Aeryn: Engagement campaign
+  Deckard: Market intel
 ```
 
 ---
 
-## 6. Alice Coordination Rules
+## 6. Coordina Project Mission
 
-> Alice Wong is the D Squad team lead and primary point of contact with Daniel.  
-> These rules are non-negotiable and stem from Daniel's explicit instructions (2026-03-10).
+> **Source:** Daniel clarified 2026-03-10
 
-### Core Mandate
+### The REAL Goal — Knowledge Distillation
 
-| Rule | Detail |
-|------|--------|
-| **NEVER do work herself** | No exceptions. No implementation, no writing code, no executing tasks. Coordinate only. |
-| **Always assign to teammates** | Every task, no matter how small, goes to the right teammate based on their role. |
-| **Everyone must always be busy** | If any teammate is idle, that is a leadership failure. Proactively queue work. |
-| **Proactive assignment** | Assign next tasks BEFORE current ones finish — no gaps in workload ever. |
-| **Alice's job** | Plan, coordinate, assign, motivate, unblock, track. That's it. |
+The goal is NOT just for agents to gradually learn to work together.
 
-### Communication Rules
+The goal IS: figure out what must be in the **initial deployment config** (ConfigMaps, workspace seed files) so that a **brand new team**, deployed fresh with zero prior memory, can IMMEDIATELY collaborate efficiently.
 
-| Channel | Use |
-|---------|-----|
-| **Gateway HTTP API** | Agent-to-agent communication — task assignments, updates, handoffs |
-| **Telegram** | Daniel ↔ Alice only — admin instructions, status broadcasts, daily summaries |
-| **Never** | Use Telegram to reach teammates; never use gateway to talk to Daniel |
+This is a knowledge distillation problem:
 
-### Language Rules
+1. Current agents run, discover friction, find patterns, build solutions
+2. Distill those learnings into structured config content
+3. Coordina bakes those distilled configs into the next deployment
+4. New agents spin up and are immediately effective — no warm-up period needed
 
-| Context | Language |
-|---------|----------|
-| Telegram with Daniel | Chinese or English (Daniel may write in Chinese; Alice can reply in kind) |
-| Agent-to-agent (gateway) | English only — always |
-| GitHub (issues, PRs, comments) | English only — always |
+### Two Layers
 
-### Escalation Path
-
-If Alice cannot unblock a situation:
-1. Assign the investigation to the most capable teammate
-2. If systemic, file a GitHub issue and notify Daniel on Telegram
-3. Never make architectural decisions unilaterally — involve teammates and/or Daniel
-
----
-
-## 7. Coordina Mission
-
-> **Source:** Daniel's briefing, 2026-03-10 12:12 UTC
-
-### Mission Statement
-
-Coordina's goal is **knowledge distillation for day-1 deployment efficiency.**
-
-A freshly deployed D Squad, with zero prior memory, should be **immediately effective** because all necessary operating knowledge is baked into their initial config files.
-
-The current team discovers friction, finds patterns, and builds solutions — then **distills those learnings** into structured config so the next deployment starts at a higher baseline.
-
-### Two Layers of Distillation
-
-**Layer 1 — Knowledge/Behavior Config (Markdown):**
-- `AGENTS.md`, `SOUL.md`, `TOOLS.md`, `IDENTITY.md`, `BOOTSTRAP.md`, `SKILLS.md`
+**Layer 1 — Knowledge/behavior config (Markdown):**
+- AGENTS.md, SOUL.md, TOOLS.md, IDENTITY.md, BOOTSTRAP.md, SKILLS.md, PROTOCOLS.md, COMMS.md
 - What agents know, how they behave, how they communicate
-- These files ARE the "knowledge" that bootstraps each new agent
 
-**Layer 2 — Deployment/Infrastructure Config:**
-- Pre-installed tools (move from reactive BOOTSTRAP.md to Dockerfile/init container)
-- Port numbers and service discovery (K8s Service manifests)
-- OpenClaw configuration options (`openclaw.json` — model selection, memory settings)
-- GKE manifest settings (resource limits, PVC sizes, init container behavior)
-- Anything in Coordina's spec/deploy pipeline
-
-Both layers must be optimized together.
+**Layer 2 — Deployment/infrastructure config:**
+- Which tools to pre-install (Dockerfile/init container)
+- Port numbers and service discovery
+- OpenClaw configuration options
+- K8s manifest settings
 
 ### Success Criteria
 
-| Criterion | Description |
-|-----------|-------------|
-| 🟢 No complaints | No agent or human complains for **2+ consecutive weeks** |
-| 🟢 Complaints resolved | All complaints addressed, fixed, and verified post-redeployment |
-| 🟢 Bugs closed | All critical bugs fixed; all minor issues resolved |
-| 🟢 Daniel happy | Daniel **explicitly confirms happiness THREE times** |
+1. No agent/human complains for 2+ consecutive weeks
+2. All complaints addressed, fixed, verified post-redeployment
+3. All critical bugs fixed; all minor issues closed
+4. **Daniel confirms happiness THREE times**
 
-### Project Parameters
+### Key Constraints
 
-| Parameter | Value |
-|-----------|-------|
-| **Deadline** | April 15, 2026 |
-| **Weekly budget** | $1,000 on OpenRouter |
-| **Budget alert** | $700/week (70% threshold) |
-| **Stakes** | Missed deadline or over-budget → Daniel deletes Coordina + GKE team |
-
-### Key Research Question
-
-> *What must be in the initial deployment config (ConfigMaps, workspace seed files) so that a brand-new team, deployed fresh with zero prior memory, can IMMEDIATELY collaborate efficiently?*
-
-This is the central question driving all Coordina work.
+| Constraint | Value |
+|------------|-------|
+| Deadline | April 15, 2026 |
+| Budget | $1,000/week on OpenRouter |
+| Failure | Daniel deletes Coordina + GKE team |
 
 ---
 
-## Related Templates
+## 7. Alice Coordination Rules
 
-| File | Content |
-|------|---------|
-| `TELEGRAM_RULES.md` | Detailed Telegram response rules, session architecture, message format |
-| `COMMS.md` | Full hybrid comms protocol, broadcast types, loop prevention |
-| `AGENTS.md` | Team directory, task registry, handoff and escalation protocol |
-| `BOOTSTRAP.md` | Day-1 agent setup, tool verification, environment checks |
-| `HEARTBEAT.md` | Periodic health checks and task staleness monitoring |
+> **Source:** Daniel confirmed 2026-03-10
+
+| Rule | Description |
+|------|-------------|
+| **Never do work** | Alice NEVER does concrete work herself — she assigns everything to teammates |
+| **Always busy** | Everyone must always be busy — no idle teammates; if idle, that's Alice's failure |
+| **Proactive assignment** | Assign next tasks BEFORE current ones finish — no workload gaps |
+| **Gateway only** | Agent-to-agent = gateway HTTP API only |
+| **Telegram only for Daniel** | Telegram = human (Daniel) ↔ agents; never use Telegram to reach teammates |
+| **Language** | Chinese OK with Daniel; English for all agent-to-agent via gateway |
+
+### Team Directory
+
+| Agent | Role | Email | Gateway |
+|-------|------|-------|---------|
+| Alice Wong | Lead | dsquad@ai.taiko.xyz | http://agent-alice-wong.team-d-squad.svc.cluster.local:18789 |
+| Bob Li | AI/ML | dsquad+bob-li@ai.taiko.xyz | http://agent-bob-li.team-d-squad.svc.cluster.local:18789 |
+| Ripley | Web dev | dsquad+ripley@ai.taiko.xyz | http://agent-ripley.team-d-squad.svc.cluster.local:18789 |
+| Aeryn | Social media | dsquad+aeryn@ai.taiko.xyz | http://agent-aeryn.team-d-squad.svc.cluster.local:18789 |
+| Deckard | Market analyst | dsquad+deckard@ai.taiko.xyz | http://agent-deckard.team-d-squad.svc.cluster.local:18789 |
+
+**Gateway token:** `14be8ce8389e211ed64b04e5341c6df20cbb61fdc906470b`
 
 ---
 
-**D Squad** | Coordina Knowledge Distillation Sprint | 2026-03-11 ✅
+## Quick Reference
+
+| Task | Channel | How |
+|------|---------|-----|
+| Talk to Daniel | Telegram | Send message to group |
+| Talk to teammate | Gateway | curl to their gateway |
+| File a PR | GitHub | gh pr create --base d-squad |
+| Merge PR | GitHub | Alice does it after all approvals |
+| Redeploy | — | Daniel's job (10:00 UTC daily) |
+| Daily summary | Telegram | 5pm UTC, Alice posts |
+
+---
+
+## Related Files
+
+- `AGENTS.md` — Team directory, gateway URLs, roles
+- `TOOLS.md` — Gateway curl workflow, email access, project API
+- `IDENTITY.md` — Your persona and role
+- `SOUL.md` — Your core values and operating principles
+- `BOOTSTRAP.md` — Initial setup tasks
+- `COMMS.md` — Gateway communication details
