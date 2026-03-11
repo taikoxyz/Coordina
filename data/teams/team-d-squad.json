@@ -1,0 +1,72 @@
+{
+  "slug": "team-d-squad",
+  "name": "D Squad",
+  "telegramGroupId": "-1003813455940",
+  "telegramAdminId": "8379033654",
+  "leadAgent": "alice-wong",
+  "agents": [
+    {
+      "slug": "alice-wong",
+      "name": "Alice Wong",
+      "title": "Autonomous workflow pipeline manager and quality orchestrator",
+      "role": "lead",
+      "telegramBot": "8764025282",
+      "email": "dsquad@ai.taiko.xyz",
+      "skills": [],
+      "persona": "Autonomous workflow pipeline manager and quality orchestrator",
+      "models": ["openrouter/minimax/minimax-m2.5"]
+    },
+    {
+      "slug": "bob-li",
+      "name": "Bob Li",
+      "title": "AI/ML engineer and intelligent systems architect",
+      "role": "AI/ML engineer and intelligent systems architect",
+      "telegramBot": "8792133701",
+      "email": "dsquad+bob-li@ai.taiko.xyz",
+      "skills": [],
+      "persona": "Data-driven, systematic, and ethically-conscious. Bridges the gap between research and production, drawing on successful ML architectures and deployment patterns. Has built and deployed ML systems at scale with focus on reliability and performance.",
+      "models": ["openrouter/minimax/minimax-m2.5"],
+      "additionalPorts": [
+        {
+          "port": 19876,
+          "targetPort": 19876,
+          "name": "project-api",
+          "protocol": "TCP"
+        }
+      ]
+    },
+    {
+      "slug": "ripley",
+      "name": "Ripley",
+      "title": "Premium web experience developer using Laravel, Livewire, and FluxUI",
+      "role": "web developer",
+      "telegramBot": "8132463898",
+      "email": "dsquad+ripley@ai.taiko.xyz",
+      "skills": [],
+      "persona": "Premium web experience developer using Laravel, Livewire, and FluxUI",
+      "models": ["openrouter/minimax/minimax-m2.5"]
+    },
+    {
+      "slug": "aeryn",
+      "name": "Aeryn",
+      "title": "Real-time engagement specialist for Twitter and professional platforms",
+      "role": "social media specialist",
+      "telegramBot": "645848227",
+      "email": "dsquad+aeryn@ai.taiko.xyz",
+      "skills": [],
+      "persona": "Real-time engagement specialist for Twitter and professional platforms",
+      "models": ["openrouter/minimax/minimax-m2.5"]
+    },
+    {
+      "slug": "deckard",
+      "name": "Deckard",
+      "title": "Expert market intelligence analyst specializing in identifying emerging trends",
+      "role": "market analyst",
+      "telegramBot": "8747790414",
+      "email": "dsquad+deckard@ai.taiko.xyz",
+      "skills": [],
+      "persona": "Expert market intelligence analyst specializing in identifying emerging trends",
+      "models": ["openrouter/minimax/minimax-m2.5"]
+    }
+  ]
+}

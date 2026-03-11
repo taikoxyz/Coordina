@@ -7,6 +7,13 @@ export interface ChatMessage {
   timestamp: number
 }
 
+export interface AdditionalPort {
+  port: number
+  targetPort: number
+  name: string
+  protocol?: string
+}
+
 export interface AgentSpec {
   slug: string
   name: string
@@ -29,6 +36,7 @@ export interface AgentSpec {
   values?: string[]
   operatingRules?: string[]
   toolGuidance?: string[]
+  additionalPorts?: AdditionalPort[]
 }
 
 export interface TeamSpec {
@@ -144,6 +152,20 @@ export interface MissionControlConfig {
   image: string
 }
 
+export interface Task {
+  id: string
+  title: string
+  assignedTo?: string
+  status: 'unclaimed' | 'in_progress' | 'review' | 'done'
+  priority: 'low' | 'medium' | 'high' | 'critical'
+  dueDate?: string
+  blockers?: string[]
+  projectId?: string
+  description?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
 export interface Project {
   slug: string
   name: string
@@ -151,6 +173,8 @@ export interface Project {
   status: 'active' | 'completed' | 'archived'
   createdAt: number
   createdBy: string
+  progress?: number        // 0-100 computed from tasks
+  tasks?: Task[]           // array of task objects
 }
 
 export interface PodLogOptions {

@@ -73,6 +73,13 @@ export function generateAgentConfigMap(input: {
   })
 }
 
+export interface AdditionalPort {
+  port: number
+  targetPort: number
+  name: string
+  protocol?: string
+}
+
 export interface AgentManifestInput {
   teamSlug: string
   agentSlug: string
@@ -82,6 +89,7 @@ export interface AgentManifestInput {
   cpu?: number
   memoryGi?: number
   podAnnotations?: Record<string, string>
+  additionalPorts?: AdditionalPort[]
 }
 
 export function generateStorageClass(input: { teamSlug: string }): string {
@@ -201,7 +209,10 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
             name: 'openclaw',
             image,
             securityContext: { runAsUser: 0 },
-            ports: [{ containerPort: 18789, name: 'gateway' }],
+            ports: [
+              { containerPort: 18789, name: 'gateway' },
+              ...(input.additionalPorts ?? []).map(p => ({ containerPort: p.targetPort, name: p.name, protocol: p.protocol ?? 'TCP' })),
+            ],
             env: [
               { name: 'OPENCLAW_WORKSPACE_DIR', value: workspaceDir },
               { name: 'OPENCLAW_STATE_DIR', value: stateDir },
@@ -244,8 +255,8 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
   return yaml.dump(manifest)
 }
 
-export function generateAgentService(input: { teamSlug: string; agentSlug: string; namespace?: string }): string {
-  const { agentSlug, namespace = 'default' } = input
+export function generateAgentService(input: { teamSlug: string; agentSlug: string; namespace?: string; additionalPorts?: AdditionalPort[] }): string {
+  const { agentSlug, namespace = 'default', additionalPorts } = input
   const resourceName = `agent-${agentSlug}`
   const manifest = {
     apiVersion: 'v1',
@@ -260,7 +271,10 @@ export function generateAgentService(input: { teamSlug: string; agentSlug: strin
     },
     spec: {
       selector: { app: resourceName },
-      ports: [{ port: 18789, targetPort: 18789, name: 'gateway' }],
+      ports: [
+        { port: 18789, targetPort: 18789, name: 'gateway' },
+        ...(additionalPorts ?? []).map(p => ({ port: p.port, targetPort: p.targetPort, name: p.name, protocol: p.protocol ?? 'TCP' })),
+      ],
       type: 'ClusterIP',
     },
   }
