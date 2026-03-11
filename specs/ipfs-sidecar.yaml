@@ -1,0 +1,185 @@
+# IPFS Sidecar Configuration for D Squad Agents
+# 
+# This spec enables IPFS integration for decentralized file storage
+# and peer-to-peer communication across the agent cluster.
+#
+# Deployment: Add as a sidecar container to agent StatefulSets
+
+---
+# ServiceAccount for IPFS sidecar
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ipfs-sidecar
+  namespace: team-d-squad
+  labels:
+    app: ipfs-sidecar
+    coordina.component: ipfs
+---
+
+# RBAC Role - IPFS sidecar permissions
+# Security principle: Least privilege - only permissions required for IPFS operation
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ipfs-sidecar
+  namespace: team-d-squad
+  labels:
+    app: ipfs-sidecar
+    coordina.component: ipfs
+rules:
+  # pods/read: Required for peer discovery
+  # IPFS needs to discover other agents' IP addresses for peer bootstrapping.
+  # Without this, the node cannot find peers in the cluster and will be isolated.
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get, list, watch]
+
+  # services/read: Required for DNS-based service discovery  
+  # IPFS uses Kubernetes DNS (Headless Services) to discover peer endpoints.
+  # This enables automatic peer list updates when agents scale or restart.
+  - apiGroups: [""]
+    resources: [services]
+    verbs: [get, list, watch]
+
+  # configmaps/read: Optional - for shared IPFS cluster config
+  # Allows reading shared configuration like bootstrap nodes, storage quotas.
+  # Not strictly required for basic IPFS operation but enables cluster coordination.
+  - apiGroups: [""]
+    resources: [configmaps]
+    verbs: [get, list, watch]
+
+---
+# RoleBinding - binds the role to the ServiceAccount
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ipfs-sidecar
+  namespace: team-d-squad
+  labels:
+    app: ipfs-sidecar
+    coordina.component: ipfs
+subjects:
+  - kind: ServiceAccount
+    name: ipfs-sidecar
+    namespace: team-d-squad
+roleRef:
+  kind: Role
+  name: ipfs-sidecar
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# IPFS Cluster ConfigMap - shared bootstrap configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ipfs-sidecar-config
+  namespace: team-d-squad
+  labels:
+    app: ipfs-sidecar
+    coordina.component: ipfs
+data:
+  # IPFS configuration
+  IPFS_PROFILE: "server"
+  
+  # Bootstrap nodes will be populated by the agent startup logic
+  # Format: /ip4/<pod-ip>/tcp/4001/p2p/<peer-id>
+  bootstrap_nodes: ""
+  
+  # Storage limit per agent (in GB)
+  storage_limit: "10"
+
+---
+# IPFS Sidecar Container Specification
+# Add this container to your agent StatefulSet spec.template.spec.containers
+#
+# Example usage in StatefulSet:
+#   sidecars:
+#     - name: ipfs-sidecar
+#       image: ipfs/kubo:v0.28.0
+#       ports:
+#         - containerPort: 4001
+#           name: ipfs-swarm
+#         - containerPort: 5001
+#           name: ipfs-api
+#         - containerPort: 8080
+#           name: ipfs-gateway
+#       env:
+#         - name: IPFS_PROFILE
+#           valueFrom:
+#             configMapKeyRef:
+#               name: ipfs-sidecar-config
+#               key: IPFS_PROFILE
+#       volumeMounts:
+#         - name: ipfs-data
+#           mountPath: /data/ipfs
+#       resources:
+#         requests:
+#           cpu: "100m"
+#           memory: "128Mi"
+#         limits:
+#           cpu: "500m"
+#           memory: "512Mi"
+#
+# Add volume to StatefulSet:
+#   volumes:
+#     - name: ipfs-data
+#       persistentVolumeClaim:
+#         claimName: <team>-agent-<agent>-ipfs
+
+---
+# PVC for IPFS data storage (optional - per-agent)
+# Uncomment and customize for dedicated IPFS storage
+# apiVersion: v1
+# kind: PersistentVolumeClaim
+# metadata:
+#   name: ipfs-data
+#   namespace: team-d-squad
+#   labels:
+#     app: ipfs-sidecar
+# spec:
+#   accessModes: ["ReadWriteOnce"]
+#   resources:
+#     requests:
+#       storage: "10Gi"
+
+---
+# Notes on IPFS Permissions
+# =========================
+#
+# WHY THESE PERMISSIONS ARE NEEDED:
+#
+# 1. pods/read (get, list, watch)
+#    - Purpose: Peer discovery within the cluster
+#    - Rationale: IPFS nodes need to find each other to form a P2P mesh.
+#      By reading pod list, we can extract pod IPs and peer IDs to build
+#      a bootstrap list dynamically.
+#    - Risk: Low - read-only access to pod metadata
+#
+# 2. services/read (get, list, watch)
+#    - Purpose: DNS-based service discovery
+#    - Rationale: Kubernetes headless services provide stable DNS names
+#      for StatefulSet pods. IPFS can use these for peer addresses.
+#    - Risk: Low - read-only access to service metadata
+#
+# 3. configmaps/read (get, list, watch)
+#    - Purpose: Shared cluster configuration
+#    - Rationale: Allows IPFS to read bootstrap node list and other
+#      cluster-wide settings from ConfigMaps.
+#    - Risk: Low - read-only access to config data
+#
+# WHAT WAS REMOVED:
+#
+# - pods/exec: REMOVED
+#   - Original purpose: Debugging, health checks via exec
+#   - Reason for removal: Security risk - allows arbitrary command execution
+#     in pod context. Not required for IPFS operation.
+#   - Alternative: Use HTTP-based health checks (liveness/readiness probes)
+#     or IPFS's own API for health verification.
+#
+# SECURITY CONSIDERATIONS:
+#
+# - This runs in a dedicated ServiceAccount with namespace-scoped Role
+# - No cluster-wide permissions (no ClusterRole)
+# - No write permissions - IPFS sidecar is read-only for K8s resources
+# - Consider NetworkPolicies to restrict IPFS swarm traffic if needed
