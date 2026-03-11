@@ -1,0 +1,77 @@
+{
+  "model": "openrouter/moonshotai/kimi-k2.5",
+  "defaultModel": "openrouter/moonshotai/kimi-k2.5",
+  "models": {
+    "default": "openrouter/moonshotai/kimi-k2.5",
+    "research": "openrouter/anthropic/claude-3.5-sonnet",
+    "fast": "openrouter/google/gemini-flash-1.5",
+    "coding": "openrouter/anthropic/claude-3.5-sonnet"
+  },
+  "memory": {
+    "enabled": true,
+    "autoSave": true,
+    "maxFiles": 100,
+    "indexStrategy": "semantic",
+    "distillation": {
+      "enabled": true,
+      "triggerTokens": 80000,
+      "preserve": ["decisions", "contacts", "preferences", "projectState"]
+    }
+  },
+  "context": {
+    "maxTokens": 100000,
+    "includeSystemPrompt": true,
+    "reservedTokens": {
+      "systemPrompt": 2000,
+      "memoryBuffer": 8000,
+      "responseBuffer": 4000
+    },
+    "trimStrategy": "oldestFirst"
+  },
+  "heartbeat": {
+    "enabled": true,
+    "intervalSeconds": 60,
+    "checkProjectApi": true,
+    "projectApiPort": 19876
+  },
+  "subAgents": {
+    "enabled": true,
+    "maxConcurrent": 3,
+    "defaultTimeout": 300,
+    "rateLimit": {
+      "requestsPerMinute": 20,
+      "burstSize": 5
+    }
+  },
+  "team": {
+    "name": "D Squad",
+    "slug": "team-d-squad",
+    "lead": "alice-wong",
+    "gatewayToken": "${D_SQUAD_GATEWAY_TOKEN}",
+    "leadGateway": "http://agent-alice-wong.team-d-squad.svc.cluster.local:18789",
+    "healthCheckIntervalSeconds": 30
+  },
+  "gateway": {
+    "port": 18789,
+    "host": "0.0.0.0"
+  },
+  "session": {
+    "defaultModel": "openrouter/moonshotai/kimi-k2.5",
+    "thinking": "low",
+    "maxIdleMinutes": 30,
+    "autoCleanup": true
+  },
+  "tools": {
+    "preInstalled": ["gh", "git", "yq", "jq", "cargo", "playwright", "bat", "rg"]
+  },
+  "security": {
+    "allowExec": true,
+    "allowWebSearch": true,
+    "sensitiveEnvVars": [
+      "GITHUB_TOKEN",
+      "OPENROUTER_API_KEY",
+      "EMAIL_PASSWORD",
+      "D_SQUAD_GATEWAY_TOKEN"
+    ]
+  }
+}
