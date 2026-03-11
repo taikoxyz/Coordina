@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { deriveAgentEmail } from '../../../../shared/email'
 import type { AgentSpec } from '../../../../shared/types'
+import { DEFAULT_CPU, DEFAULT_MEMORY_GI, DEFAULT_DISK_GI } from '../../../../shared/podDefaults'
 import { PERSONA_CATALOG, getPersonasByDivision } from '../../../../shared/personaCatalog'
 import { useModels } from '../../hooks/useModels'
 import { Button, Input, Label, ReadField, Select, Textarea } from '../ui'
@@ -15,6 +16,7 @@ interface Props {
   isLead?: boolean
   defaultImage?: string
   defaultCpu?: number
+  defaultMemoryGi?: number
   defaultDiskGi?: number
 }
 
@@ -27,6 +29,7 @@ export function AgentCard({
   isLead,
   defaultImage,
   defaultCpu,
+  defaultMemoryGi,
   defaultDiskGi,
 }: Props) {
   const { data: models } = useModels('openrouter')
@@ -36,6 +39,10 @@ export function AgentCard({
   const [tokenMasked, setTokenMasked] = useState<string | null>(null)
   const [tokenBusy, setTokenBusy] = useState(false)
   const [tokenError, setTokenError] = useState<string | null>(null)
+  const [orKey, setOrKey] = useState('')
+  const [orKeyMasked, setOrKeyMasked] = useState<string | null>(null)
+  const [orKeyBusy, setOrKeyBusy] = useState(false)
+  const [orKeyError, setOrKeyError] = useState<string | null>(null)
   const set = (key: keyof AgentSpec) => (value: unknown) =>
     onChange({ ...agent, [key]: value })
 
@@ -76,6 +83,15 @@ export function AgentCard({
       .catch((e) => {
         if (active) setTokenError((e as Error).message)
       })
+    window.api
+      .invoke('teams:getAgentOpenRouterKeyMasked', {
+        teamSlug,
+        agentSlug: agent.slug,
+      })
+      .then((value) => {
+        if (active) setOrKeyMasked((value as string | null) ?? null)
+      })
+      .catch(() => { /* non-fatal */ })
     return () => {
       active = false
     }
@@ -133,6 +149,46 @@ export function AgentCard({
       setTokenError((e as Error).message)
     } finally {
       setTokenBusy(false)
+    }
+  }
+
+  const saveOrKey = async () => {
+    setOrKeyBusy(true)
+    setOrKeyError(null)
+    try {
+      await window.api.invoke('teams:setAgentOpenRouterKey', {
+        teamSlug,
+        agentSlug: agent.slug,
+        key: orKey,
+      })
+      const masked = (await window.api.invoke(
+        'teams:getAgentOpenRouterKeyMasked',
+        { teamSlug, agentSlug: agent.slug },
+      )) as string | null
+      setOrKeyMasked(masked)
+      setOrKey('')
+    } catch (e) {
+      setOrKeyError((e as Error).message)
+    } finally {
+      setOrKeyBusy(false)
+    }
+  }
+
+  const clearOrKey = async () => {
+    setOrKeyBusy(true)
+    setOrKeyError(null)
+    try {
+      await window.api.invoke('teams:setAgentOpenRouterKey', {
+        teamSlug,
+        agentSlug: agent.slug,
+        key: '',
+      })
+      setOrKeyMasked(null)
+      setOrKey('')
+    } catch (e) {
+      setOrKeyError((e as Error).message)
+    } finally {
+      setOrKeyBusy(false)
     }
   }
 
@@ -241,6 +297,46 @@ export function AgentCard({
                   + Add model
                 </Button>
               </div>
+              <div className="mt-3">
+                <Label>API Key override <Tooltip content="Overrides the team-level OpenRouter key for this agent only. Useful for per-agent billing tracking."><span className="text-gray-300 cursor-help">ⓘ</span></Tooltip></Label>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      mono
+                      type="password"
+                      value={orKey}
+                      onChange={(e) => setOrKey(e.target.value)}
+                      placeholder={orKeyMasked ? 'Update key' : 'sk-or-...'}
+                    />
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={saveOrKey}
+                      disabled={orKeyBusy || !teamSlug || !agent.slug}
+                      className="shrink-0"
+                    >
+                      Save
+                    </Button>
+                  </div>
+                  {orKeyMasked && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={clearOrKey}
+                      disabled={orKeyBusy}
+                      className="shrink-0"
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+                {orKeyMasked && (
+                  <p className="text-xs text-gray-400 font-mono mt-0.5">{orKeyMasked}</p>
+                )}
+                {orKeyError && (
+                  <p className="text-xs text-red-600 mt-0.5">{orKeyError}</p>
+                )}
+              </div>
             </div>
 
             <div>
@@ -340,7 +436,7 @@ export function AgentCard({
                     placeholder="—"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
                   <div>
                     <Label>CPU (cores)</Label>
                     <Input
@@ -353,7 +449,22 @@ export function AgentCard({
                           e.target.value ? parseFloat(e.target.value) : undefined,
                         )
                       }
-                      placeholder={`${defaultCpu ?? 1}`}
+                      placeholder={`${defaultCpu ?? DEFAULT_CPU}`}
+                    />
+                  </div>
+                  <div>
+                    <Label>Memory (Gi)</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      step={1}
+                      value={agent.memoryGi ?? ''}
+                      onChange={(e) =>
+                        set('memoryGi')(
+                          e.target.value ? parseInt(e.target.value) : undefined,
+                        )
+                      }
+                      placeholder={`${defaultMemoryGi ?? DEFAULT_MEMORY_GI}`}
                     />
                   </div>
                   <div>
@@ -368,7 +479,7 @@ export function AgentCard({
                           e.target.value ? parseInt(e.target.value) : undefined,
                         )
                       }
-                      placeholder={`${defaultDiskGi ?? 10}`}
+                      placeholder={`${defaultDiskGi ?? DEFAULT_DISK_GI}`}
                     />
                   </div>
                 </div>
@@ -434,8 +545,9 @@ export function AgentCard({
             <div>
               <h4 className="text-sm font-semibold text-gray-900 mb-1">Resources</h4>
               <ReadField label="Container image" value={agent.image} defaultValue={defaultImage ?? 'alpine/openclaw:latest'} />
-              <ReadField label="CPU (cores)" value={agent.cpu} defaultValue={defaultCpu ?? 1} />
-              <ReadField label="Disk (Gi)" value={agent.diskGi} defaultValue={defaultDiskGi ?? 10} />
+              <ReadField label="CPU (cores)" value={agent.cpu} defaultValue={defaultCpu ?? DEFAULT_CPU} />
+              <ReadField label="Memory (Gi)" value={agent.memoryGi} defaultValue={defaultMemoryGi ?? DEFAULT_MEMORY_GI} />
+              <ReadField label="Disk (Gi)" value={agent.diskGi} defaultValue={defaultDiskGi ?? DEFAULT_DISK_GI} />
             </div>
           </>
         )}

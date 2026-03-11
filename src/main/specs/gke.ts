@@ -18,6 +18,7 @@ import {
   generateMcImagePullSecret,
 } from '../environments/gke/manifests'
 import type { MissionControlConfig } from '../../shared/types'
+import { DEFAULT_CPU, DEFAULT_MEMORY_GI, DEFAULT_DISK_GI } from '../../shared/podDefaults'
 import {
   generateTeamMd,
   generateIdentityMd,
@@ -171,7 +172,8 @@ const gkeDeriver: DeploymentSpecDeriver = {
       const effectiveEmail = agent.email || derivedEmail
       const models = agent.models.length > 0 ? agent.models : ['anthropic/claude-sonnet-4-6']
       const openclawConfig = openrouterToOpenClawJson(models)
-      const envVars = openrouterToEnvVars(openrouterApiKey)
+      const effectiveApiKey = secrets?.agentOpenRouterKeys?.[agent.slug] || openrouterApiKey
+      const envVars = openrouterToEnvVars(effectiveApiKey)
 
       const agentToken = teamGatewayToken
       const telegramBot = agent.telegramBot?.trim()
@@ -323,8 +325,9 @@ const gkeDeriver: DeploymentSpecDeriver = {
         clusterZone: clusterZone || 'unknown',
         projectId: projectId || 'unknown',
         image: effectiveImage,
-        diskGi: agent.diskGi ?? 10,
-        cpu: agent.cpu ?? 1,
+        diskGi: agent.diskGi ?? DEFAULT_DISK_GI,
+        cpu: agent.cpu ?? DEFAULT_CPU,
+        memoryGi: agent.memoryGi ?? DEFAULT_MEMORY_GI,
         gatewayMode: mode,
         namespace,
       })
@@ -361,6 +364,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
         credentialSecretName,
         cpu: agent.cpu,
         additionalPorts: agent.additionalPorts,
+        memoryGi: agent.memoryGi,
         podAnnotations: {
           'coordina/shared-config-hash': teamConfigHash,
           'coordina/agent-config-hash': agentConfigHash,
