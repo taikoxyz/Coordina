@@ -298,6 +298,12 @@ describe('undeployAgent', () => {
     expect(mockListDisksByLabels).not.toHaveBeenCalled()
     expect(mockDeleteDisk).not.toHaveBeenCalled()
   })
+
+  it('always deletes ConfigMap and credentials Secret regardless of deleteDisks', async () => {
+    for await (const _ of undeployAgent('team', 'alice', config, { deleteDisks: false })) { /* drain */ }
+    expect(mockCoreApi.deleteNamespacedConfigMap).toHaveBeenCalledWith({ name: 'team-alice-config', namespace: 'team' })
+    expect(mockCoreApi.deleteNamespacedSecret).toHaveBeenCalledWith({ name: 'team-alice-credentials', namespace: 'team' })
+  })
 })
 
 describe('getTeamStatus', () => {
