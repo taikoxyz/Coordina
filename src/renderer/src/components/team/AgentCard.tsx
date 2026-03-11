@@ -517,6 +517,7 @@ export function AgentCard({
               )) : (
                 <ReadField label="Model" value={undefined} />
               )}
+              <ReadField label="API Key" value={orKeyMasked ?? undefined} monospace />
             </div>
 
             <hr className="border-gray-200" />
