@@ -381,8 +381,8 @@ export function createGatewayRouter(getToken: TokenFetcher = async () => null) {
 
         const e = err as NodeJS.ErrnoException
         const code = e.code ? String(e.code) : 'UNKNOWN_PROXY_ERROR'
-        const detail = e.message ? `${code}: ${e.message}` : code
-        sendProxyError(res, 502, 'Gateway upstream connection failed', detail)
+        console.error('[proxy] upstream error:', code, e.message)
+        sendProxyError(res, 502, 'Gateway upstream connection failed')
       },
       proxyReq: (proxyReq, req) => {
         const context = getResolvedProxyRequestContext(req)
