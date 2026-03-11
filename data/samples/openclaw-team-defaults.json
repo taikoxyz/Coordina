@@ -1,0 +1,31 @@
+{
+  "$schema": "./schemas/openclaw-config.schema.json",
+  "model": "openrouter/minimax/minimax-m2.5",
+  "defaultModel": "openrouter/minimax/minimax-m2.5",
+  "memory": {
+    "enabled": true,
+    "autoSave": true,
+    "maxFiles": 100
+  },
+  "heartbeat": {
+    "enabled": true,
+    "intervalSeconds": 60
+  },
+  "subAgents": {
+    "enabled": true,
+    "maxConcurrent": 3,
+    "defaultTimeout": 300
+  },
+  "context": {
+    "maxTokens": 100000,
+    "includeSystemPrompt": true
+  },
+  "team": {
+    "gatewayToken": "FROM_TEAM_SPEC",
+    "defaultGateway": "http://agent-alice-wong.team-d-squad.svc.cluster.local:18789"
+  },
+  "logging": {
+    "level": "info",
+    "format": "json"
+  }
+}
