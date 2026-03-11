@@ -191,7 +191,8 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
         },
         spec: {
           securityContext: {
-            runAsNonRoot: true,
+            runAsUser: 0,
+            runAsGroup: 0,
             fsGroup: 1000,
             fsGroupChangePolicy: 'OnRootMismatch',
           },
@@ -202,9 +203,9 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
             imagePullPolicy: 'IfNotPresent',
             command: ['sh', '-c', initSeedCmd],
             securityContext: {
-              runAsUser: 1000,
-              runAsGroup: 1000,
-              allowPrivilegeEscalation: false,
+              runAsUser: 0,
+              runAsGroup: 0,
+              allowPrivilegeEscalation: true,
             },
             volumeMounts: [
               { name: 'agent-data', mountPath: '/agent-data' },
@@ -216,9 +217,9 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
             name: 'openclaw',
             image,
             securityContext: {
-              runAsUser: 1000,
-              runAsGroup: 1000,
-              allowPrivilegeEscalation: false,
+              runAsUser: 0,
+              runAsGroup: 0,
+              allowPrivilegeEscalation: true,
             },
             ports: [
               { containerPort: 18789, name: 'gateway' },
