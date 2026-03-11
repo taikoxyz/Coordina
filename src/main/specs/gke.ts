@@ -16,6 +16,7 @@ import {
   generateMissionControlDeployment,
   generateMissionControlService,
   generateMcImagePullSecret,
+  generateNetworkPolicy,
 } from '../environments/gke/manifests'
 import type { MissionControlConfig } from '../../shared/types'
 import { DEFAULT_CPU, DEFAULT_MEMORY_GI, DEFAULT_DISK_GI } from '../../shared/podDefaults'
@@ -111,6 +112,7 @@ const gkeDeriver: DeploymentSpecDeriver = {
 
     files.push({ path: 'namespace.yaml', content: generateNamespace(namespace) })
     files.push({ path: 'storageclass.yaml', content: generateStorageClass({ teamSlug: spec.slug }) })
+    files.push({ path: 'network-policy.yaml', content: generateNetworkPolicy({ namespace }) })
 
     const hasGateways = true
     const hasEmail = Boolean(spec.teamEmail && secrets?.teamEmailPassword)

@@ -471,3 +471,50 @@ export function generateMissionControlHeartbeatCronJob(input: {
   }
   return yaml.dump(manifest)
 }
+
+export interface NetworkPolicyInput {
+  namespace: string
+}
+
+export function generateNetworkPolicy(input: NetworkPolicyInput): string {
+  const { namespace } = input
+  const manifest = {
+    apiVersion: 'networking.k8s.io/v1',
+    kind: 'NetworkPolicy',
+    metadata: {
+      name: 'default-deny-ingress',
+      namespace,
+    },
+    spec: {
+      podSelector: {},
+      policyTypes: ['Ingress'],
+      ingress: [
+        // Agent pods: gateway port 18789
+        {
+          from: [{ podSelector: { matchLabels: { app: /^agent-/ } } }],
+          ports: [{ protocol: 'TCP', port: 18789 }],
+        },
+        // Mission Control: port 3000
+        {
+          from: [{ podSelector: { matchLabels: { app: 'mission-control' } } }],
+          ports: [{ protocol: 'TCP', port: 3000 }],
+        },
+        // IPFS sidecar: ports 5001, 8080, 4001
+        {
+          from: [{ podSelector: { matchLabels: { app: /^ipfs-/ } }],
+          ports: [
+            { protocol: 'TCP', port: 5001 },
+            { protocol: 'TCP', port: 8080 },
+            { protocol: 'TCP', port: 4001 },
+          ],
+        },
+        // Project API: port 19876 (cross-pod communication)
+        {
+          from: [{ podSelector: {} }],
+          ports: [{ protocol: 'TCP', port: 19876 }],
+        },
+      ],
+    },
+  }
+  return yaml.dump(manifest)
+}
