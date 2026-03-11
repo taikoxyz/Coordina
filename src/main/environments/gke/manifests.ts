@@ -111,9 +111,6 @@ export function generateStorageClass(input: { teamSlug: string }): string {
 }
 
 export function generateAgentPvc(input: { teamSlug: string; agentSlug: string; namespace: string; diskGi?: number }): string {
-  const { teamSlug, agentSlug, namespace, diskGi = DEFAULT_DISK_GI } = input
-  const name = `${teamSlug}-agent-${agentSlug}`
-  const manifest = {
     apiVersion: 'v1',
     kind: 'PersistentVolumeClaim',
     metadata: { name, namespace, labels: { 'coordina.team': teamSlug, 'coordina.agent': agentSlug } },
@@ -233,9 +230,6 @@ export function generateAgentStatefulSet(input: AgentManifestInput): string {
             ],
             ...(credentialSecretName ? { envFrom: [{ secretRef: { name: credentialSecretName } }] } : {}),
             volumeMounts: containerVolumeMounts,
-            resources: { requests: { cpu: `${cpu ?? DEFAULT_CPU}`, memory: `${memoryGi ?? DEFAULT_MEMORY_GI}Gi` }, limits: { cpu: `${cpu ?? DEFAULT_CPU}`, memory: `${memoryGi ?? DEFAULT_MEMORY_GI}Gi` } },
-            readinessProbe: {
-              exec: { command: ['node', '-e', "const s=require('net').createConnection(18789,'127.0.0.1',()=>{s.destroy();process.exit(0)});s.on('error',()=>process.exit(1))"] },
               initialDelaySeconds: 15,
               periodSeconds: 10,
               failureThreshold: 3,
@@ -410,6 +404,7 @@ export function generateMissionControlDeployment(input: { namespace: string; ima
             ports: [{ containerPort: 3000 }],
             envFrom: [{ secretRef: { name: 'mission-control-env' } }],
             volumeMounts: [{ name: 'data', mountPath: '/app/.data' }],
+            resources: { requests: { cpu: '250m', memory: '256Mi' }, limits: { cpu: '1000m', memory: '512Mi' } },
             readinessProbe: {
               httpGet: { path: '/api/health', port: 3000 },
               initialDelaySeconds: 15,
