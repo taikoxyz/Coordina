@@ -481,7 +481,10 @@ export function DeployPanel({
             <input
               type="checkbox"
               checked={recreateDisks}
-              onChange={(e) => setRecreateDisks(e.target.checked)}
+              onChange={(e) => {
+                setRecreateDisks(e.target.checked)
+                if (e.target.checked) setRecreatePods(true)
+              }}
               className="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             <span className="text-sm">
@@ -499,7 +502,8 @@ export function DeployPanel({
               type="checkbox"
               checked={recreatePods}
               onChange={(e) => setRecreatePods(e.target.checked)}
-              className="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              disabled={recreateDisks}
+              className="mt-0.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 disabled:opacity-50"
             />
             <span className="text-sm">
               <span className="font-medium text-foreground">
