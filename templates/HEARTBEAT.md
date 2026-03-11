@@ -6,6 +6,9 @@
   CRITICAL CONSTRAINT: Heartbeat runs see ONLY this file.
   No AGENTS.md, TOOLS.md, SOUL.md, or any other workspace file.
   This file MUST be fully self-contained.
+
+  PLACEHOLDER SYNTAX: This template uses {{PLACEHOLDER}} syntax for variables
+  that Coordina replaces at runtime (e.g., {{AGENT_SLUG}}, {{TEAM_SLUG}}).
   
   Heartbeat runs should be FAST and FOCUSED. Each check follows:
     1. Run a specific command

@@ -5,6 +5,9 @@
   and agent-to-human communication.
   
   Budget: keep under 8,000 chars.
+
+  PLACEHOLDER SYNTAX: This template uses {{PLACEHOLDER}} syntax for variables
+  that Coordina replaces at runtime (e.g., {{GATEWAY_URL}}, {{TEAM_SLUG}}).
   
   Sections marked [COORDINA-MANAGED] are auto-generated.
   Sections marked [HUMAN-AUTHORED] are written by operators.
